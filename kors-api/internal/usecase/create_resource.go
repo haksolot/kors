@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/safran-ls/kors/kors-api/internal/domain/event"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resource"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resourcetype"
 )
@@ -14,11 +15,13 @@ type CreateResourceInput struct {
 	TypeName     string
 	InitialState string
 	Metadata     map[string]interface{}
+	IdentityID   uuid.UUID // ID de l'acteur qui crée la ressource
 }
 
 type CreateResourceUseCase struct {
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
+	EventRepo        event.Repository
 }
 
 func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResourceInput) (*resource.Resource, error) {
@@ -44,6 +47,24 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 	// 3. Persist
 	if err := uc.ResourceRepo.Create(ctx, res); err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	// 4. Publish Event
+	ev := &event.Event{
+		ID:         uuid.New(),
+		ResourceID: &res.ID,
+		IdentityID: input.IdentityID,
+		Type:       "kors.resource.created",
+		Payload: map[string]interface{}{
+			"type":  rt.Name,
+			"state": res.State,
+		},
+		CreatedAt: time.Now(),
+	}
+	if err := uc.EventRepo.Create(ctx, ev); err != nil {
+		// Log error but don't fail the operation (or choose strict mode)
+		// For now, let's keep it robust
+		fmt.Printf("Warning: failed to record event for resource creation: %v\n", err)
 	}
 
 	return res, nil

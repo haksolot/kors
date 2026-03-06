@@ -55,6 +55,7 @@ func (r *mutationResolver) CreateResource(ctx context.Context, input model.Creat
 		TypeName:     input.TypeName,
 		InitialState: input.InitialState,
 		Metadata:     input.Metadata,
+		IdentityID:   uuid.Nil,
 	})
 	if err != nil {
 		return &model.ResourceResult{
@@ -87,6 +88,7 @@ func (r *mutationResolver) TransitionResource(ctx context.Context, input model.T
 		ResourceID: input.ResourceID,
 		ToState:    input.ToState,
 		Metadata:     input.Metadata,
+		IdentityID:   uuid.Nil,
 	})
 	if err != nil {
 		return &model.ResourceResult{

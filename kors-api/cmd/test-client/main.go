@@ -8,39 +8,69 @@ import (
 	"net/http"
 )
 
-func main() {
-	query := `
-	mutation {
-	  registerResourceType(input: {
-		name: "tool",
-		description: "A manufacturing tool",
-		jsonSchema: { type: "object" },
-		transitions: { idle: ["in_use"] }
-	  }) {
-		success
-		resourceType {
-		  id
-		  name
-		}
-		error {
-		  code
-		  message
-		}
-	  }
-	}`
-
-	body := map[string]string{
-		"query": query,
-	}
+func sendRequest(query string) string {
+	body := map[string]string{"query": query}
 	jsonBody, _ := json.Marshal(body)
-
 	resp, err := http.Post("http://localhost:8080/query", "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
-		fmt.Printf("Error sending request: %v\n", err)
-		return
+		return fmt.Sprintf("Error: %v", err)
 	}
 	defer resp.Body.Close()
-
 	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Response: %s\n", string(respBody))
+	return string(respBody)
+}
+
+func main() {
+	// 1. Créer une ressource "tool"
+	fmt.Println("Creating resource...")
+	createMutation := `
+	mutation {
+	  createResource(input: {
+		typeName: "tool",
+		initialState: "idle",
+		metadata: { serial: "SN-12345" }
+	  }) {
+		success
+		resource { id state }
+		error { message }
+	  }
+	}`
+	createResp := sendRequest(createMutation)
+	fmt.Printf("Create Response: %s\n\n", createResp)
+
+	// Extraire l'ID de la ressource créée (on le fait à la main pour le test)
+	// Dans un vrai test on parserait le JSON
+	var resData struct {
+		Data struct {
+			CreateResource struct {
+				Resource struct {
+					ID string `json:"id"`
+				} `json:"resource"`
+			} `json:"createResource"`
+		} `json:"data"`
+	}
+	json.Unmarshal([]byte(createResp), &resData)
+	resID := resData.Data.CreateResource.Resource.ID
+
+	if resID == "" {
+		fmt.Println("Failed to get resource ID, skipping transition.")
+		return
+	}
+
+	// 2. Faire une transition vers "in_use"
+	fmt.Printf("Transitioning resource %s to 'in_use'...\n", resID)
+	transitionMutation := fmt.Sprintf(`
+	mutation {
+	  transitionResource(input: {
+		resourceId: "%s",
+		toState: "in_use",
+		metadata: { operator: "User1" }
+	  }) {
+		success
+		resource { id state metadata }
+		error { message }
+	  }
+	}`, resID)
+	transitionResp := sendRequest(transitionMutation)
+	fmt.Printf("Transition Response: %s\n", transitionResp)
 }
