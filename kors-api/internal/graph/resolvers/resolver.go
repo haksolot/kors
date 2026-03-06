@@ -1,6 +1,9 @@
 package resolvers
 
-import "github.com/safran-ls/kors/kors-api/internal/usecase"
+import (
+	"github.com/nats-io/nats.go"
+	"github.com/safran-ls/kors/kors-api/internal/usecase"
+)
 
 // This file will not be regenerated automatically.
 //
@@ -13,4 +16,5 @@ type Resolver struct {
 	GrantPermissionUseCase      *usecase.GrantPermissionUseCase
 	CreateRevisionUseCase       *usecase.CreateRevisionUseCase
 	ListResourcesUseCase        *usecase.ListResourcesUseCase
+	NatsConn                    *nats.Conn
 }

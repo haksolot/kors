@@ -7,8 +7,10 @@ package resolvers
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/nats-io/nats.go"
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
 	"github.com/safran-ls/kors/kors-api/internal/graph/model"
 	"github.com/safran-ls/kors/kors-api/internal/usecase"
@@ -21,6 +23,7 @@ func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model
 		Description: *input.Description,
 		JSONSchema:  input.JSONSchema,
 		Transitions: input.Transitions,
+		IdentityID:  uuid.Nil,
 	})
 	if err != nil {
 		return &model.ResourceTypeResult{Success: false, Error: &model.MutationError{Code: "REGISTRATION_FAILED", Message: err.Error()}}, nil
@@ -91,54 +94,22 @@ func (r *mutationResolver) CreateRevision(ctx context.Context, input model.Creat
 
 // Resource is the resolver for the resource field.
 func (r *queryResolver) Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error) {
-	// Simple stub for now
 	return nil, nil
 }
 
 // Resources is the resolver for the resources field.
 func (r *queryResolver) Resources(ctx context.Context, first *int, after *string, typeName *string) (*model.ResourceConnection, error) {
 	limit := 20
-	if first != nil {
-		limit = *first
-	}
-
-	result, err := r.ListResourcesUseCase.Execute(ctx, usecase.ListResourcesInput{
-		First:    limit,
-		After:    after,
-		TypeName: typeName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
+	if first != nil { limit = *first }
+	result, err := r.ListResourcesUseCase.Execute(ctx, usecase.ListResourcesInput{First: limit, After: after, TypeName: typeName})
+	if err != nil { return nil, err }
 	edges := make([]*model.ResourceEdge, len(result.Resources))
 	for i, res := range result.Resources {
-		edges[i] = &model.ResourceEdge{
-			Cursor: res.ID.String(), // Using raw ID as cursor for now
-			Node: &model.Resource{
-				ID:        res.ID,
-				State:     res.State,
-				Metadata:  res.Metadata,
-				CreatedAt: res.CreatedAt,
-				UpdatedAt: res.UpdatedAt,
-			},
-		}
+		edges[i] = &model.ResourceEdge{Cursor: res.ID.String(), Node: &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}}
 	}
-
 	var endCursor *string
-	if len(edges) > 0 {
-		c := edges[len(edges)-1].Cursor
-		endCursor = &c
-	}
-
-	return &model.ResourceConnection{
-		Edges: edges,
-		PageInfo: &model.PageInfo{
-			HasNextPage: result.HasNextPage,
-			EndCursor:   endCursor,
-		},
-		TotalCount: result.TotalCount,
-	}, nil
+	if len(edges) > 0 { c := edges[len(edges)-1].Cursor; endCursor = &c }
+	return &model.ResourceConnection{Edges: edges, PageInfo: &model.PageInfo{HasNextPage: result.HasNextPage, EndCursor: endCursor}, TotalCount: result.TotalCount}, nil
 }
 
 // ResourceType is the resolver for the resourceType field.
@@ -151,11 +122,68 @@ func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceTyp
 	return nil, nil
 }
 
+// EventWasPublished is the resolver for the eventWasPublished field.
+func (r *subscriptionResolver) EventWasPublished(ctx context.Context) (<-chan *model.Event, error) {
+	events := make(chan *model.Event)
+
+	// Subscribe to all KORS events
+	sub, err := r.NatsConn.Subscribe("kors.>", func(msg *nats.Msg) {
+		var gqlEvent model.Event
+		if err := json.Unmarshal(msg.Data, &gqlEvent); err == nil {
+			select {
+			case events <- &gqlEvent:
+			default:
+				// Skip if channel is full
+			}
+		}
+	})
+	if err != nil { return nil, err }
+
+	go func() {
+		<-ctx.Done()
+		sub.Unsubscribe()
+		close(events)
+	}()
+
+	return events, nil
+}
+
+// ResourceEvents is the resolver for the resourceEvents field.
+func (r *subscriptionResolver) ResourceEvents(ctx context.Context, resourceID uuid.UUID) (<-chan *model.Event, error) {
+	events := make(chan *model.Event)
+
+	// Filter events for specific resource in the callback
+	sub, err := r.NatsConn.Subscribe("kors.>", func(msg *nats.Msg) {
+		var gqlEvent model.Event
+		if err := json.Unmarshal(msg.Data, &gqlEvent); err == nil {
+			if gqlEvent.Resource != nil && gqlEvent.Resource.ID == resourceID {
+				select {
+				case events <- &gqlEvent:
+				default:
+				}
+			}
+		}
+	})
+	if err != nil { return nil, err }
+
+	go func() {
+		<-ctx.Done()
+		sub.Unsubscribe()
+		close(events)
+	}()
+
+	return events, nil
+}
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+// Subscription returns generated.SubscriptionResolver implementation.
+func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subscriptionResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type subscriptionResolver struct{ *Resolver }

@@ -175,3 +175,15 @@ type Mutation {
   grantPermission(input: GrantPermissionInput!): PermissionResult!
   createRevision(input: CreateRevisionInput!): RevisionResult!
 }
+
+type Subscription {
+  """
+  Listen to all events in the system.
+  """
+  eventWasPublished: Event!
+
+  """
+  Listen to events for a specific resource.
+  """
+  resourceEvents(resourceId: UUID!): Event!
+}

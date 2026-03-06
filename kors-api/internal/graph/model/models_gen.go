@@ -150,6 +150,9 @@ type RevisionResult struct {
 	Error    *MutationError `json:"error,omitempty"`
 }
 
+type Subscription struct {
+}
+
 type TransitionResourceInput struct {
 	ResourceID uuid.UUID      `json:"resourceId"`
 	ToState    string         `json:"toState"`

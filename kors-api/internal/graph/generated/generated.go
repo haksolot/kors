@@ -31,6 +31,7 @@ type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -158,6 +159,11 @@ type ComplexityRoot struct {
 		Revision func(childComplexity int) int
 		Success  func(childComplexity int) int
 	}
+
+	Subscription struct {
+		EventWasPublished func(childComplexity int) int
+		ResourceEvents    func(childComplexity int, resourceID uuid.UUID) int
+	}
 }
 
 type MutationResolver interface {
@@ -172,6 +178,10 @@ type QueryResolver interface {
 	Resources(ctx context.Context, first *int, after *string, typeName *string) (*model.ResourceConnection, error)
 	ResourceType(ctx context.Context, name string) (*model.ResourceType, error)
 	ResourceTypes(ctx context.Context) ([]*model.ResourceType, error)
+}
+type SubscriptionResolver interface {
+	EventWasPublished(ctx context.Context) (<-chan *model.Event, error)
+	ResourceEvents(ctx context.Context, resourceID uuid.UUID) (<-chan *model.Event, error)
 }
 
 type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
@@ -688,6 +698,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.RevisionResult.Success(childComplexity), true
 
+	case "Subscription.eventWasPublished":
+		if e.ComplexityRoot.Subscription.EventWasPublished == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Subscription.EventWasPublished(childComplexity), true
+	case "Subscription.resourceEvents":
+		if e.ComplexityRoot.Subscription.ResourceEvents == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_resourceEvents_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Subscription.ResourceEvents(childComplexity, args["resourceId"].(uuid.UUID)), true
+
 	}
 	return 0, false
 }
@@ -744,6 +772,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
 			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, opCtx.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next(ctx)
+
+			if data == nil {
+				return nil
+			}
 			data.MarshalGQL(&buf)
 
 			return &graphql.Response{
@@ -953,6 +998,18 @@ type Mutation {
   grantPermission(input: GrantPermissionInput!): PermissionResult!
   createRevision(input: CreateRevisionInput!): RevisionResult!
 }
+
+type Subscription {
+  """
+  Listen to all events in the system.
+  """
+  eventWasPublished: Event!
+
+  """
+  Listen to events for a specific resource.
+  """
+  resourceEvents(resourceId: UUID!): Event!
+}
 `, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -1067,6 +1124,17 @@ func (ec *executionContext) field_Query_resources_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["typeName"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Subscription_resourceEvents_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceId", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceId"] = arg0
 	return args, nil
 }
 
@@ -3832,6 +3900,108 @@ func (ec *executionContext) fieldContext_RevisionResult_error(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Subscription_eventWasPublished(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Subscription_eventWasPublished,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Subscription().EventWasPublished(ctx)
+		},
+		nil,
+		ec.marshalNEvent2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Subscription_eventWasPublished(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Event_id(ctx, field)
+			case "resource":
+				return ec.fieldContext_Event_resource(ctx, field)
+			case "identity":
+				return ec.fieldContext_Event_identity(ctx, field)
+			case "type":
+				return ec.fieldContext_Event_type(ctx, field)
+			case "payload":
+				return ec.fieldContext_Event_payload(ctx, field)
+			case "natsMessageId":
+				return ec.fieldContext_Event_natsMessageId(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Event_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Event", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_resourceEvents(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Subscription_resourceEvents,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Subscription().ResourceEvents(ctx, fc.Args["resourceId"].(uuid.UUID))
+		},
+		nil,
+		ec.marshalNEvent2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Subscription_resourceEvents(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Event_id(ctx, field)
+			case "resource":
+				return ec.fieldContext_Event_resource(ctx, field)
+			case "identity":
+				return ec.fieldContext_Event_identity(ctx, field)
+			case "type":
+				return ec.fieldContext_Event_type(ctx, field)
+			case "payload":
+				return ec.fieldContext_Event_payload(ctx, field)
+			case "natsMessageId":
+				return ec.fieldContext_Event_natsMessageId(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Event_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Event", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_resourceEvents_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6457,6 +6627,28 @@ func (ec *executionContext) _RevisionResult(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		graphql.AddErrorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "eventWasPublished":
+		return ec._Subscription_eventWasPublished(ctx, fields[0])
+	case "resourceEvents":
+		return ec._Subscription_resourceEvents(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
+}
+
 var __DirectiveImplementors = []string{"__Directive"}
 
 func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionSet, obj *introspection.Directive) graphql.Marshaler {
@@ -6832,6 +7024,20 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNEvent2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v model.Event) graphql.Marshaler {
+	return ec._Event(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v *model.Event) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Event(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNGrantPermissionInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput(ctx context.Context, v any) (model.GrantPermissionInput, error) {
