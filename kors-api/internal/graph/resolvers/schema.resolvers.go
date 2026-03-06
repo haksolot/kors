@@ -7,7 +7,6 @@ package resolvers
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
@@ -92,22 +91,64 @@ func (r *mutationResolver) CreateRevision(ctx context.Context, input model.Creat
 
 // Resource is the resolver for the resource field.
 func (r *queryResolver) Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error) {
-	panic(fmt.Errorf("not implemented: Resource - resource"))
+	// Simple stub for now
+	return nil, nil
 }
 
 // Resources is the resolver for the resources field.
 func (r *queryResolver) Resources(ctx context.Context, first *int, after *string, typeName *string) (*model.ResourceConnection, error) {
-	panic(fmt.Errorf("not implemented: Resources - resources"))
+	limit := 20
+	if first != nil {
+		limit = *first
+	}
+
+	result, err := r.ListResourcesUseCase.Execute(ctx, usecase.ListResourcesInput{
+		First:    limit,
+		After:    after,
+		TypeName: typeName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*model.ResourceEdge, len(result.Resources))
+	for i, res := range result.Resources {
+		edges[i] = &model.ResourceEdge{
+			Cursor: res.ID.String(), // Using raw ID as cursor for now
+			Node: &model.Resource{
+				ID:        res.ID,
+				State:     res.State,
+				Metadata:  res.Metadata,
+				CreatedAt: res.CreatedAt,
+				UpdatedAt: res.UpdatedAt,
+			},
+		}
+	}
+
+	var endCursor *string
+	if len(edges) > 0 {
+		c := edges[len(edges)-1].Cursor
+		endCursor = &c
+	}
+
+	return &model.ResourceConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage: result.HasNextPage,
+			EndCursor:   endCursor,
+		},
+		TotalCount: result.TotalCount,
+	}, nil
 }
 
 // ResourceType is the resolver for the resourceType field.
 func (r *queryResolver) ResourceType(ctx context.Context, name string) (*model.ResourceType, error) {
-	panic(fmt.Errorf("not implemented: ResourceType - resourceType"))
+	return nil, nil
 }
 
 // ResourceTypes is the resolver for the resourceTypes field.
 func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceType, error) {
-	panic(fmt.Errorf("not implemented: ResourceTypes - resourceTypes"))
+	return nil, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

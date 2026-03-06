@@ -23,4 +23,5 @@ type Repository interface {
 	Create(ctx context.Context, res *Resource) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Resource, error)
 	Update(ctx context.Context, res *Resource) error
+	List(ctx context.Context, first int, after *uuid.UUID, typeName *string) ([]*Resource, bool, int, error)
 }

@@ -75,3 +75,71 @@ func (r *ResourceRepository) Update(ctx context.Context, res *resource.Resource)
 	}
 	return nil
 }
+
+func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UUID, typeName *string) ([]*resource.Resource, bool, int, error) {
+	// 1. Get Total Count
+	var totalCount int
+	countQuery := "SELECT count(*) FROM kors.resources r"
+	if typeName != nil {
+		countQuery += " JOIN kors.resource_types rt ON r.type_id = rt.id WHERE rt.name = $1"
+		err := r.Pool.QueryRow(ctx, countQuery, *typeName).Scan(&totalCount)
+		if err != nil {
+			return nil, false, 0, err
+		}
+	} else {
+		err := r.Pool.QueryRow(ctx, countQuery).Scan(&totalCount)
+		if err != nil {
+			return nil, false, 0, err
+		}
+	}
+
+	// 2. Fetch Data
+	// We fetch first + 1 to know if there is a next page
+	query := `
+		SELECT r.id, r.type_id, r.state, r.metadata, r.created_at, r.updated_at, r.deleted_at
+		FROM kors.resources r
+		LEFT JOIN kors.resource_types rt ON r.type_id = rt.id
+		WHERE 1=1
+	`
+	args := []interface{}{}
+	argIdx := 1
+
+	if typeName != nil {
+		query += fmt.Sprintf(" AND rt.name = $%d", argIdx)
+		args = append(args, *typeName)
+		argIdx++
+	}
+
+	if after != nil {
+		// Seek pagination logic (using created_at or ID for stable sorting)
+		query += fmt.Sprintf(" AND r.created_at < (SELECT created_at FROM kors.resources WHERE id = $%d)", argIdx)
+		args = append(args, *after)
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY r.created_at DESC LIMIT $%d", argIdx)
+	args = append(args, first+1)
+
+	rows, err := r.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, false, 0, err
+	}
+	defer rows.Close()
+
+	var results []*resource.Resource
+	for rows.Next() {
+		var res resource.Resource
+		err := rows.Scan(&res.ID, &res.TypeID, &res.State, &res.Metadata, &res.CreatedAt, &res.UpdatedAt, &res.DeletedAt)
+		if err != nil {
+			return nil, false, 0, err
+		}
+		results = append(results, &res)
+	}
+
+	hasNextPage := len(results) > first
+	if hasNextPage {
+		results = results[:first]
+	}
+
+	return results, hasNextPage, totalCount, nil
+}

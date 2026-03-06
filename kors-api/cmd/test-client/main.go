@@ -21,70 +21,20 @@ func sendRequest(query string) string {
 }
 
 func main() {
-	// 1. Enregistrer le type tool_v5
-	fmt.Println("Registering resource type tool_v5...")
-	registerMutation := `
-	mutation {
-	  registerResourceType(input: {
-		name: "tool_v5",
-		description: "A manufacturing tool V5 with MinIO",
-		jsonSchema: { type: "object" },
-		transitions: { idle: ["in_use"] }
-	  }) {
-		success
-		resourceType { id name }
-	  }
-	}`
-	sendRequest(registerMutation)
+	// 1. Enregistrer le type tool_v6
+	fmt.Println("Step 1: Registering type tool_v6...")
+	regResp := sendRequest(`mutation { registerResourceType(input: { name: "tool_v6", description: "V6", jsonSchema: {}, transitions: { idle: ["in_use"] } }) { success error { message } } }`)
+	fmt.Printf("Register Response: %s\n", regResp)
 
-	// 2. Créer une ressource "tool_v5"
-	fmt.Println("Creating resource...")
-	createMutation := `
-	mutation {
-	  createResource(input: {
-		typeName: "tool_v5",
-		initialState: "idle",
-		metadata: { serial: "MINIO-TEST-001" }
-	  }) {
-		success
-		resource { id state }
-	  }
-	}`
-	createResp := sendRequest(createMutation)
-	var resData struct {
-		Data struct {
-			CreateResource struct {
-				Resource struct {
-					ID string `json:"id"`
-				} `json:"resource"`
-			} `json:"createResource"`
-		} `json:"data"`
-	}
-	json.Unmarshal([]byte(createResp), &resData)
-	resID := resData.Data.CreateResource.Resource.ID
-
-	if resID == "" {
-		fmt.Println("Failed to create resource.")
-		return
+	// 2. Créer 3 ressources
+	fmt.Println("\nStep 2: Creating 3 resources...")
+	for i := 1; i <= 3; i++ {
+		mutation := fmt.Sprintf(`mutation { createResource(input: { typeName: "tool_v6", initialState: "idle", metadata: { index: %d } }) { success error { message } } }`, i)
+		fmt.Printf("Create %d: %s\n", i, sendRequest(mutation))
 	}
 
-	// 3. Créer une REVISION avec un fichier fictif
-	fmt.Printf("Creating revision for resource %s with file...\n", resID)
-	// JVBERi0xLjQKJ... is "PDF-1.4" in base64
-	fileBase64 := "JVBERi0xLjQKJWRvY3VtZW50CjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KL0NvbnRlbnRzIDQgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCi9GMSAxMiBUZgo3MiA3MjAgVGQKKEhlbGxvIEtPUlMpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMjMwIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzI0CiUlRU9G"
-	
-	revisionMutation := fmt.Sprintf(`
-	mutation {
-	  createRevision(input: {
-		resourceId: "%s",
-		fileName: "plan_maintenance.pdf",
-		fileContent: "%s"
-	  }) {
-		success
-		revision { id snapshot filePath }
-		error { message }
-	  }
-	}`, resID, fileBase64)
-	
-	fmt.Println(sendRequest(revisionMutation))
+	// 3. Lister
+	fmt.Println("\nStep 3: Fetching...")
+	query := `query { resources(first: 2, typeName: "tool_v6") { totalCount edges { node { id } cursor } pageInfo { hasNextPage endCursor } } }`
+	fmt.Printf("List Response: %s\n", sendRequest(query))
 }

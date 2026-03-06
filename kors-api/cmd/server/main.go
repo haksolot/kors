@@ -107,6 +107,7 @@ func main() {
 		TransitionResourceUseCase:   &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
 		GrantPermissionUseCase:      &usecase.GrantPermissionUseCase{Repo: pRepo},
 		CreateRevisionUseCase:       &usecase.CreateRevisionUseCase{ResourceRepo: rRepo, RevisionRepo: revRepo, FileStore: fStore, EventRepo: eRepo, EventPublisher: ePub},
+		ListResourcesUseCase:        &usecase.ListResourcesUseCase{Repo: rRepo},
 	}
 	
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
