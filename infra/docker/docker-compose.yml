@@ -52,6 +52,17 @@ services:
       - postgres
       - nats
 
+  kors-events:
+    build:
+      context: ../../
+      dockerfile: kors-events/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@postgres:5432/kors?sslmode=disable
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - postgres
+      - nats
+
 volumes:
   postgres_data:
   minio_data:

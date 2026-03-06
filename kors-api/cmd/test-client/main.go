@@ -26,8 +26,8 @@ func main() {
 	registerMutation := `
 	mutation {
 	  registerResourceType(input: {
-		name: "tool_v2",
-		description: "A manufacturing tool V2",
+		name: "tool_v3",
+		description: "A manufacturing tool V3",
 		jsonSchema: { type: "object" },
 		transitions: { idle: ["in_use"] }
 	  }) {
@@ -37,14 +37,14 @@ func main() {
 	}`
 	fmt.Println(sendRequest(registerMutation))
 
-	// 2. Créer une ressource "tool_v2"
+	// 2. Créer une ressource "tool_v3"
 	fmt.Println("\nCreating resource...")
 	createMutation := `
 	mutation {
 	  createResource(input: {
-		typeName: "tool_v2",
+		typeName: "tool_v3",
 		initialState: "idle",
-		metadata: { serial: "SN-12345" }
+		metadata: { serial: "SN-999" }
 	  }) {
 		success
 		resource { id state }
