@@ -5,11 +5,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -38,11 +42,13 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" { port = defaultPort }
 
+	// 1. Database
 	dbURL := os.Getenv("DATABASE_URL")
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil { log.Fatalf("DB error: %v", err) }
 	defer pool.Close()
 
+	// 2. NATS
 	natsURL := os.Getenv("NATS_URL")
 	nc, err := nats.Connect(natsURL)
 	if err != nil { log.Fatalf("NATS error: %v", err) }
@@ -50,11 +56,13 @@ func main() {
 	js, _ := nc.JetStream()
 	_, _ = js.AddStream(&nats.StreamConfig{Name: "KORS", Subjects: []string{"kors.>"}})
 
+	// 3. MinIO
 	minioURL := os.Getenv("MINIO_URL")
 	minioAK := os.Getenv("MINIO_ACCESS_KEY")
 	minioSK := os.Getenv("MINIO_SECRET_KEY")
 	mClient, _ := minio.New(minioURL, &minio.Options{Creds: credentials.NewStaticV4(minioAK, minioSK, ""), Secure: false})
 
+	// 4. Repositories
 	rtRepo := &postgres.ResourceTypeRepository{Pool: pool}
 	rRepo := &postgres.ResourceRepository{Pool: pool}
 	eRepo := &postgres.EventRepository{Pool: pool}
@@ -64,6 +72,7 @@ func main() {
 	fStore := &korsminio.MinioFileStore{Client: mClient, Bucket: "kors-files"}
 	ePub := &korsnats.NatsPublisher{JS: js}
 
+	// 5. Bootstrap Identity
 	ctx := context.Background()
 	sysID, _ := idRepo.GetByExternalID(ctx, "system")
 	if sysID == nil {
@@ -77,6 +86,7 @@ func main() {
 		}
 	}
 
+	// 6. UseCases & Resolver
 	rootResolver := &resolvers.Resolver{
 		RegisterResourceTypeUseCase: &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo},
 		CreateResourceUseCase:       &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
@@ -86,6 +96,21 @@ func main() {
 		ListResourcesUseCase:        &usecase.ListResourcesUseCase{Repo: rRepo},
 		NatsConn:                    nc,
 	}
+
+	// 7. HTTP Server with Chi Router
+	r := chi.NewRouter()
+
+	// Default middlewares
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	// Rate limiting (Phase 2 Hardening)
+	rateLimit, _ := strconv.Atoi(os.Getenv("RATE_LIMIT_STANDARD"))
+	if rateLimit == 0 { rateLimit = 100 }
+	r.Use(httprate.LimitByIP(rateLimit, 1*time.Minute))
 
 	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: rootResolver}))
 	srv.AddTransport(transport.Options{})
@@ -97,8 +122,13 @@ func main() {
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
 
-	http.Handle("/", playground.Handler("KORS GraphQL", "/query"))
-	http.Handle("/query", srv)
-	log.Printf("KORS API running on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	r.Handle("/", playground.Handler("KORS GraphQL", "/query"))
+	r.Handle("/query", srv)
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Printf("KORS API running on port %s (Rate Limit: %d req/min)", port, rateLimit)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
