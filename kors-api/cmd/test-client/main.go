@@ -21,12 +21,28 @@ func sendRequest(query string) string {
 }
 
 func main() {
-	// 1. Créer une ressource "tool"
-	fmt.Println("Creating resource...")
+	// 1. Enregistrer le type tool_v2
+	fmt.Println("Registering resource type tool_v2...")
+	registerMutation := `
+	mutation {
+	  registerResourceType(input: {
+		name: "tool_v2",
+		description: "A manufacturing tool V2",
+		jsonSchema: { type: "object" },
+		transitions: { idle: ["in_use"] }
+	  }) {
+		success
+		resourceType { id name }
+	  }
+	}`
+	fmt.Println(sendRequest(registerMutation))
+
+	// 2. Créer une ressource "tool_v2"
+	fmt.Println("\nCreating resource...")
 	createMutation := `
 	mutation {
 	  createResource(input: {
-		typeName: "tool",
+		typeName: "tool_v2",
 		initialState: "idle",
 		metadata: { serial: "SN-12345" }
 	  }) {
@@ -36,10 +52,9 @@ func main() {
 	  }
 	}`
 	createResp := sendRequest(createMutation)
-	fmt.Printf("Create Response: %s\n\n", createResp)
+	fmt.Printf("Create Response: %s\n", createResp)
 
-	// Extraire l'ID de la ressource créée (on le fait à la main pour le test)
-	// Dans un vrai test on parserait le JSON
+	// Extraire l'ID
 	var resData struct {
 		Data struct {
 			CreateResource struct {
@@ -53,24 +68,23 @@ func main() {
 	resID := resData.Data.CreateResource.Resource.ID
 
 	if resID == "" {
-		fmt.Println("Failed to get resource ID, skipping transition.")
+		fmt.Println("Failed to get resource ID.")
 		return
 	}
 
-	// 2. Faire une transition vers "in_use"
-	fmt.Printf("Transitioning resource %s to 'in_use'...\n", resID)
+	// 3. Faire une transition vers "in_use"
+	fmt.Printf("\nTransitioning resource %s to 'in_use'...\n", resID)
 	transitionMutation := fmt.Sprintf(`
 	mutation {
 	  transitionResource(input: {
 		resourceId: "%s",
 		toState: "in_use",
-		metadata: { operator: "User1" }
+		metadata: { operator: "User2" }
 	  }) {
 		success
-		resource { id state metadata }
+		resource { id state }
 		error { message }
 	  }
 	}`, resID)
-	transitionResp := sendRequest(transitionMutation)
-	fmt.Printf("Transition Response: %s\n", transitionResp)
+	fmt.Println(sendRequest(transitionMutation))
 }

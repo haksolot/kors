@@ -12,7 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/nats-io/nats.go"
 	"github.com/safran-ls/kors/kors-api/internal/adapter/postgres"
+	korsnats "github.com/safran-ls/kors/kors-api/internal/adapter/nats"
 	"github.com/safran-ls/kors/kors-api/internal/domain/identity"
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
 	"github.com/safran-ls/kors/kors-api/internal/graph/resolvers"
@@ -25,7 +27,6 @@ const (
 )
 
 func main() {
-	// Charger .env si présent
 	_ = godotenv.Load()
 
 	port := os.Getenv("PORT")
@@ -38,20 +39,45 @@ func main() {
 		log.Fatal("DATABASE_URL is required")
 	}
 
-	// 1. Initialiser le pool de connexion PostgreSQL
+	natsURL := os.Getenv("NATS_URL")
+	if natsURL == "" {
+		natsURL = nats.DefaultURL
+	}
+
+	// 1. PostgreSQL Connection
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
 	defer pool.Close()
 
-	// 2. Initialiser les adapters/repositories
+	// 2. NATS Connection
+	nc, err := nats.Connect(natsURL)
+	if err != nil {
+		log.Fatalf("Unable to connect to NATS: %v", err)
+	}
+	defer nc.Close()
+
+	js, err := nc.JetStream()
+	if err != nil {
+		log.Fatalf("Unable to initialize JetStream: %v", err)
+	}
+
+	// Ensure KORS stream exists
+	_, _ = js.AddStream(&nats.StreamConfig{
+		Name:     "KORS",
+		Subjects: []string{"kors.>"},
+		Storage:  nats.FileStorage,
+	})
+
+	// 3. Adapters & Repositories
 	rtRepo := &postgres.ResourceTypeRepository{Pool: pool}
 	rRepo := &postgres.ResourceRepository{Pool: pool}
 	eRepo := &postgres.EventRepository{Pool: pool}
 	idRepo := &postgres.IdentityRepository{Pool: pool}
+	ePub := &korsnats.NatsPublisher{JS: js}
 
-	// 3. Initialiser l'identité système par défaut (pour les tests)
+	// 4. Default System Identity
 	ctx := context.Background()
 	sysID, _ := idRepo.GetByExternalID(ctx, "system")
 	if sysID == nil {
@@ -63,25 +89,25 @@ func main() {
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
 		}
-		if err := idRepo.Create(ctx, sysID); err != nil {
-			log.Printf("Warning: failed to create system identity: %v", err)
-		}
+		_ = idRepo.Create(ctx, sysID)
 	}
 
-	// 4. Initialiser les usecases
+	// 5. UseCases
 	registerRTUseCase := &usecase.RegisterResourceTypeUseCase{Repo: rtRepo}
 	createRUseCase := &usecase.CreateResourceUseCase{
 		ResourceRepo:     rRepo,
 		ResourceTypeRepo: rtRepo,
 		EventRepo:        eRepo,
+		EventPublisher:   ePub,
 	}
 	transitionRUseCase := &usecase.TransitionResourceUseCase{
 		ResourceRepo:     rRepo,
 		ResourceTypeRepo: rtRepo,
 		EventRepo:        eRepo,
+		EventPublisher:   ePub,
 	}
 
-	// 5. Initialiser le serveur GraphQL avec les resolvers et les usecases injectés
+	// 6. GraphQL Resolver & Server
 	resolver := &resolvers.Resolver{
 		RegisterResourceTypeUseCase: registerRTUseCase,
 		CreateResourceUseCase:       createRUseCase,
@@ -90,7 +116,6 @@ func main() {
 	
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 
-	// Routes
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {

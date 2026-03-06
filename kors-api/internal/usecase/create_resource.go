@@ -15,13 +15,14 @@ type CreateResourceInput struct {
 	TypeName     string
 	InitialState string
 	Metadata     map[string]interface{}
-	IdentityID   uuid.UUID // ID de l'acteur qui crée la ressource
+	IdentityID   uuid.UUID
 }
 
 type CreateResourceUseCase struct {
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
 	EventRepo        event.Repository
+	EventPublisher   event.Publisher
 }
 
 func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResourceInput) (*resource.Resource, error) {
@@ -44,12 +45,12 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 		UpdatedAt: time.Now(),
 	}
 
-	// 3. Persist
+	// 3. Persist Resource
 	if err := uc.ResourceRepo.Create(ctx, res); err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	// 4. Publish Event
+	// 4. Create Audit Event
 	ev := &event.Event{
 		ID:         uuid.New(),
 		ResourceID: &res.ID,
@@ -61,10 +62,17 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 		},
 		CreatedAt: time.Now(),
 	}
+
+	// 5. Persist Event
 	if err := uc.EventRepo.Create(ctx, ev); err != nil {
-		// Log error but don't fail the operation (or choose strict mode)
-		// For now, let's keep it robust
 		fmt.Printf("Warning: failed to record event for resource creation: %v\n", err)
+	}
+
+	// 6. Broadcast to NATS bus
+	if uc.EventPublisher != nil {
+		if err := uc.EventPublisher.Publish(ctx, ev); err != nil {
+			fmt.Printf("Warning: failed to broadcast event on NATS: %v\n", err)
+		}
 	}
 
 	return res, nil

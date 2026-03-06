@@ -15,13 +15,14 @@ type TransitionResourceInput struct {
 	ResourceID uuid.UUID
 	ToState    string
 	Metadata   map[string]interface{}
-	IdentityID uuid.UUID // ID de l'acteur qui effectue la transition
+	IdentityID uuid.UUID
 }
 
 type TransitionResourceUseCase struct {
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
 	EventRepo        event.Repository
+	EventPublisher   event.Publisher
 }
 
 func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input TransitionResourceInput) (*resource.Resource, error) {
@@ -45,14 +46,13 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 
 	// 3. Validate Transition
 	oldState := res.State
-	if !rt.CanTransitionTo(res.State, input.ToState) {
-		return nil, fmt.Errorf("transition from '%s' to '%s' is not allowed for type '%s'", res.State, input.ToState, rt.Name)
+	if !rt.CanTransitionTo(oldState, input.ToState) {
+		return nil, fmt.Errorf("transition from '%s' to '%s' not allowed for type '%s'", oldState, input.ToState, rt.Name)
 	}
 
 	// 4. Update Resource
 	res.State = input.ToState
 	res.UpdatedAt = time.Now()
-	// Merge metadata if provided
 	if input.Metadata != nil {
 		if res.Metadata == nil {
 			res.Metadata = make(map[string]interface{})
@@ -63,10 +63,10 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 	}
 
 	if err := uc.ResourceRepo.Update(ctx, res); err != nil {
-		return nil, fmt.Errorf("failed to update resource state: %w", err)
+		return nil, fmt.Errorf("failed to update resource: %w", err)
 	}
 
-	// 5. Publish Event
+	// 5. Create Audit Event
 	ev := &event.Event{
 		ID:         uuid.New(),
 		ResourceID: &res.ID,
@@ -78,8 +78,17 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		},
 		CreatedAt: time.Now(),
 	}
+
+	// 6. Persist Event
 	if err := uc.EventRepo.Create(ctx, ev); err != nil {
-		fmt.Printf("Warning: failed to record event for resource transition: %v\n", err)
+		fmt.Printf("Warning: failed to record event for transition: %v\n", err)
+	}
+
+	// 7. Broadcast to NATS bus
+	if uc.EventPublisher != nil {
+		if err := uc.EventPublisher.Publish(ctx, ev); err != nil {
+			fmt.Printf("Warning: failed to broadcast event on NATS: %v\n", err)
+		}
 	}
 
 	return res, nil

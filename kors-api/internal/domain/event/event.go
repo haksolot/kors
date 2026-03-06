@@ -22,3 +22,8 @@ type Event struct {
 type Repository interface {
 	Create(ctx context.Context, e *Event) error
 }
+
+// Publisher defines the contract for broadcasting events to the bus.
+type Publisher interface {
+	Publish(ctx context.Context, e *Event) error
+}
