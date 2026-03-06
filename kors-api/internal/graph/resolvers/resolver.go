@@ -11,4 +11,5 @@ type Resolver struct {
 	CreateResourceUseCase       *usecase.CreateResourceUseCase
 	TransitionResourceUseCase   *usecase.TransitionResourceUseCase
 	GrantPermissionUseCase      *usecase.GrantPermissionUseCase
+	CreateRevisionUseCase       *usecase.CreateRevisionUseCase
 }

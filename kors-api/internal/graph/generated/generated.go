@@ -59,6 +59,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateResource       func(childComplexity int, input model.CreateResourceInput) int
+		CreateRevision       func(childComplexity int, input model.CreateRevisionInput) int
 		GrantPermission      func(childComplexity int, input model.GrantPermissionInput) int
 		RegisterResourceType func(childComplexity int, input model.RegisterResourceTypeInput) int
 		TransitionResource   func(childComplexity int, input model.TransitionResourceInput) int
@@ -103,6 +104,7 @@ type ComplexityRoot struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Metadata  func(childComplexity int) int
+		Revisions func(childComplexity int) int
 		State     func(childComplexity int) int
 		Type      func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
@@ -142,12 +144,19 @@ type ComplexityRoot struct {
 	}
 
 	Revision struct {
-		CreatedAt func(childComplexity int) int
-		FilePath  func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Identity  func(childComplexity int) int
-		Resource  func(childComplexity int) int
-		Snapshot  func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		DownloadURL func(childComplexity int) int
+		FilePath    func(childComplexity int) int
+		ID          func(childComplexity int) int
+		Identity    func(childComplexity int) int
+		Resource    func(childComplexity int) int
+		Snapshot    func(childComplexity int) int
+	}
+
+	RevisionResult struct {
+		Error    func(childComplexity int) int
+		Revision func(childComplexity int) int
+		Success  func(childComplexity int) int
 	}
 }
 
@@ -156,6 +165,7 @@ type MutationResolver interface {
 	CreateResource(ctx context.Context, input model.CreateResourceInput) (*model.ResourceResult, error)
 	TransitionResource(ctx context.Context, input model.TransitionResourceInput) (*model.ResourceResult, error)
 	GrantPermission(ctx context.Context, input model.GrantPermissionInput) (*model.PermissionResult, error)
+	CreateRevision(ctx context.Context, input model.CreateRevisionInput) (*model.RevisionResult, error)
 }
 type QueryResolver interface {
 	Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error)
@@ -275,6 +285,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateResource(childComplexity, args["input"].(model.CreateResourceInput)), true
+	case "Mutation.createRevision":
+		if e.ComplexityRoot.Mutation.CreateRevision == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createRevision_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateRevision(childComplexity, args["input"].(model.CreateRevisionInput)), true
 	case "Mutation.grantPermission":
 		if e.ComplexityRoot.Mutation.GrantPermission == nil {
 			break
@@ -467,6 +488,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Resource.Metadata(childComplexity), true
+	case "Resource.revisions":
+		if e.ComplexityRoot.Resource.Revisions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Resource.Revisions(childComplexity), true
 	case "Resource.state":
 		if e.ComplexityRoot.Resource.State == nil {
 			break
@@ -605,6 +632,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Revision.CreatedAt(childComplexity), true
+	case "Revision.downloadUrl":
+		if e.ComplexityRoot.Revision.DownloadURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Revision.DownloadURL(childComplexity), true
 	case "Revision.filePath":
 		if e.ComplexityRoot.Revision.FilePath == nil {
 			break
@@ -636,6 +669,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Revision.Snapshot(childComplexity), true
 
+	case "RevisionResult.error":
+		if e.ComplexityRoot.RevisionResult.Error == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RevisionResult.Error(childComplexity), true
+	case "RevisionResult.revision":
+		if e.ComplexityRoot.RevisionResult.Revision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RevisionResult.Revision(childComplexity), true
+	case "RevisionResult.success":
+		if e.ComplexityRoot.RevisionResult.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RevisionResult.Success(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -645,6 +697,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateResourceInput,
+		ec.unmarshalInputCreateRevisionInput,
 		ec.unmarshalInputGrantPermissionInput,
 		ec.unmarshalInputRegisterResourceTypeInput,
 		ec.unmarshalInputTransitionResourceInput,
@@ -774,6 +827,7 @@ type Resource {
   metadata: JSON!
   createdAt: DateTime!
   updatedAt: DateTime!
+  revisions: [Revision!]!
 }
 
 type Event {
@@ -792,6 +846,7 @@ type Revision {
   identity: Identity!
   snapshot: JSON!
   filePath: String
+  downloadUrl: String
   createdAt: DateTime!
 }
 
@@ -838,6 +893,12 @@ type PermissionResult {
   error: MutationError
 }
 
+type RevisionResult {
+  success: Boolean!
+  revision: Revision
+  error: MutationError
+}
+
 # --- Inputs ---
 
 input CreateResourceInput {
@@ -867,6 +928,12 @@ input GrantPermissionInput {
   expiresAt: DateTime
 }
 
+input CreateRevisionInput {
+  resourceId: UUID!
+  fileContent: String # Base64 encoded file
+  fileName: String
+}
+
 # --- Roots ---
 
 type Query {
@@ -884,6 +951,7 @@ type Mutation {
   transitionResource(input: TransitionResourceInput!): ResourceResult!
   
   grantPermission(input: GrantPermissionInput!): PermissionResult!
+  createRevision(input: CreateRevisionInput!): RevisionResult!
 }
 `, BuiltIn: false},
 }
@@ -897,6 +965,17 @@ func (ec *executionContext) field_Mutation_createResource_args(ctx context.Conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateResourceInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createRevision_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateRevisionInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1108,6 +1187,8 @@ func (ec *executionContext) fieldContext_Event_resource(_ context.Context, field
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -1675,6 +1756,55 @@ func (ec *executionContext) fieldContext_Mutation_grantPermission(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createRevision(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createRevision,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateRevision(ctx, fc.Args["input"].(model.CreateRevisionInput))
+		},
+		nil,
+		ec.marshalNRevisionResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createRevision(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_RevisionResult_success(ctx, field)
+			case "revision":
+				return ec.fieldContext_RevisionResult_revision(ctx, field)
+			case "error":
+				return ec.fieldContext_RevisionResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RevisionResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createRevision_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MutationError_code(ctx context.Context, field graphql.CollectedField, obj *model.MutationError) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1959,6 +2089,8 @@ func (ec *executionContext) fieldContext_Permission_resource(_ context.Context, 
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -2244,6 +2376,8 @@ func (ec *executionContext) fieldContext_Query_resource(ctx context.Context, fie
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -2711,6 +2845,51 @@ func (ec *executionContext) fieldContext_Resource_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Resource_revisions(ctx context.Context, field graphql.CollectedField, obj *model.Resource) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Resource_revisions,
+		func(ctx context.Context) (any, error) {
+			return obj.Revisions, nil
+		},
+		nil,
+		ec.marshalNRevision2ᚕᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Resource_revisions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Resource",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Revision_id(ctx, field)
+			case "resource":
+				return ec.fieldContext_Revision_resource(ctx, field)
+			case "identity":
+				return ec.fieldContext_Revision_identity(ctx, field)
+			case "snapshot":
+				return ec.fieldContext_Revision_snapshot(ctx, field)
+			case "filePath":
+				return ec.fieldContext_Revision_filePath(ctx, field)
+			case "downloadUrl":
+				return ec.fieldContext_Revision_downloadUrl(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Revision_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Revision", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ResourceConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.ResourceConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2879,6 +3058,8 @@ func (ec *executionContext) fieldContext_ResourceEdge_node(_ context.Context, fi
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -2951,6 +3132,8 @@ func (ec *executionContext) fieldContext_ResourceResult_resource(_ context.Conte
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -3370,6 +3553,8 @@ func (ec *executionContext) fieldContext_Revision_resource(_ context.Context, fi
 				return ec.fieldContext_Resource_createdAt(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Resource_updatedAt(ctx, field)
+			case "revisions":
+				return ec.fieldContext_Resource_revisions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Resource", field.Name)
 		},
@@ -3480,6 +3665,35 @@ func (ec *executionContext) fieldContext_Revision_filePath(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Revision_downloadUrl(ctx context.Context, field graphql.CollectedField, obj *model.Revision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Revision_downloadUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.DownloadURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Revision_downloadUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Revision",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Revision_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Revision) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3504,6 +3718,115 @@ func (ec *executionContext) fieldContext_Revision_createdAt(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RevisionResult_success(ctx context.Context, field graphql.CollectedField, obj *model.RevisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RevisionResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RevisionResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RevisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RevisionResult_revision(ctx context.Context, field graphql.CollectedField, obj *model.RevisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RevisionResult_revision,
+		func(ctx context.Context) (any, error) {
+			return obj.Revision, nil
+		},
+		nil,
+		ec.marshalORevision2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RevisionResult_revision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RevisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Revision_id(ctx, field)
+			case "resource":
+				return ec.fieldContext_Revision_resource(ctx, field)
+			case "identity":
+				return ec.fieldContext_Revision_identity(ctx, field)
+			case "snapshot":
+				return ec.fieldContext_Revision_snapshot(ctx, field)
+			case "filePath":
+				return ec.fieldContext_Revision_filePath(ctx, field)
+			case "downloadUrl":
+				return ec.fieldContext_Revision_downloadUrl(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Revision_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Revision", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RevisionResult_error(ctx context.Context, field graphql.CollectedField, obj *model.RevisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RevisionResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RevisionResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RevisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_MutationError_code(ctx, field)
+			case "message":
+				return ec.fieldContext_MutationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
 		},
 	}
 	return fc, nil
@@ -4995,6 +5318,46 @@ func (ec *executionContext) unmarshalInputCreateResourceInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateRevisionInput(ctx context.Context, obj any) (model.CreateRevisionInput, error) {
+	var it model.CreateRevisionInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"resourceId", "fileContent", "fileName"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "resourceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceId"))
+			data, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceID = data
+		case "fileContent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileContent"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileContent = data
+		case "fileName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileName = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputGrantPermissionInput(ctx context.Context, obj any) (model.GrantPermissionInput, error) {
 	var it model.GrantPermissionInput
 	asMap := map[string]any{}
@@ -5313,6 +5676,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "grantPermission":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_grantPermission(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createRevision":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createRevision(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -5708,6 +6078,11 @@ func (ec *executionContext) _Resource(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "revisions":
+			out.Values[i] = ec._Resource_revisions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6009,11 +6384,56 @@ func (ec *executionContext) _Revision(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "filePath":
 			out.Values[i] = ec._Revision_filePath(ctx, field, obj)
+		case "downloadUrl":
+			out.Values[i] = ec._Revision_downloadUrl(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._Revision_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var revisionResultImplementors = []string{"RevisionResult"}
+
+func (ec *executionContext) _RevisionResult(ctx context.Context, sel ast.SelectionSet, obj *model.RevisionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, revisionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RevisionResult")
+		case "success":
+			out.Values[i] = ec._RevisionResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revision":
+			out.Values[i] = ec._RevisionResult_revision(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._RevisionResult_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6393,6 +6813,11 @@ func (ec *executionContext) unmarshalNCreateResourceInput2githubᚗcomᚋsafran�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateRevisionInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput(ctx context.Context, v any) (model.CreateRevisionInput, error) {
+	res, err := ec.unmarshalInputCreateRevisionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNDateTime2timeᚐTime(ctx context.Context, v any) (time.Time, error) {
 	res, err := graphql.UnmarshalTime(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6593,6 +7018,46 @@ func (ec *executionContext) marshalNResourceTypeResult2ᚖgithubᚗcomᚋsafran�
 		return graphql.Null
 	}
 	return ec._ResourceTypeResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRevision2ᚕᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Revision) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRevision2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRevision2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Revision(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRevisionResult2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v model.RevisionResult) graphql.Marshaler {
+	return ec._RevisionResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRevisionResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v *model.RevisionResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RevisionResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
@@ -6883,6 +7348,13 @@ func (ec *executionContext) marshalOResourceType2ᚖgithubᚗcomᚋsafranᚑls�
 		return graphql.Null
 	}
 	return ec._ResourceType(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORevision2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Revision(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

@@ -21,13 +21,13 @@ func sendRequest(query string) string {
 }
 
 func main() {
-	// 1. Enregistrer le type tool_v2
-	fmt.Println("Registering resource type tool_v2...")
+	// 1. Enregistrer le type tool_v5
+	fmt.Println("Registering resource type tool_v5...")
 	registerMutation := `
 	mutation {
 	  registerResourceType(input: {
-		name: "tool_v4",
-		description: "A manufacturing tool V4",
+		name: "tool_v5",
+		description: "A manufacturing tool V5 with MinIO",
 		jsonSchema: { type: "object" },
 		transitions: { idle: ["in_use"] }
 	  }) {
@@ -35,26 +35,22 @@ func main() {
 		resourceType { id name }
 	  }
 	}`
-	fmt.Println(sendRequest(registerMutation))
+	sendRequest(registerMutation)
 
-	// 2. Créer une ressource "tool_v4"
-	fmt.Println("\nCreating resource...")
+	// 2. Créer une ressource "tool_v5"
+	fmt.Println("Creating resource...")
 	createMutation := `
 	mutation {
 	  createResource(input: {
-		typeName: "tool_v4",
+		typeName: "tool_v5",
 		initialState: "idle",
-		metadata: { serial: "SN-RBAC" }
+		metadata: { serial: "MINIO-TEST-001" }
 	  }) {
 		success
 		resource { id state }
-		error { message }
 	  }
 	}`
 	createResp := sendRequest(createMutation)
-	fmt.Printf("Create Response: %s\n", createResp)
-
-	// Extraire l'ID
 	var resData struct {
 		Data struct {
 			CreateResource struct {
@@ -68,23 +64,27 @@ func main() {
 	resID := resData.Data.CreateResource.Resource.ID
 
 	if resID == "" {
-		fmt.Println("Failed to get resource ID.")
+		fmt.Println("Failed to create resource.")
 		return
 	}
 
-	// 3. Faire une transition vers "in_use"
-	fmt.Printf("\nTransitioning resource %s to 'in_use'...\n", resID)
-	transitionMutation := fmt.Sprintf(`
+	// 3. Créer une REVISION avec un fichier fictif
+	fmt.Printf("Creating revision for resource %s with file...\n", resID)
+	// JVBERi0xLjQKJ... is "PDF-1.4" in base64
+	fileBase64 := "JVBERi0xLjQKJWRvY3VtZW50CjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9QYXJlbnQgMiAwIFIKL01lZGlhQm94IFswIDAgNjEyIDc5Ml0KL0NvbnRlbnRzIDQgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCi9GMSAxMiBUZgo3MiA3MjAgVGQKKEhlbGxvIEtPUlMpIFRqCkVUCmVuZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMjMwIDAwMDAwIG4gCnRyYWlsZXIKPDwKL1NpemUgNQovUm9vdCAxIDAgUgo+PgpzdGFydHhyZWYKMzI0CiUlRU9G"
+	
+	revisionMutation := fmt.Sprintf(`
 	mutation {
-	  transitionResource(input: {
+	  createRevision(input: {
 		resourceId: "%s",
-		toState: "in_use",
-		metadata: { operator: "User2" }
+		fileName: "plan_maintenance.pdf",
+		fileContent: "%s"
 	  }) {
 		success
-		resource { id state }
+		revision { id snapshot filePath }
 		error { message }
 	  }
-	}`, resID)
-	fmt.Println(sendRequest(transitionMutation))
+	}`, resID, fileBase64)
+	
+	fmt.Println(sendRequest(revisionMutation))
 }

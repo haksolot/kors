@@ -14,6 +14,12 @@ type CreateResourceInput struct {
 	Metadata     map[string]any `json:"metadata,omitempty"`
 }
 
+type CreateRevisionInput struct {
+	ResourceID  uuid.UUID `json:"resourceId"`
+	FileContent *string   `json:"fileContent,omitempty"`
+	FileName    *string   `json:"fileName,omitempty"`
+}
+
 type Event struct {
 	ID            uuid.UUID      `json:"id"`
 	Resource      *Resource      `json:"resource,omitempty"`
@@ -92,6 +98,7 @@ type Resource struct {
 	Metadata  map[string]any `json:"metadata"`
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
+	Revisions []*Revision    `json:"revisions"`
 }
 
 type ResourceConnection struct {
@@ -128,12 +135,19 @@ type ResourceTypeResult struct {
 }
 
 type Revision struct {
-	ID        uuid.UUID      `json:"id"`
-	Resource  *Resource      `json:"resource"`
-	Identity  *Identity      `json:"identity"`
-	Snapshot  map[string]any `json:"snapshot"`
-	FilePath  *string        `json:"filePath,omitempty"`
-	CreatedAt time.Time      `json:"createdAt"`
+	ID          uuid.UUID      `json:"id"`
+	Resource    *Resource      `json:"resource"`
+	Identity    *Identity      `json:"identity"`
+	Snapshot    map[string]any `json:"snapshot"`
+	FilePath    *string        `json:"filePath,omitempty"`
+	DownloadURL *string        `json:"downloadUrl,omitempty"`
+	CreatedAt   time.Time      `json:"createdAt"`
+}
+
+type RevisionResult struct {
+	Success  bool           `json:"success"`
+	Revision *Revision      `json:"revision,omitempty"`
+	Error    *MutationError `json:"error,omitempty"`
 }
 
 type TransitionResourceInput struct {

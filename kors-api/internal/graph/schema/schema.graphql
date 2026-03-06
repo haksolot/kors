@@ -49,6 +49,7 @@ type Resource {
   metadata: JSON!
   createdAt: DateTime!
   updatedAt: DateTime!
+  revisions: [Revision!]!
 }
 
 type Event {
@@ -67,6 +68,7 @@ type Revision {
   identity: Identity!
   snapshot: JSON!
   filePath: String
+  downloadUrl: String
   createdAt: DateTime!
 }
 
@@ -113,6 +115,12 @@ type PermissionResult {
   error: MutationError
 }
 
+type RevisionResult {
+  success: Boolean!
+  revision: Revision
+  error: MutationError
+}
+
 # --- Inputs ---
 
 input CreateResourceInput {
@@ -142,6 +150,12 @@ input GrantPermissionInput {
   expiresAt: DateTime
 }
 
+input CreateRevisionInput {
+  resourceId: UUID!
+  fileContent: String # Base64 encoded file
+  fileName: String
+}
+
 # --- Roots ---
 
 type Query {
@@ -159,4 +173,5 @@ type Mutation {
   transitionResource(input: TransitionResourceInput!): ResourceResult!
   
   grantPermission(input: GrantPermissionInput!): PermissionResult!
+  createRevision(input: CreateRevisionInput!): RevisionResult!
 }
