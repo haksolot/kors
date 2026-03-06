@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 func sendRequest(query string) string {
@@ -21,11 +22,22 @@ func sendRequest(query string) string {
 }
 
 func main() {
-	fmt.Println("Step 1: Registering type tool_v_final_realtime...")
-	regResp := sendRequest(`mutation { registerResourceType(input: { name: "tool_v_final_realtime", description: "Realtime", jsonSchema: {}, transitions: { idle: ["in_use"] } }) { success error { message } } }`)
-	fmt.Printf("Register: %s\n", regResp)
-
-	fmt.Println("\nStep 2: Triggering event via resource creation...")
-	mutation := `mutation { createResource(input: { typeName: "tool_v_final_realtime", initialState: "idle", metadata: { test: "subscription" } }) { success error { message } } }`
-	fmt.Printf("Create: %s\n", sendRequest(mutation))
+	// 1. Calculer une date d'expiration (+10 secondes)
+	expiry := time.Now().Add(10 * time.Second).Format(time.RFC3339)
+	
+	fmt.Printf("Step 1: Granting temporary permission (expires at %s)...\n", expiry)
+	
+	mutation := fmt.Sprintf(`
+	mutation {
+	  grantPermission(input: {
+		identityId: "00000000-0000-0000-0000-000000000000",
+		action: "temporary_test",
+		expiresAt: "%s"
+	  }) {
+		success
+		permission { id expiresAt }
+	  }
+	}`, expiry)
+	
+	fmt.Println(sendRequest(mutation))
 }

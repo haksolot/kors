@@ -67,6 +67,16 @@ services:
       - postgres
       - nats
 
+  kors-worker:
+    build:
+      context: ../../
+      dockerfile: kors-worker/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@postgres:5432/kors?sslmode=disable
+      - PERMISSIONS_CLEANUP_INTERVAL=30s
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   minio_data:
