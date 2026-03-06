@@ -59,6 +59,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateResource       func(childComplexity int, input model.CreateResourceInput) int
+		GrantPermission      func(childComplexity int, input model.GrantPermissionInput) int
 		RegisterResourceType func(childComplexity int, input model.RegisterResourceTypeInput) int
 		TransitionResource   func(childComplexity int, input model.TransitionResourceInput) int
 	}
@@ -83,6 +84,12 @@ type ComplexityRoot struct {
 		Identity     func(childComplexity int) int
 		Resource     func(childComplexity int) int
 		ResourceType func(childComplexity int) int
+	}
+
+	PermissionResult struct {
+		Error      func(childComplexity int) int
+		Permission func(childComplexity int) int
+		Success    func(childComplexity int) int
 	}
 
 	Query struct {
@@ -148,6 +155,7 @@ type MutationResolver interface {
 	RegisterResourceType(ctx context.Context, input model.RegisterResourceTypeInput) (*model.ResourceTypeResult, error)
 	CreateResource(ctx context.Context, input model.CreateResourceInput) (*model.ResourceResult, error)
 	TransitionResource(ctx context.Context, input model.TransitionResourceInput) (*model.ResourceResult, error)
+	GrantPermission(ctx context.Context, input model.GrantPermissionInput) (*model.PermissionResult, error)
 }
 type QueryResolver interface {
 	Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error)
@@ -267,6 +275,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateResource(childComplexity, args["input"].(model.CreateResourceInput)), true
+	case "Mutation.grantPermission":
+		if e.ComplexityRoot.Mutation.GrantPermission == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_grantPermission_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.GrantPermission(childComplexity, args["input"].(model.GrantPermissionInput)), true
 	case "Mutation.registerResourceType":
 		if e.ComplexityRoot.Mutation.RegisterResourceType == nil {
 			break
@@ -370,6 +389,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Permission.ResourceType(childComplexity), true
+
+	case "PermissionResult.error":
+		if e.ComplexityRoot.PermissionResult.Error == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PermissionResult.Error(childComplexity), true
+	case "PermissionResult.permission":
+		if e.ComplexityRoot.PermissionResult.Permission == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PermissionResult.Permission(childComplexity), true
+	case "PermissionResult.success":
+		if e.ComplexityRoot.PermissionResult.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PermissionResult.Success(childComplexity), true
 
 	case "Query.resource":
 		if e.ComplexityRoot.Query.Resource == nil {
@@ -607,6 +645,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateResourceInput,
+		ec.unmarshalInputGrantPermissionInput,
 		ec.unmarshalInputRegisterResourceTypeInput,
 		ec.unmarshalInputTransitionResourceInput,
 	)
@@ -793,6 +832,12 @@ type ResourceTypeResult {
   error: MutationError
 }
 
+type PermissionResult {
+  success: Boolean!
+  permission: Permission
+  error: MutationError
+}
+
 # --- Inputs ---
 
 input CreateResourceInput {
@@ -814,6 +859,14 @@ input RegisterResourceTypeInput {
   transitions: JSON!
 }
 
+input GrantPermissionInput {
+  identityId: UUID!
+  resourceId: UUID
+  resourceTypeId: UUID
+  action: String!
+  expiresAt: DateTime
+}
+
 # --- Roots ---
 
 type Query {
@@ -829,6 +882,8 @@ type Mutation {
   
   createResource(input: CreateResourceInput!): ResourceResult!
   transitionResource(input: TransitionResourceInput!): ResourceResult!
+  
+  grantPermission(input: GrantPermissionInput!): PermissionResult!
 }
 `, BuiltIn: false},
 }
@@ -842,6 +897,17 @@ func (ec *executionContext) field_Mutation_createResource_args(ctx context.Conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateResourceInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_grantPermission_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNGrantPermissionInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1560,6 +1626,55 @@ func (ec *executionContext) fieldContext_Mutation_transitionResource(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_grantPermission(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_grantPermission,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().GrantPermission(ctx, fc.Args["input"].(model.GrantPermissionInput))
+		},
+		nil,
+		ec.marshalNPermissionResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_grantPermission(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_PermissionResult_success(ctx, field)
+			case "permission":
+				return ec.fieldContext_PermissionResult_permission(ctx, field)
+			case "error":
+				return ec.fieldContext_PermissionResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PermissionResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_grantPermission_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MutationError_code(ctx context.Context, field graphql.CollectedField, obj *model.MutationError) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1978,6 +2093,115 @@ func (ec *executionContext) fieldContext_Permission_createdAt(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermissionResult_success(ctx context.Context, field graphql.CollectedField, obj *model.PermissionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PermissionResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PermissionResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermissionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermissionResult_permission(ctx context.Context, field graphql.CollectedField, obj *model.PermissionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PermissionResult_permission,
+		func(ctx context.Context) (any, error) {
+			return obj.Permission, nil
+		},
+		nil,
+		ec.marshalOPermission2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PermissionResult_permission(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermissionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Permission_id(ctx, field)
+			case "identity":
+				return ec.fieldContext_Permission_identity(ctx, field)
+			case "resource":
+				return ec.fieldContext_Permission_resource(ctx, field)
+			case "resourceType":
+				return ec.fieldContext_Permission_resourceType(ctx, field)
+			case "action":
+				return ec.fieldContext_Permission_action(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_Permission_expiresAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Permission_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Permission", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PermissionResult_error(ctx context.Context, field graphql.CollectedField, obj *model.PermissionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PermissionResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PermissionResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PermissionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_MutationError_code(ctx, field)
+			case "message":
+				return ec.fieldContext_MutationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
 		},
 	}
 	return fc, nil
@@ -4771,6 +4995,60 @@ func (ec *executionContext) unmarshalInputCreateResourceInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputGrantPermissionInput(ctx context.Context, obj any) (model.GrantPermissionInput, error) {
+	var it model.GrantPermissionInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"identityId", "resourceId", "resourceTypeId", "action", "expiresAt"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "identityId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("identityId"))
+			data, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IdentityID = data
+		case "resourceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceId"))
+			data, err := ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceID = data
+		case "resourceTypeId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("resourceTypeId"))
+			data, err := ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResourceTypeID = data
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "expiresAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expiresAt"))
+			data, err := ec.unmarshalODateTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpiresAt = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRegisterResourceTypeInput(ctx context.Context, obj any) (model.RegisterResourceTypeInput, error) {
 	var it model.RegisterResourceTypeInput
 	asMap := map[string]any{}
@@ -5032,6 +5310,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "grantPermission":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_grantPermission(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5184,6 +5469,49 @@ func (ec *executionContext) _Permission(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var permissionResultImplementors = []string{"PermissionResult"}
+
+func (ec *executionContext) _PermissionResult(ctx context.Context, sel ast.SelectionSet, obj *model.PermissionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, permissionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PermissionResult")
+		case "success":
+			out.Values[i] = ec._PermissionResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "permission":
+			out.Values[i] = ec._PermissionResult_permission(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._PermissionResult_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6081,6 +6409,11 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 	return res
 }
 
+func (ec *executionContext) unmarshalNGrantPermissionInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput(ctx context.Context, v any) (model.GrantPermissionInput, error) {
+	res, err := ec.unmarshalInputGrantPermissionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNIdentity2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity(ctx context.Context, sel ast.SelectionSet, v *model.Identity) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -6137,6 +6470,20 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋsafranᚑlsᚋkor
 		return graphql.Null
 	}
 	return ec._PageInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPermissionResult2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v model.PermissionResult) graphql.Marshaler {
+	return ec._PermissionResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPermissionResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v *model.PermissionResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PermissionResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRegisterResourceTypeInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput(ctx context.Context, v any) (model.RegisterResourceTypeInput, error) {
@@ -6515,6 +6862,13 @@ func (ec *executionContext) marshalOMutationError2ᚖgithubᚗcomᚋsafranᚑls�
 		return graphql.Null
 	}
 	return ec._MutationError(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPermission2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Permission(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOResource2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v *model.Resource) graphql.Marshaler {

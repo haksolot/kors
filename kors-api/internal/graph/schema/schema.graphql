@@ -107,6 +107,12 @@ type ResourceTypeResult {
   error: MutationError
 }
 
+type PermissionResult {
+  success: Boolean!
+  permission: Permission
+  error: MutationError
+}
+
 # --- Inputs ---
 
 input CreateResourceInput {
@@ -128,6 +134,14 @@ input RegisterResourceTypeInput {
   transitions: JSON!
 }
 
+input GrantPermissionInput {
+  identityId: UUID!
+  resourceId: UUID
+  resourceTypeId: UUID
+  action: String!
+  expiresAt: DateTime
+}
+
 # --- Roots ---
 
 type Query {
@@ -143,4 +157,6 @@ type Mutation {
   
   createResource(input: CreateResourceInput!): ResourceResult!
   transitionResource(input: TransitionResourceInput!): ResourceResult!
+  
+  grantPermission(input: GrantPermissionInput!): PermissionResult!
 }

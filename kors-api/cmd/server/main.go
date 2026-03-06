@@ -16,6 +16,7 @@ import (
 	"github.com/safran-ls/kors/kors-api/internal/adapter/postgres"
 	korsnats "github.com/safran-ls/kors/kors-api/internal/adapter/nats"
 	"github.com/safran-ls/kors/kors-api/internal/domain/identity"
+	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
 	"github.com/safran-ls/kors/kors-api/internal/graph/resolvers"
 	"github.com/safran-ls/kors/kors-api/internal/usecase"
@@ -75,9 +76,10 @@ func main() {
 	rRepo := &postgres.ResourceRepository{Pool: pool}
 	eRepo := &postgres.EventRepository{Pool: pool}
 	idRepo := &postgres.IdentityRepository{Pool: pool}
+	pRepo := &postgres.PermissionRepository{Pool: pool}
 	ePub := &korsnats.NatsPublisher{JS: js}
 
-	// 4. Default System Identity
+	// 4. Default System Identity & Permissions
 	ctx := context.Background()
 	sysID, _ := idRepo.GetByExternalID(ctx, "system")
 	if sysID == nil {
@@ -92,26 +94,44 @@ func main() {
 		_ = idRepo.Create(ctx, sysID)
 	}
 
+	// Ensure system has core permissions
+	actions := []string{"write", "transition"}
+	for _, action := range actions {
+		allowed, _ := pRepo.Check(ctx, sysID.ID, action, nil, nil)
+		if !allowed {
+			_ = pRepo.Create(ctx, &permission.Permission{
+				ID:         uuid.New(),
+				IdentityID: sysID.ID,
+				Action:     action,
+				CreatedAt:  time.Now(),
+			})
+		}
+	}
+
 	// 5. UseCases
 	registerRTUseCase := &usecase.RegisterResourceTypeUseCase{Repo: rtRepo}
 	createRUseCase := &usecase.CreateResourceUseCase{
 		ResourceRepo:     rRepo,
 		ResourceTypeRepo: rtRepo,
 		EventRepo:        eRepo,
+		PermissionRepo:   pRepo,
 		EventPublisher:   ePub,
 	}
 	transitionRUseCase := &usecase.TransitionResourceUseCase{
 		ResourceRepo:     rRepo,
 		ResourceTypeRepo: rtRepo,
 		EventRepo:        eRepo,
+		PermissionRepo:   pRepo,
 		EventPublisher:   ePub,
 	}
+	grantPUseCase := &usecase.GrantPermissionUseCase{Repo: pRepo}
 
 	// 6. GraphQL Resolver & Server
 	resolver := &resolvers.Resolver{
 		RegisterResourceTypeUseCase: registerRTUseCase,
 		CreateResourceUseCase:       createRUseCase,
 		TransitionResourceUseCase:   transitionRUseCase,
+		GrantPermissionUseCase:      grantPUseCase,
 	}
 	
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))

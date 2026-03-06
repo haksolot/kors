@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/safran-ls/kors/kors-api/internal/domain/event"
+	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resource"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resourcetype"
 )
@@ -22,6 +23,7 @@ type CreateResourceUseCase struct {
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
 	EventRepo        event.Repository
+	PermissionRepo   permission.Repository
 	EventPublisher   event.Publisher
 }
 
@@ -35,7 +37,16 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 		return nil, fmt.Errorf("resource type '%s' not found", input.TypeName)
 	}
 
-	// 2. Create Resource domain object
+	// 2. Check Permission (Identity must have 'write' on this ResourceType)
+	allowed, err := uc.PermissionRepo.Check(ctx, input.IdentityID, "write", nil, &rt.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("identity %s does not have 'write' permission on type '%s'", input.IdentityID, rt.Name)
+	}
+
+	// 3. Create Resource domain object
 	res := &resource.Resource{
 		ID:        uuid.New(),
 		TypeID:    rt.ID,

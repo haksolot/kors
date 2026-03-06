@@ -24,6 +24,14 @@ type Event struct {
 	CreatedAt     time.Time      `json:"createdAt"`
 }
 
+type GrantPermissionInput struct {
+	IdentityID     uuid.UUID  `json:"identityId"`
+	ResourceID     *uuid.UUID `json:"resourceId,omitempty"`
+	ResourceTypeID *uuid.UUID `json:"resourceTypeId,omitempty"`
+	Action         string     `json:"action"`
+	ExpiresAt      *time.Time `json:"expiresAt,omitempty"`
+}
+
 type Identity struct {
 	ID         uuid.UUID      `json:"id"`
 	ExternalID *string        `json:"externalId,omitempty"`
@@ -59,6 +67,12 @@ type Permission struct {
 	Action       string        `json:"action"`
 	ExpiresAt    *time.Time    `json:"expiresAt,omitempty"`
 	CreatedAt    time.Time     `json:"createdAt"`
+}
+
+type PermissionResult struct {
+	Success    bool           `json:"success"`
+	Permission *Permission    `json:"permission,omitempty"`
+	Error      *MutationError `json:"error,omitempty"`
 }
 
 type Query struct {

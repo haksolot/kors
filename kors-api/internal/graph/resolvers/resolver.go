@@ -10,4 +10,5 @@ type Resolver struct {
 	RegisterResourceTypeUseCase *usecase.RegisterResourceTypeUseCase
 	CreateResourceUseCase       *usecase.CreateResourceUseCase
 	TransitionResourceUseCase   *usecase.TransitionResourceUseCase
+	GrantPermissionUseCase      *usecase.GrantPermissionUseCase
 }

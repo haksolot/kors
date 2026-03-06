@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/safran-ls/kors/kors-api/internal/domain/event"
+	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resource"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resourcetype"
 )
@@ -22,6 +23,7 @@ type TransitionResourceUseCase struct {
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
 	EventRepo        event.Repository
+	PermissionRepo   permission.Repository
 	EventPublisher   event.Publisher
 }
 
@@ -35,7 +37,16 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		return nil, fmt.Errorf("resource not found")
 	}
 
-	// 2. Get ResourceType
+	// 2. Check Permission (Identity must have 'transition' on this Resource or its Type)
+	allowed, err := uc.PermissionRepo.Check(ctx, input.IdentityID, "transition", &res.ID, &res.TypeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("identity %s does not have 'transition' permission on resource %s", input.IdentityID, res.ID)
+	}
+
+	// 3. Get ResourceType
 	rt, err := uc.ResourceTypeRepo.GetByID(ctx, res.TypeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resource type: %w", err)
@@ -44,13 +55,13 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		return nil, fmt.Errorf("resource type not found")
 	}
 
-	// 3. Validate Transition
+	// 4. Validate Transition
 	oldState := res.State
 	if !rt.CanTransitionTo(oldState, input.ToState) {
 		return nil, fmt.Errorf("transition from '%s' to '%s' not allowed for type '%s'", oldState, input.ToState, rt.Name)
 	}
 
-	// 4. Update Resource
+	// 5. Update Resource
 	res.State = input.ToState
 	res.UpdatedAt = time.Now()
 	if input.Metadata != nil {
@@ -66,7 +77,7 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		return nil, fmt.Errorf("failed to update resource: %w", err)
 	}
 
-	// 5. Create Audit Event
+	// 6. Create Audit Event
 	ev := &event.Event{
 		ID:         uuid.New(),
 		ResourceID: &res.ID,
@@ -79,12 +90,12 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		CreatedAt: time.Now(),
 	}
 
-	// 6. Persist Event
+	// 7. Persist Event
 	if err := uc.EventRepo.Create(ctx, ev); err != nil {
 		fmt.Printf("Warning: failed to record event for transition: %v\n", err)
 	}
 
-	// 7. Broadcast to NATS bus
+	// 8. Broadcast to NATS bus
 	if uc.EventPublisher != nil {
 		if err := uc.EventPublisher.Publish(ctx, ev); err != nil {
 			fmt.Printf("Warning: failed to broadcast event on NATS: %v\n", err)
