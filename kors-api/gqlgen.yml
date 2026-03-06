@@ -1,0 +1,43 @@
+# Where are all the schema files located?
+schema:
+  - internal/graph/schema/*.graphql
+
+# Where should the generated server code go?
+exec:
+  filename: internal/graph/generated/generated.go
+  package: generated
+
+# Where should any generated models go?
+model:
+  filename: internal/graph/model/models_gen.go
+  package: model
+
+# Where should the resolver implementations go?
+resolver:
+  layout: follow-schema
+  dir: internal/graph/resolvers
+  package: resolvers
+
+# Optional: turn on use `gqlgen` to generate test helpers
+# autobind: [ "github.com/safran-ls/kors/kors-api/internal/domain" ]
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.String
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time

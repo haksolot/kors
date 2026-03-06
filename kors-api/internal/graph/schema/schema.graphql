@@ -1,0 +1,146 @@
+scalar UUID
+scalar JSON
+scalar DateTime
+
+"""
+MutationError represents a business error occurred during a mutation.
+"""
+type MutationError {
+  code: String!
+  message: String!
+}
+
+"""
+PageInfo contains metadata about a paginated result.
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# --- KORS Primitives ---
+
+type Identity {
+  id: UUID!
+  externalId: String
+  name: String!
+  type: String!
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ResourceType {
+  id: UUID!
+  name: String!
+  description: String
+  jsonSchema: JSON!
+  transitions: JSON!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Resource {
+  id: UUID!
+  type: ResourceType!
+  state: String!
+  metadata: JSON!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Event {
+  id: UUID!
+  resource: Resource
+  identity: Identity!
+  type: String!
+  payload: JSON!
+  natsMessageId: UUID
+  createdAt: DateTime!
+}
+
+type Revision {
+  id: UUID!
+  resource: Resource!
+  identity: Identity!
+  snapshot: JSON!
+  filePath: String
+  createdAt: DateTime!
+}
+
+type Permission {
+  id: UUID!
+  identity: Identity!
+  resource: Resource
+  resourceType: ResourceType
+  action: String!
+  expiresAt: DateTime
+  createdAt: DateTime!
+}
+
+# --- Connections (Pagination) ---
+
+type ResourceConnection {
+  edges: [ResourceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ResourceEdge {
+  cursor: String!
+  node: Resource!
+}
+
+# --- Mutation Results ---
+
+type ResourceResult {
+  success: Boolean!
+  resource: Resource
+  error: MutationError
+}
+
+type ResourceTypeResult {
+  success: Boolean!
+  resourceType: ResourceType
+  error: MutationError
+}
+
+# --- Inputs ---
+
+input CreateResourceInput {
+  typeName: String!
+  initialState: String!
+  metadata: JSON
+}
+
+input TransitionResourceInput {
+  resourceId: UUID!
+  toState: String!
+  metadata: JSON
+}
+
+input RegisterResourceTypeInput {
+  name: String!
+  description: String
+  jsonSchema: JSON!
+  transitions: JSON!
+}
+
+# --- Roots ---
+
+type Query {
+  resource(id: UUID!): Resource
+  resources(first: Int, after: String, typeName: String): ResourceConnection!
+  
+  resourceType(name: String!): ResourceType
+  resourceTypes: [ResourceType!]!
+}
+
+type Mutation {
+  registerResourceType(input: RegisterResourceTypeInput!): ResourceTypeResult!
+  
+  createResource(input: CreateResourceInput!): ResourceResult!
+  transitionResource(input: TransitionResourceInput!): ResourceResult!
+}
