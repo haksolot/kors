@@ -6,5 +6,6 @@ use (
 	./kors-events
 	./kors-sap
 	./kors-worker
+	./sdk/go
 	./shared
 )

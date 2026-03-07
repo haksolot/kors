@@ -30,6 +30,8 @@ type Event struct {
 	CreatedAt     time.Time      `json:"createdAt"`
 }
 
+func (Event) IsEntity() {}
+
 type GrantPermissionInput struct {
 	IdentityID     uuid.UUID  `json:"identityId"`
 	ResourceID     *uuid.UUID `json:"resourceId,omitempty"`
@@ -48,16 +50,16 @@ type Identity struct {
 	UpdatedAt  time.Time      `json:"updatedAt"`
 }
 
+func (Identity) IsEntity() {}
+
 type Mutation struct {
 }
 
-// MutationError represents a business error occurred during a mutation.
 type MutationError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-// PageInfo contains metadata about a paginated result.
 type PageInfo struct {
 	HasNextPage     bool    `json:"hasNextPage"`
 	HasPreviousPage bool    `json:"hasPreviousPage"`
@@ -74,6 +76,8 @@ type Permission struct {
 	ExpiresAt    *time.Time    `json:"expiresAt,omitempty"`
 	CreatedAt    time.Time     `json:"createdAt"`
 }
+
+func (Permission) IsEntity() {}
 
 type PermissionResult struct {
 	Success    bool           `json:"success"`
@@ -110,6 +114,8 @@ type Resource struct {
 	Revisions []*Revision    `json:"revisions"`
 }
 
+func (Resource) IsEntity() {}
+
 type ResourceConnection struct {
 	Edges      []*ResourceEdge `json:"edges"`
 	PageInfo   *PageInfo       `json:"pageInfo"`
@@ -137,6 +143,8 @@ type ResourceType struct {
 	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
+func (ResourceType) IsEntity() {}
+
 type ResourceTypeResult struct {
 	Success      bool           `json:"success"`
 	ResourceType *ResourceType  `json:"resourceType,omitempty"`
@@ -152,6 +160,8 @@ type Revision struct {
 	DownloadURL *string        `json:"downloadUrl,omitempty"`
 	CreatedAt   time.Time      `json:"createdAt"`
 }
+
+func (Revision) IsEntity() {}
 
 type RevisionResult struct {
 	Success  bool           `json:"success"`

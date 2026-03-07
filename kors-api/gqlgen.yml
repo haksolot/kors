@@ -18,6 +18,11 @@ resolver:
   dir: internal/graph/resolvers
   package: resolvers
 
+federation:
+  filename: internal/graph/generated/federation.go
+  package: generated
+  version: 2
+
 # Optional: turn on use `gqlgen` to generate test helpers
 # autobind: [ "github.com/safran-ls/kors/kors-api/internal/domain" ]
 

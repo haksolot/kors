@@ -1,28 +1,14 @@
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.3",
+        import: ["@key", "@shareable", "@extends", "@external"])
+
 scalar UUID
 scalar JSON
 scalar DateTime
 
-"""
-MutationError represents a business error occurred during a mutation.
-"""
-type MutationError {
-  code: String!
-  message: String!
-}
+# --- KORS Primitives (Federated Entities) ---
 
-"""
-PageInfo contains metadata about a paginated result.
-"""
-type PageInfo {
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: String
-  endCursor: String
-}
-
-# --- KORS Primitives ---
-
-type Identity {
+type Identity @key(fields: "id") {
   id: UUID!
   externalId: String
   name: String!
@@ -32,7 +18,7 @@ type Identity {
   updatedAt: DateTime!
 }
 
-type ResourceType {
+type ResourceType @key(fields: "id") {
   id: UUID!
   name: String!
   description: String
@@ -42,7 +28,7 @@ type ResourceType {
   updatedAt: DateTime!
 }
 
-type Resource {
+type Resource @key(fields: "id") {
   id: UUID!
   type: ResourceType!
   state: String!
@@ -52,7 +38,7 @@ type Resource {
   revisions: [Revision!]!
 }
 
-type Event {
+type Event @key(fields: "id") {
   id: UUID!
   resource: Resource
   identity: Identity!
@@ -62,7 +48,7 @@ type Event {
   createdAt: DateTime!
 }
 
-type Revision {
+type Revision @key(fields: "id") {
   id: UUID!
   resource: Resource!
   identity: Identity!
@@ -72,7 +58,7 @@ type Revision {
   createdAt: DateTime!
 }
 
-type Permission {
+type Permission @key(fields: "id") {
   id: UUID!
   identity: Identity!
   resource: Resource
@@ -82,20 +68,12 @@ type Permission {
   createdAt: DateTime!
 }
 
-# --- Connections (Pagination) ---
-
-type ResourceConnection {
-  edges: [ResourceEdge!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-type ResourceEdge {
-  cursor: String!
-  node: Resource!
-}
-
 # --- Results ---
+
+type MutationError {
+  code: String!
+  message: String!
+}
 
 type ResourceResult {
   success: Boolean!
@@ -130,6 +108,26 @@ type ProvisioningResult {
   error: MutationError
 }
 
+# --- Connections (Pagination) ---
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type ResourceConnection {
+  edges: [ResourceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ResourceEdge {
+  cursor: String!
+  node: Resource!
+}
+
 # --- Inputs ---
 
 input CreateResourceInput {
@@ -161,7 +159,7 @@ input GrantPermissionInput {
 
 input CreateRevisionInput {
   resourceId: UUID!
-  fileContent: String # Base64 encoded file
+  fileContent: String 
   fileName: String
 }
 
