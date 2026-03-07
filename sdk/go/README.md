@@ -5,13 +5,13 @@ Le SDK KORS pour Go fournit un client GraphQL entièrement typé et asynchrone, 
 ## 1. Installation
 
 ```bash
-go get github.com/safran-ls/kors/sdk/go
+go get github.com/kors-project/kors/sdk/go
 ```
 
 ## 2. Initialisation
 
 ```go
-import "github.com/safran-ls/kors/sdk/go"
+import "github.com/kors-project/kors/sdk/go"
 
 func main() {
     client := sdk.NewClient("http://localhost:8080/query", "YOUR_JWT_TOKEN")

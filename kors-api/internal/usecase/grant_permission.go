@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
+	"github.com/kors-project/kors/kors-api/internal/domain/permission"
 )
 
 type GrantPermissionInput struct {

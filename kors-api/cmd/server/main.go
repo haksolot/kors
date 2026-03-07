@@ -24,12 +24,12 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/nats-io/nats.go"
-	"github.com/safran-ls/kors/kors-api/internal/adapter/postgres"
-	korsauth "github.com/safran-ls/kors/kors-api/internal/middleware"
-	"github.com/safran-ls/kors/kors-api/internal/domain/identity"
-	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
-	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
-	"github.com/safran-ls/kors/kors-api/internal/graph/resolvers"
+	"github.com/kors-project/kors/kors-api/internal/adapter/postgres"
+	korsauth "github.com/kors-project/kors/kors-api/internal/middleware"
+	"github.com/kors-project/kors/kors-api/internal/domain/identity"
+	"github.com/kors-project/kors/kors-api/internal/domain/permission"
+	"github.com/kors-project/kors/kors-api/internal/graph/generated"
+	"github.com/kors-project/kors/kors-api/internal/graph/resolvers"
 )
 
 func main() {

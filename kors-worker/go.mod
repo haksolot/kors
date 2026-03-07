@@ -1,4 +1,4 @@
-module github.com/safran-ls/kors/kors-worker
+module github.com/kors-project/kors/kors-worker
 
 go 1.24.1
 

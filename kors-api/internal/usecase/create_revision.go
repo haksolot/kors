@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/safran-ls/kors/kors-api/internal/domain/event"
-	"github.com/safran-ls/kors/kors-api/internal/domain/resource"
-	"github.com/safran-ls/kors/kors-api/internal/domain/revision"
+	"github.com/kors-project/kors/kors-api/internal/domain/event"
+	"github.com/kors-project/kors/kors-api/internal/domain/resource"
+	"github.com/kors-project/kors/kors-api/internal/domain/revision"
 )
 
 type CreateRevisionInput struct {

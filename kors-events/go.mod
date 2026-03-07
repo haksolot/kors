@@ -1,4 +1,4 @@
-module github.com/safran-ls/kors/kors-events
+module github.com/kors-project/kors/kors-events
 
 go 1.24.1
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/safran-ls/kors/kors-api/internal/domain/provisioning"
+	"github.com/kors-project/kors/kors-api/internal/domain/provisioning"
 )
 
 type PostgresProvisioner struct {

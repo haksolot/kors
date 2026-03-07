@@ -11,10 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
-	"github.com/safran-ls/kors/kors-api/internal/graph/model"
-	"github.com/safran-ls/kors/kors-api/internal/usecase"
-	"github.com/safran-ls/kors/shared/korsctx"
+	"github.com/kors-project/kors/kors-api/internal/graph/generated"
+	"github.com/kors-project/kors/kors-api/internal/graph/model"
+	"github.com/kors-project/kors/kors-api/internal/usecase"
+	"github.com/kors-project/kors/shared/korsctx"
 )
 
 func getIdentityID(ctx context.Context) uuid.UUID {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/safran-ls/kors/kors-events/internal/domain/event"
+	"github.com/kors-project/kors/kors-events/internal/domain/event"
 )
 
 type EventConsumer struct {

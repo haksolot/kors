@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/safran-ls/kors/kors-api/internal/domain/identity"
+	"github.com/kors-project/kors/kors-api/internal/domain/identity"
 )
 
 type IdentityRepository struct {

@@ -10,8 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"github.com/safran-ls/kors/kors-worker/internal/adapter/postgres"
-	"github.com/safran-ls/kors/kors-worker/internal/jobs"
+	"github.com/kors-project/kors/kors-worker/internal/adapter/postgres"
+	"github.com/kors-project/kors/kors-worker/internal/jobs"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/safran-ls/kors/kors-api
+module github.com/kors-project/kors/kors-api
 
 go 1.25.8
 

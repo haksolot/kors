@@ -5,13 +5,13 @@ Le SDK KORS pour le web et Node.js, entièrement typé et asynchrone.
 ## 1. Installation
 
 ```bash
-npm install @safran-ls/kors-sdk
+npm install @kors-project/kors-sdk
 ```
 
 ## 2. Initialisation
 
 ```typescript
-import { KorsClient } from '@safran-ls/kors-sdk';
+import { KorsClient } from '@kors-project/kors-sdk';
 
 const client = new KorsClient({
   endpoint: 'http://localhost:8080/query',

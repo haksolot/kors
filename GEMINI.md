@@ -8,7 +8,7 @@
 
 ## 1. Contexte et raison d'être
 
-**KORS** (_Kernel for Operations & Resource Systems_) est le noyau technique commun de Safran Landing Systems. Il remplace progressivement un ensemble d'outils industriels sous licence (MES, TMS, PLM, PDM, MEDS) par une plateforme interne souveraine, intégrée et traçable.
+**KORS** (_Kernel for Operations & Resource Systems_) est le noyau technique commun de The KORS Project. Il remplace progressivement un ensemble d'outils industriels sous licence (MES, TMS, PLM, PDM, MEDS) par une plateforme interne souveraine, intégrée et traçable.
 
 KORS n'est **pas** un outil métier. C'est le socle sur lequel les outils métiers se construisent. Il fournit quatre capacités fondamentales à n'importe quel module qui se branche dessus :
 
@@ -52,7 +52,7 @@ kors/
 | Bus événements | NATS JetStream | Persistance disque, déduplication, rétention 90j, faible latence |
 | Base de données | PostgreSQL 18.3 + Patroni | Fiabilité, JSONB, FKs, migrations SQL versionnées |
 | Object storage | MinIO (S3) | Souveraineté, versioning, plans / modèles 3D / docs |
-| SSO | Keycloak (OIDC + LDAP) | Intégration Active Directory Safran, JWT RS256 |
+| SSO | Keycloak (OIDC + LDAP) | Intégration Active Directory KORS, JWT RS256 |
 | Observabilité | OpenTelemetry + Grafana Stack | Traces distribuées, métriques, logs structurés |
 | Orchestration | Kubernetes | Déploiement, scaling, health checks |
 
@@ -88,7 +88,7 @@ Avant d'écrire du code, garder ce modèle en tête :
 ### Langue
 
 - **Code, variables, commentaires** : anglais exclusivement.
-- **Commits, PR, documentation** : français (contexte Safran Landing Systems).
+- **Commits, PR, documentation** : français (contexte The KORS Project).
 - **Logs applicatifs** : anglais (Grafana, alertes, on-call).
 
 ### Structure d'un service Go
@@ -344,7 +344,7 @@ Objectif : un développeur peut créer un ResourceType et des Resources via l'AP
 - [ ] PostgreSQL Patroni déployé (1 primaire + 2 replicas)
 - [ ] NATS JetStream cluster 3 nœuds
 - [ ] MinIO avec erasure coding
-- [ ] Keycloak configuré avec realm `kors` et sync LDAP Active Directory Safran
+- [ ] Keycloak configuré avec realm `kors` et sync LDAP Active Directory KORS
 - [ ] Pipeline CI/CD GitHub Actions (lint → test → build → push image)
 - [ ] Squelette `kors-api` : chi router, health checks, middleware auth JWT
 
@@ -396,7 +396,7 @@ Objectif : KORS est validé par la DSI et l'équipe qualité, prêt pour un prem
 **Sprint 13–14 — Qualification EN9100**
 - [ ] Audit traçabilité : reconstitution état d'une Resource à date passée
 - [ ] Vérification rétention events 90 jours
-- [ ] Dossier qualification pour l'équipe qualité Safran
+- [ ] Dossier qualification pour l'équipe qualité KORS
 - [ ] ADRs complètes et revues
 
 **Jalon Phase 2** : KORS validé DSI et qualité, prêt à accueillir le premier module TMS en production.
@@ -504,7 +504,7 @@ Toute la configuration de KORS passe par des variables d'environnement. Aucune v
 | `SERVICE_NAME` | non | `kors-sap` | Nom du service |
 | `DATABASE_URL` | **oui** | — | DSN PostgreSQL |
 | `NATS_URL` | **oui** | — | URL NATS JetStream |
-| `SAP_HOST` | **oui** | — | Hôte du serveur SAP (ex: `sap-erp.safran-ls.local`) |
+| `SAP_HOST` | **oui** | — | Hôte du serveur SAP (ex: `sap-erp.kors-project.local`) |
 | `SAP_CLIENT` | **oui** | — | Numéro de mandant SAP (ex: `100`) |
 | `SAP_USERNAME` | **oui** | — | Utilisateur technique SAP dédié KORS |
 | `SAP_PASSWORD` | **oui** | — | Mot de passe utilisateur SAP |
@@ -597,7 +597,7 @@ stringData:
 
 ```bash
 # Cloner le repo
-git clone git@github.com:safran-ls/kors.git
+git clone git@github.com:kors-project/kors.git
 cd kors
 
 # Copier les variables d'environnement locales

@@ -1,7 +1,7 @@
 # KORS Volume 1 : Architecture et Philosophie
 
 ## 1. Raison d'être
-KORS (Kernel for Operations & Resource Systems) est le socle technique commun de Safran Landing Systems. Son but est de fournir une infrastructure de confiance pour la traçabilité (EN9100) et le pilotage du cycle de vie des entités industrielles.
+KORS (Kernel for Operations & Resource Systems) est le socle technique commun de The KORS Project. Son but est de fournir une infrastructure de confiance pour la traçabilité (EN9100) et le pilotage du cycle de vie des entités industrielles.
 
 ## 2. Le Modèle "Enveloppe vs Contenu" (Symbiose)
 KORS introduit une séparation stricte des responsabilités :

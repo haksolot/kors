@@ -1,4 +1,4 @@
-module github.com/safran-ls/kors/shared
+module github.com/kors-project/kors/shared
 
 go 1.25.0
 

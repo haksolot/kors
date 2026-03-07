@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
-	"github.com/safran-ls/kors/kors-api/internal/domain/provisioning"
+	"github.com/kors-project/kors/kors-api/internal/domain/permission"
+	"github.com/kors-project/kors/kors-api/internal/domain/provisioning"
 )
 
 type ProvisionModuleUseCase struct {

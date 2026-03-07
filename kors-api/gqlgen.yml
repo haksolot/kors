@@ -24,7 +24,7 @@ federation:
   version: 2
 
 # Optional: turn on use `gqlgen` to generate test helpers
-# autobind: [ "github.com/safran-ls/kors/kors-api/internal/domain" ]
+# autobind: [ "github.com/kors-project/kors/kors-api/internal/domain" ]
 
 models:
   ID:

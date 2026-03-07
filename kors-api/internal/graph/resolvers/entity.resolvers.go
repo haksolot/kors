@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
-	"github.com/safran-ls/kors/kors-api/internal/graph/model"
+	"github.com/kors-project/kors/kors-api/internal/graph/generated"
+	"github.com/kors-project/kors/kors-api/internal/graph/model"
 )
 
 // FindEventByID is the resolver for the findEventByID field.

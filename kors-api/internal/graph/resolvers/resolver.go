@@ -4,10 +4,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
-	"github.com/safran-ls/kors/kors-api/internal/adapter/postgres"
-	korsnats "github.com/safran-ls/kors/kors-api/internal/adapter/nats"
-	korsminio "github.com/safran-ls/kors/kors-api/internal/adapter/minio"
-	"github.com/safran-ls/kors/kors-api/internal/usecase"
+	"github.com/kors-project/kors/kors-api/internal/adapter/postgres"
+	korsnats "github.com/kors-project/kors/kors-api/internal/adapter/nats"
+	korsminio "github.com/kors-project/kors/kors-api/internal/adapter/minio"
+	"github.com/kors-project/kors/kors-api/internal/usecase"
 )
 
 type Resolver struct {
