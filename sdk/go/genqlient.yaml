@@ -1,0 +1,12 @@
+schema: ../../shared/schema/kors.graphql
+operations:
+  - operations.graphql
+generated: generated.go
+package: sdk
+bindings:
+  UUID:
+    type: github.com/google/uuid.UUID
+  JSON:
+    type: map[string]interface{}
+  DateTime:
+    type: time.Time
