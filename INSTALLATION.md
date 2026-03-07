@@ -2,13 +2,13 @@
 
 Ce guide vous accompagne dans le déploiement de votre propre instance KORS en environnement de développement.
 
-## 📋 Pré-requis
+## Pré-requis
 
 *   **Docker** et **Docker Compose**.
 *   **Go 1.25+** (pour le développement local).
 *   **Make** (optionnel, pour les raccourcis).
 
-## 🚀 Démarrage Rapide
+## Démarrage Rapide
 
 ### 1. Cloner le dépôt
 ```bash
@@ -37,7 +37,7 @@ cd kors-api/migrations
 go run github.com/pressly/goose/v3/cmd/goose postgres "postgres://kors:kors_dev_secret@localhost:5432/kors?sslmode=disable" up
 ```
 
-## 🔍 Vérification
+## Vérification
 
 Une fois le déploiement terminé, vous pouvez accéder aux services suivants :
 
@@ -46,7 +46,7 @@ Une fois le déploiement terminé, vous pouvez accéder aux services suivants :
 *   **Fichiers (MinIO)** : [http://localhost:9001](http://localhost:9001) (Login: `kors_admin` / Pass: `kors_dev_secret`)
 *   **SSO (Keycloak)** : [http://localhost:8180](http://localhost:8180) (Admin: `admin` / Pass: `admin`)
 
-## 🛠️ Développement
+## Développement
 
 ### Régénération du code GraphQL
 Si vous modifiez le schéma dans `shared/schema/kors.graphql`, lancez :

@@ -4,7 +4,7 @@ KORS est une plateforme open-source industrielle conçue pour centraliser la tra
 
 Il sert de noyau technique ("Kernel") sur lequel viennent se greffer des modules métier (TMS, MES, PLM) via une architecture fédérée.
 
-## 🚀 Fonctionnalités Clés
+## Fonctionnalités Clés
 
 *   **Six Primitives Fondamentales** : Identités, Types de Ressources, Ressources, Événements, Permissions (RBAC) et Révisions.
 *   **Architecture Fédérée** : Subgraph compatible Apollo Federation v2 pour un écosystème modulaire.
@@ -13,7 +13,7 @@ Il sert de noyau technique ("Kernel") sur lequel viennent se greffer des modules
 *   **SDKs Professionnels** : Bibliothèques prêtes à l'emploi pour Go, TypeScript et Python.
 *   **Résilience Industrielle** : Stateless API, Graceful Shutdown et Verrouillage Distribué.
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 *   `kors-api/` : Le cœur du système (GraphQL API).
 *   `kors-events/` : Relais temps réel et consommateur d'événements.
@@ -22,13 +22,13 @@ Il sert de noyau technique ("Kernel") sur lequel viennent se greffer des modules
 *   `examples/` : Exemple concret d'un module métier intégré.
 *   `docs/` : Documentation technique complète en plusieurs volumes.
 
-## 🛠️ Stack Technique
+## Stack Technique
 
 *   **Backend** : Go 1.25, gqlgen, Chi, pgx.
 *   **Infrastructure** : PostgreSQL 15, NATS JetStream, MinIO, Keycloak, Jaeger (OTel).
 *   **Orchestration** : Docker Compose & Kubernetes Ready.
 
-## 📖 Documentation
+## Documentation
 
 Consultez le dossier `/docs` pour approfondir :
 1.  [Architecture & Philosophie](./docs/01-CORE-CONCEPTS.md)
@@ -37,6 +37,6 @@ Consultez le dossier `/docs` pour approfondir :
 4.  [Intégration de Modules](./docs/04-MODULE-INTEGRATION.md)
 5.  [Modèle de Sécurité](./docs/05-SECURITY-MODEL.md)
 
-## ⚖️ Licence
+## Licence
 
 Ce projet est distribué sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
