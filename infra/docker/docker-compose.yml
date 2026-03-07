@@ -52,6 +52,8 @@ services:
       - MINIO_ACCESS_KEY=kors_admin
       - MINIO_SECRET_KEY=kors_dev_secret
       - MINIO_BUCKET=kors-files
+      - OTLP_ENDPOINT=jaeger:4317
+      - OTLP_INSECURE=true
     depends_on:
       - postgres
       - nats
@@ -76,6 +78,14 @@ services:
       - PERMISSIONS_CLEANUP_INTERVAL=30s
     depends_on:
       - postgres
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
 
 volumes:
   postgres_data:

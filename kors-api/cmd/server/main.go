@@ -30,6 +30,8 @@ import (
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
 	"github.com/safran-ls/kors/kors-api/internal/graph/resolvers"
 	"github.com/safran-ls/kors/kors-api/internal/usecase"
+	"github.com/safran-ls/kors/shared/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -43,11 +45,29 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" { port = defaultPort }
 
+	serviceName := os.Getenv("SERVICE_NAME")
+	if serviceName == "" { serviceName = "kors-api" }
+
+	otlpEndpoint := os.Getenv("OTLP_ENDPOINT")
+	if otlpEndpoint == "" { otlpEndpoint = "localhost:4317" }
+
+	otlpInsecure := os.Getenv("OTLP_INSECURE") != "false"
+
+	// 0. Initialize Tracing
+	shutdown, err := tracing.InitTracer(context.Background(), serviceName, otlpEndpoint, otlpInsecure)
+	if err != nil {
+		log.Printf("Warning: failed to initialize tracing: %v", err)
+	} else {
+		defer shutdown(context.Background())
+	}
+
+	// 1. Database Connection
 	dbURL := os.Getenv("DATABASE_URL")
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil { log.Fatalf("Database error: %v", err) }
 	defer pool.Close()
 
+	// 2. NATS
 	natsURL := os.Getenv("NATS_URL")
 	nc, err := nats.Connect(natsURL)
 	if err != nil { log.Fatalf("NATS error: %v", err) }
@@ -55,11 +75,13 @@ func main() {
 	js, _ := nc.JetStream()
 	_, _ = js.AddStream(&nats.StreamConfig{Name: "KORS", Subjects: []string{"kors.>"}})
 
+	// 3. MinIO
 	minioURL := os.Getenv("MINIO_URL")
 	minioAK := os.Getenv("MINIO_ACCESS_KEY")
 	minioSK := os.Getenv("MINIO_SECRET_KEY")
 	mClient, _ := minio.New(minioURL, &minio.Options{Creds: credentials.NewStaticV4(minioAK, minioSK, ""), Secure: false})
 
+	// 4. Repositories
 	rtRepo := &postgres.ResourceTypeRepository{Pool: pool}
 	rRepo := &postgres.ResourceRepository{Pool: pool}
 	eRepo := &postgres.EventRepository{Pool: pool}
@@ -69,6 +91,7 @@ func main() {
 	fStore := &korsminio.MinioFileStore{Client: mClient, Bucket: "kors-files"}
 	ePub := &korsnats.NatsPublisher{JS: js}
 
+	// 5. Bootstrap Identity
 	ctx := context.Background()
 	sysID, _ := idRepo.GetByExternalID(ctx, "system")
 	if sysID == nil {
@@ -76,12 +99,12 @@ func main() {
 		_ = idRepo.Create(ctx, sysID)
 	}
 	for _, action := range []string{"write", "transition", "admin"} {
-		allowed, _ := pRepo.Check(ctx, sysID.ID, action, nil, nil)
-		if !allowed {
+		if allowed, _ := pRepo.Check(ctx, sysID.ID, action, nil, nil); !allowed {
 			_ = pRepo.Create(ctx, &permission.Permission{ID: uuid.New(), IdentityID: sysID.ID, Action: action, CreatedAt: time.Now()})
 		}
 	}
 
+	// 6. UseCases
 	rootResolver := &resolvers.Resolver{
 		RegisterResourceTypeUseCase: &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo},
 		CreateResourceUseCase:       &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
@@ -112,24 +135,26 @@ func main() {
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
 
+	// 7. HTTP Routing
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
 
 	rateLimit, _ := strconv.Atoi(os.Getenv("RATE_LIMIT_STANDARD"))
 	if rateLimit == 0 { rateLimit = 100 }
 	r.Use(httprate.LimitByIP(rateLimit, 1*time.Minute))
 
+	// Instrument GraphQL handler with OTel
+	r.Handle("/query", otelhttp.NewHandler(srv, "GraphQL"))
+	
 	r.Handle("/", playground.Handler("KORS GraphQL", "/query"))
-	r.Handle("/query", srv)
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	log.Printf("KORS API running on port %s (Complexity Limit: %d)", port, complexityLimit)
+	log.Printf("KORS API running on port %s (Tracing Enabled: %s)", port, otlpEndpoint)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
