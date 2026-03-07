@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
@@ -19,12 +20,15 @@ import (
 
 func getIdentityID(ctx context.Context) uuid.UUID {
 	id, ok := korsctx.FromContext(ctx)
-	if !ok { return uuid.UUID{} }
+	if !ok {
+		return uuid.Nil // System fallback
+	}
 	return id
 }
 
 // RegisterResourceType is the resolver for the registerResourceType field.
 func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model.RegisterResourceTypeInput) (*model.ResourceTypeResult, error) {
+	log.Println("--- CALLING RegisterResourceType ---")
 	rt, err := r.RegisterResourceTypeUseCase.Execute(ctx, usecase.RegisterResourceTypeInput{
 		Name:        input.Name,
 		Description: *input.Description,
@@ -32,7 +36,9 @@ func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model
 		Transitions: input.Transitions,
 		IdentityID:  getIdentityID(ctx),
 	})
-	if err != nil { return &model.ResourceTypeResult{Success: false, Error: &model.MutationError{Code: "REGISTRATION_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.ResourceTypeResult{Success: false, Error: &model.MutationError{Code: "REGISTRATION_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.ResourceTypeResult{Success: true, ResourceType: &model.ResourceType{ID: rt.ID, Name: rt.Name, Description: &rt.Description, JSONSchema: rt.JSONSchema, Transitions: rt.Transitions, CreatedAt: rt.CreatedAt, UpdatedAt: rt.UpdatedAt}}, nil
 }
 
@@ -44,7 +50,9 @@ func (r *mutationResolver) CreateResource(ctx context.Context, input model.Creat
 		Metadata:     input.Metadata,
 		IdentityID:   getIdentityID(ctx),
 	})
-	if err != nil { return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "CREATION_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "CREATION_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.ResourceResult{Success: true, Resource: &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}}, nil
 }
 
@@ -56,7 +64,9 @@ func (r *mutationResolver) TransitionResource(ctx context.Context, input model.T
 		Metadata:   input.Metadata,
 		IdentityID: getIdentityID(ctx),
 	})
-	if err != nil { return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "TRANSITION_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "TRANSITION_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.ResourceResult{Success: true, Resource: &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}}, nil
 }
 
@@ -69,28 +79,36 @@ func (r *mutationResolver) GrantPermission(ctx context.Context, input model.Gran
 		Action:         input.Action,
 		ExpiresAt:      input.ExpiresAt,
 	})
-	if err != nil { return &model.PermissionResult{Success: false, Error: &model.MutationError{Code: "GRANT_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.PermissionResult{Success: false, Error: &model.MutationError{Code: "GRANT_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.PermissionResult{Success: true, Permission: &model.Permission{ID: p.ID, Action: p.Action, ExpiresAt: p.ExpiresAt, CreatedAt: p.CreatedAt}}, nil
 }
 
 // CreateRevision is the resolver for the createRevision field.
 func (r *mutationResolver) CreateRevision(ctx context.Context, input model.CreateRevisionInput) (*model.RevisionResult, error) {
 	var fileContent []byte
-	if input.FileContent != nil { fileContent, _ = base64.StdEncoding.DecodeString(*input.FileContent) }
+	if input.FileContent != nil {
+		fileContent, _ = base64.StdEncoding.DecodeString(*input.FileContent)
+	}
 	rev, err := r.CreateRevisionUseCase.Execute(ctx, usecase.CreateRevisionInput{
 		ResourceID:  input.ResourceID,
 		IdentityID:  getIdentityID(ctx),
 		FileContent: fileContent,
 		FileName:    *input.FileName,
 	})
-	if err != nil { return &model.RevisionResult{Success: false, Error: &model.MutationError{Code: "REVISION_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.RevisionResult{Success: false, Error: &model.MutationError{Code: "REVISION_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.RevisionResult{Success: true, Revision: &model.Revision{ID: rev.ID, Snapshot: rev.Snapshot, FilePath: rev.FilePath, CreatedAt: rev.CreatedAt}}, nil
 }
 
 // ProvisionModule is the resolver for the provisionModule field.
 func (r *mutationResolver) ProvisionModule(ctx context.Context, moduleName string) (*model.ProvisioningResult, error) {
 	creds, err := r.ProvisionModuleUseCase.Execute(ctx, moduleName, getIdentityID(ctx))
-	if err != nil { return &model.ProvisioningResult{Success: false, Error: &model.MutationError{Code: "PROVISIONING_FAILED", Message: err.Error()}}, nil }
+	if err != nil {
+		return &model.ProvisioningResult{Success: false, Error: &model.MutationError{Code: "PROVISIONING_FAILED", Message: err.Error()}}, nil
+	}
 	return &model.ProvisioningResult{Success: true, ModuleName: &creds.ModuleName, Schema: &creds.Schema, Username: &creds.Username, Password: &creds.Password}, nil
 }
 

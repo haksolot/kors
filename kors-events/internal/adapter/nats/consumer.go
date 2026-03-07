@@ -29,12 +29,14 @@ func (c *EventConsumer) Start(ctx context.Context) error {
 	}
 
 	// 2. Subscribe and process
+	// With PullSubscribe and the same Durable name, NATS automatically 
+	// load balances messages across all instances sharing this durable.
 	sub, err := c.JS.PullSubscribe("kors.>", "kors-events-consumer")
 	if err != nil {
 		return fmt.Errorf("failed to pull subscribe: %w", err)
 	}
 
-	fmt.Println("kors-events: Durable consumer started, listening for events...")
+	fmt.Println("kors-events: Balanced consumer started, listening for events...")
 
 	for {
 		select {
