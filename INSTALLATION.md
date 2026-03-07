@@ -12,7 +12,7 @@ Ce guide vous accompagne dans le déploiement de votre propre instance KORS en e
 
 ### 1. Cloner le dépôt
 ```bash
-git clone https://github.com/kors-project/kors.git
+git clone https://github.com/haksolot/kors.git
 cd kors
 ```
 
