@@ -2,12 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi/v5"
@@ -29,26 +34,58 @@ import (
 
 func main() {
 	_ = godotenv.Load()
-	port := os.Getenv("PORT")
-	if port == "" { port = "8080" }
-
-	// 1. Core Services Connections
-	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
-	if err != nil { log.Fatalf("DB: %v", err) }
 	
-	nc, _ := nats.Connect(os.Getenv("NATS_URL"))
-	var js nats.JetStreamContext
-	if nc != nil { js, _ = nc.JetStream() }
+	// --- Configuration (Environment only) ---
+	port := getEnv("PORT", "8080")
+	dbURL := os.Getenv("DATABASE_URL")
+	natsURL := getEnv("NATS_URL", nats.DefaultURL)
+	minioURL := os.Getenv("MINIO_URL")
+	minioAK := os.Getenv("MINIO_ACCESS_KEY")
+	minioSK := os.Getenv("MINIO_SECRET_KEY")
+	minioBucket := getEnv("MINIO_BUCKET", "kors-files")
+	complexityLimit, _ := strconv.Atoi(getEnv("GRAPHQL_COMPLEXITY_LIMIT", "1000"))
+	
+	// Identify current instance (useful for Load Balancing logs)
+	hostname, _ := os.Hostname()
+	log.Printf("[Instance: %s] Starting KORS API...", hostname)
 
-	mClient, _ := minio.New(os.Getenv("MINIO_URL"), &minio.Options{
-		Creds: credentials.NewStaticV4(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""),
-		Secure: false,
+	// 1. Database Connection with Pool limits
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		log.Fatalf("Critical: failed to connect to database: %v", err)
+	}
+	defer pool.Close()
+
+	// 2. NATS Connection
+	nc, err := nats.Connect(natsURL)
+	if err == nil {
+		defer nc.Close()
+		js, _ := nc.JetStream()
+		if js != nil {
+			_, _ = js.AddStream(&nats.StreamConfig{Name: "KORS", Subjects: []string{"kors.>"}})
+		}
+	}
+
+	// 3. MinIO Client
+	mClient, err := minio.New(minioURL, &minio.Options{
+		Creds:  credentials.NewStaticV4(minioAK, minioSK, ""),
+		Secure: os.Getenv("MINIO_USE_SSL") == "true",
 	})
+	if err == nil {
+		exists, _ := mClient.BucketExists(ctx, minioBucket)
+		if !exists {
+			_ = mClient.MakeBucket(ctx, minioBucket, minio.MakeBucketOptions{})
+		}
+	}
 
-	// 2. Identity Bootstrap
+	// 4. Repositories
 	idRepo := &postgres.IdentityRepository{Pool: pool}
 	pRepo := &postgres.PermissionRepository{Pool: pool}
-	ctx := context.Background()
+
+	// 5. Bootstrap System Identity
 	sysID, _ := idRepo.GetByExternalID(ctx, "system")
 	if sysID == nil {
 		_ = idRepo.Create(ctx, &identity.Identity{ID: uuid.Nil, ExternalID: "system", Name: "System", Type: "system", CreatedAt: time.Now()})
@@ -60,24 +97,68 @@ func main() {
 		}
 	}
 
-	// 3. Assemble Resolver
-	r := resolvers.NewResolver(pool, nc, js, mClient)
-
-	// 4. GraphQL Server
-	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: r}))
+	// 6. GraphQL Setup
+	var jsCtx nats.JetStreamContext
+	if nc != nil { jsCtx, _ = nc.JetStream() }
+	
+	resolver := resolvers.NewResolver(pool, nc, jsCtx, mClient)
+	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
+	
 	srv.AddTransport(transport.POST{})
 	srv.AddTransport(transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
+	srv.Use(extension.FixedComplexityLimit(complexityLimit))
+	if os.Getenv("GRAPHQL_INTROSPECTION") == "true" {
+		srv.Use(extension.Introspection{})
+	}
 
+	// 7. HTTP Routing
 	mux := chi.NewRouter()
+	mux.Use(middleware.RequestID)
+	mux.Use(middleware.RealIP)
+	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
 	mux.Use((&korsauth.AuthMiddleware{IdentityRepo: idRepo}).Handler)
 	
 	mux.Handle("/query", srv)
 	mux.Handle("/", playground.Handler("KORS", "/query"))
+	mux.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
-	log.Printf("KORS API fully stabilized on %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	// 8. GRACEFUL SHUTDOWN Logic
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	go func() {
+		log.Printf("[Instance: %s] API running on port %s", hostname, port)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Listen error: %v", err)
+		}
+	}()
+
+	<-ctx.Done() // Wait for SIGINT or SIGTERM
+
+	log.Printf("[Instance: %s] Shutting down gracefully...", hostname)
+	
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("Graceful shutdown failed: %v", err)
+	}
+
+	log.Printf("[Instance: %s] KORS API stopped.", hostname)
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
