@@ -1,6 +1,7 @@
 go 1.25.8
 
 use (
+	./TMS-KM
 	./kors-api
 	./kors-events
 	./kors-sap

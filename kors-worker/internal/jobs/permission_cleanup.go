@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -26,11 +27,17 @@ func (j *PermissionCleanupJob) Run(ctx context.Context) {
 		case <-ticker.C:
 			count, err := j.Repo.CleanupExpired(ctx)
 			if err != nil {
+				if errors.Is(err, postgres.ErrLocked) {
+					log.Println("Job skipped: another worker is already cleaning up.")
+					continue
+				}
 				log.Printf("Error cleaning up permissions: %v", err)
 				continue
 			}
 			if count > 0 {
 				log.Printf("Successfully removed %d expired permissions", count)
+			} else {
+				log.Println("No expired permissions found.")
 			}
 		}
 	}
