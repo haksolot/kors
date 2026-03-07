@@ -14,7 +14,16 @@ import (
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
 	"github.com/safran-ls/kors/kors-api/internal/graph/model"
 	"github.com/safran-ls/kors/kors-api/internal/usecase"
+	"github.com/safran-ls/kors/shared/korsctx"
 )
+
+func getIdentityID(ctx context.Context) uuid.UUID {
+	id, ok := korsctx.FromContext(ctx)
+	if !ok {
+		return uuid.UUID{} // Return empty UUID (zero value), will fail RBAC
+	}
+	return id
+}
 
 // RegisterResourceType is the resolver for the registerResourceType field.
 func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model.RegisterResourceTypeInput) (*model.ResourceTypeResult, error) {
@@ -23,7 +32,7 @@ func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model
 		Description: *input.Description,
 		JSONSchema:  input.JSONSchema,
 		Transitions: input.Transitions,
-		IdentityID:  uuid.Nil,
+		IdentityID:  getIdentityID(ctx),
 	})
 	if err != nil {
 		return &model.ResourceTypeResult{Success: false, Error: &model.MutationError{Code: "REGISTRATION_FAILED", Message: err.Error()}}, nil
@@ -37,7 +46,7 @@ func (r *mutationResolver) CreateResource(ctx context.Context, input model.Creat
 		TypeName:     input.TypeName,
 		InitialState: input.InitialState,
 		Metadata:     input.Metadata,
-		IdentityID:   uuid.Nil,
+		IdentityID:   getIdentityID(ctx),
 	})
 	if err != nil {
 		return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "CREATION_FAILED", Message: err.Error()}}, nil
@@ -51,7 +60,7 @@ func (r *mutationResolver) TransitionResource(ctx context.Context, input model.T
 		ResourceID: input.ResourceID,
 		ToState:    input.ToState,
 		Metadata:   input.Metadata,
-		IdentityID: uuid.Nil,
+		IdentityID: getIdentityID(ctx),
 	})
 	if err != nil {
 		return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "TRANSITION_FAILED", Message: err.Error()}}, nil
@@ -82,7 +91,7 @@ func (r *mutationResolver) CreateRevision(ctx context.Context, input model.Creat
 	}
 	rev, err := r.CreateRevisionUseCase.Execute(ctx, usecase.CreateRevisionInput{
 		ResourceID:  input.ResourceID,
-		IdentityID:  uuid.Nil,
+		IdentityID:  getIdentityID(ctx),
 		FileContent: fileContent,
 		FileName:    *input.FileName,
 	})
@@ -125,53 +134,30 @@ func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceTyp
 // EventWasPublished is the resolver for the eventWasPublished field.
 func (r *subscriptionResolver) EventWasPublished(ctx context.Context) (<-chan *model.Event, error) {
 	events := make(chan *model.Event)
-
-	// Subscribe to all KORS events
 	sub, err := r.NatsConn.Subscribe("kors.>", func(msg *nats.Msg) {
 		var gqlEvent model.Event
 		if err := json.Unmarshal(msg.Data, &gqlEvent); err == nil {
-			select {
-			case events <- &gqlEvent:
-			default:
-				// Skip if channel is full
-			}
+			select { case events <- &gqlEvent: default: }
 		}
 	})
 	if err != nil { return nil, err }
-
-	go func() {
-		<-ctx.Done()
-		sub.Unsubscribe()
-		close(events)
-	}()
-
+	go func() { <-ctx.Done(); sub.Unsubscribe(); close(events) }()
 	return events, nil
 }
 
 // ResourceEvents is the resolver for the resourceEvents field.
 func (r *subscriptionResolver) ResourceEvents(ctx context.Context, resourceID uuid.UUID) (<-chan *model.Event, error) {
 	events := make(chan *model.Event)
-
-	// Filter events for specific resource in the callback
 	sub, err := r.NatsConn.Subscribe("kors.>", func(msg *nats.Msg) {
 		var gqlEvent model.Event
 		if err := json.Unmarshal(msg.Data, &gqlEvent); err == nil {
 			if gqlEvent.Resource != nil && gqlEvent.Resource.ID == resourceID {
-				select {
-				case events <- &gqlEvent:
-				default:
-				}
+				select { case events <- &gqlEvent: default: }
 			}
 		}
 	})
 	if err != nil { return nil, err }
-
-	go func() {
-		<-ctx.Done()
-		sub.Unsubscribe()
-		close(events)
-	}()
-
+	go func() { <-ctx.Done(); sub.Unsubscribe(); close(events) }()
 	return events, nil
 }
 

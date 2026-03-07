@@ -25,6 +25,7 @@ import (
 	"github.com/safran-ls/kors/kors-api/internal/adapter/postgres"
 	korsnats "github.com/safran-ls/kors/kors-api/internal/adapter/nats"
 	korsminio "github.com/safran-ls/kors/kors-api/internal/adapter/minio"
+	korsauth "github.com/safran-ls/kors/kors-api/internal/middleware"
 	"github.com/safran-ls/kors/kors-api/internal/domain/identity"
 	"github.com/safran-ls/kors/kors-api/internal/domain/permission"
 	"github.com/safran-ls/kors/kors-api/internal/graph/generated"
@@ -49,37 +50,27 @@ func main() {
 	if serviceName == "" { serviceName = "kors-api" }
 
 	otlpEndpoint := os.Getenv("OTLP_ENDPOINT")
-	if otlpEndpoint == "" { otlpEndpoint = "localhost:4317" }
+	if otlpEndpoint == "" { otlpEndpoint = "jaeger:4317" }
 
-	otlpInsecure := os.Getenv("OTLP_INSECURE") != "false"
+	// 0. Tracing
+	shutdown, _ := tracing.InitTracer(context.Background(), serviceName, otlpEndpoint, true)
+	if shutdown != nil { defer shutdown(context.Background()) }
 
-	// 0. Initialize Tracing
-	shutdown, err := tracing.InitTracer(context.Background(), serviceName, otlpEndpoint, otlpInsecure)
-	if err != nil {
-		log.Printf("Warning: failed to initialize tracing: %v", err)
-	} else {
-		defer shutdown(context.Background())
-	}
-
-	// 1. Database Connection
+	// 1. Database
 	dbURL := os.Getenv("DATABASE_URL")
 	pool, err := pgxpool.New(context.Background(), dbURL)
-	if err != nil { log.Fatalf("Database error: %v", err) }
+	if err != nil { log.Fatalf("DB error: %v", err) }
 	defer pool.Close()
 
 	// 2. NATS
 	natsURL := os.Getenv("NATS_URL")
-	nc, err := nats.Connect(natsURL)
-	if err != nil { log.Fatalf("NATS error: %v", err) }
+	nc, _ := nats.Connect(natsURL)
 	defer nc.Close()
 	js, _ := nc.JetStream()
-	_, _ = js.AddStream(&nats.StreamConfig{Name: "KORS", Subjects: []string{"kors.>"}})
 
 	// 3. MinIO
 	minioURL := os.Getenv("MINIO_URL")
-	minioAK := os.Getenv("MINIO_ACCESS_KEY")
-	minioSK := os.Getenv("MINIO_SECRET_KEY")
-	mClient, _ := minio.New(minioURL, &minio.Options{Creds: credentials.NewStaticV4(minioAK, minioSK, ""), Secure: false})
+	mClient, _ := minio.New(minioURL, &minio.Options{Creds: credentials.NewStaticV4(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""), Secure: false})
 
 	// 4. Repositories
 	rtRepo := &postgres.ResourceTypeRepository{Pool: pool}
@@ -104,8 +95,8 @@ func main() {
 		}
 	}
 
-	// 6. UseCases
-	rootResolver := &resolvers.Resolver{
+	// 6. GraphQL Setup
+	resolver := &resolvers.Resolver{
 		RegisterResourceTypeUseCase: &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo},
 		CreateResourceUseCase:       &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
 		TransitionResourceUseCase:   &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
@@ -115,16 +106,9 @@ func main() {
 		NatsConn:                    nc,
 	}
 
-	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: rootResolver}))
-
-	// GraphQL Hardening
-	complexityLimit, _ := strconv.Atoi(os.Getenv("GRAPHQL_COMPLEXITY_LIMIT"))
-	if complexityLimit == 0 { complexityLimit = 1000 }
-	srv.Use(extension.FixedComplexityLimit(complexityLimit))
-
-	if os.Getenv("GRAPHQL_INTROSPECTION") == "true" {
-		srv.Use(extension.Introspection{})
-	}
+	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
+	srv.Use(extension.FixedComplexityLimit(1000))
+	if os.Getenv("GRAPHQL_INTROSPECTION") == "true" { srv.Use(extension.Introspection{}) }
 
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
@@ -135,26 +119,28 @@ func main() {
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
 
-	// 7. HTTP Routing
+	// 7. Routing with Middleware
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	// Auth Middleware
+	auth := &korsauth.AuthMiddleware{IdentityRepo: idRepo}
+	r.Use(auth.Handler)
+
 	rateLimit, _ := strconv.Atoi(os.Getenv("RATE_LIMIT_STANDARD"))
 	if rateLimit == 0 { rateLimit = 100 }
 	r.Use(httprate.LimitByIP(rateLimit, 1*time.Minute))
 
-	// Instrument GraphQL handler with OTel
 	r.Handle("/query", otelhttp.NewHandler(srv, "GraphQL"))
-	
 	r.Handle("/", playground.Handler("KORS GraphQL", "/query"))
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	log.Printf("KORS API running on port %s (Tracing Enabled: %s)", port, otlpEndpoint)
+	log.Printf("KORS API running on port %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }

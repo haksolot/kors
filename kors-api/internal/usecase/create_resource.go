@@ -46,7 +46,10 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 		return nil, fmt.Errorf("identity %s does not have 'write' permission on type '%s'", input.IdentityID, rt.Name)
 	}
 
-	// 3. Create Resource domain object
+	// 2. Create Resource domain object
+	if input.Metadata == nil {
+		input.Metadata = make(map[string]interface{})
+	}
 	res := &resource.Resource{
 		ID:        uuid.New(),
 		TypeID:    rt.ID,
@@ -55,6 +58,7 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+
 
 	// 3. Persist Resource
 	if err := uc.ResourceRepo.Create(ctx, res); err != nil {
