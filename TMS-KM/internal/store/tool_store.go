@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/safran-ls/tms-km/internal/model"
 )
@@ -28,4 +29,14 @@ func (s *ToolStore) Save(ctx context.Context, tool *model.Tool) error {
 		return fmt.Errorf("failed to save tool in TMS schema: %w", err)
 	}
 	return nil
+}
+
+func (s *ToolStore) GetByID(ctx context.Context, id uuid.UUID) (*model.Tool, error) {
+	query := "SELECT id, serial_number, model, diameter, length FROM tms.tools WHERE id = $1"
+	var tool model.Tool
+	err := s.Pool.QueryRow(ctx, query, id).Scan(&tool.ID, &tool.SerialNumber, &tool.Model, &tool.Diameter, &tool.Length)
+	if err != nil {
+		return nil, err
+	}
+	return &tool, nil
 }

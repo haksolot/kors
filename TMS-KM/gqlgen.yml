@@ -1,0 +1,25 @@
+schema:
+  - internal/graph/schema/*.graphql
+
+exec:
+  filename: internal/graph/generated/generated.go
+  package: generated
+
+model:
+  filename: internal/graph/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/graph/resolvers
+  package: resolvers
+
+federation:
+  filename: internal/graph/generated/federation.go
+  package: generated
+  version: 2
+
+models:
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
