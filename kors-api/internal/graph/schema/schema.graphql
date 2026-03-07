@@ -95,7 +95,7 @@ type ResourceEdge {
   node: Resource!
 }
 
-# --- Mutation Results ---
+# --- Results ---
 
 type ResourceResult {
   success: Boolean!
@@ -118,6 +118,15 @@ type PermissionResult {
 type RevisionResult {
   success: Boolean!
   revision: Revision
+  error: MutationError
+}
+
+type ProvisioningResult {
+  success: Boolean!
+  moduleName: String
+  schema: String
+  username: String
+  password: String
   error: MutationError
 }
 
@@ -174,16 +183,11 @@ type Mutation {
   
   grantPermission(input: GrantPermissionInput!): PermissionResult!
   createRevision(input: CreateRevisionInput!): RevisionResult!
+  
+  provisionModule(moduleName: String!): ProvisioningResult!
 }
 
 type Subscription {
-  """
-  Listen to all events in the system.
-  """
   eventWasPublished: Event!
-
-  """
-  Listen to events for a specific resource.
-  """
   resourceEvents(resourceId: UUID!): Event!
 }

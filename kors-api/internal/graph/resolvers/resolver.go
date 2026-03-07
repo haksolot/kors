@@ -16,5 +16,6 @@ type Resolver struct {
 	GrantPermissionUseCase      *usecase.GrantPermissionUseCase
 	CreateRevisionUseCase       *usecase.CreateRevisionUseCase
 	ListResourcesUseCase        *usecase.ListResourcesUseCase
+	ProvisionModuleUseCase      *usecase.ProvisionModuleUseCase
 	NatsConn                    *nats.Conn
 }

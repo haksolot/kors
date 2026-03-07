@@ -64,7 +64,8 @@ func main() {
 
 	// 2. NATS
 	natsURL := os.Getenv("NATS_URL")
-	nc, _ := nats.Connect(natsURL)
+	nc, err := nats.Connect(natsURL)
+	if err != nil { log.Fatalf("NATS error: %v", err) }
 	defer nc.Close()
 	js, _ := nc.JetStream()
 
@@ -72,13 +73,14 @@ func main() {
 	minioURL := os.Getenv("MINIO_URL")
 	mClient, _ := minio.New(minioURL, &minio.Options{Creds: credentials.NewStaticV4(os.Getenv("MINIO_ACCESS_KEY"), os.Getenv("MINIO_SECRET_KEY"), ""), Secure: false})
 
-	// 4. Repositories
+	// 4. Repositories & Provisioner
 	rtRepo := &postgres.ResourceTypeRepository{Pool: pool}
 	rRepo := &postgres.ResourceRepository{Pool: pool}
 	eRepo := &postgres.EventRepository{Pool: pool}
 	idRepo := &postgres.IdentityRepository{Pool: pool}
 	pRepo := &postgres.PermissionRepository{Pool: pool}
 	revRepo := &postgres.RevisionRepository{Pool: pool}
+	provisioner := &postgres.PostgresProvisioner{Pool: pool}
 	fStore := &korsminio.MinioFileStore{Client: mClient, Bucket: "kors-files"}
 	ePub := &korsnats.NatsPublisher{JS: js}
 
@@ -90,19 +92,30 @@ func main() {
 		_ = idRepo.Create(ctx, sysID)
 	}
 	for _, action := range []string{"write", "transition", "admin"} {
-		if allowed, _ := pRepo.Check(ctx, sysID.ID, action, nil, nil); !allowed {
+		allowed, _ := pRepo.Check(ctx, sysID.ID, action, nil, nil)
+		if !allowed {
 			_ = pRepo.Create(ctx, &permission.Permission{ID: uuid.New(), IdentityID: sysID.ID, Action: action, CreatedAt: time.Now()})
 		}
 	}
 
-	// 6. GraphQL Setup
+	// 6. UseCases
+	registerRTUC := &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo}
+	createRUC := &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub}
+	transitionRUC := &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub}
+	grantPUC := &usecase.GrantPermissionUseCase{Repo: pRepo}
+	createRevUC := &usecase.CreateRevisionUseCase{ResourceRepo: rRepo, RevisionRepo: revRepo, FileStore: fStore, EventRepo: eRepo, EventPublisher: ePub}
+	listRUC := &usecase.ListResourcesUseCase{Repo: rRepo}
+	provisionUC := &usecase.ProvisionModuleUseCase{Provisioner: provisioner, PermissionRepo: pRepo}
+
+	// 7. GraphQL Setup
 	resolver := &resolvers.Resolver{
-		RegisterResourceTypeUseCase: &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo},
-		CreateResourceUseCase:       &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
-		TransitionResourceUseCase:   &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
-		GrantPermissionUseCase:      &usecase.GrantPermissionUseCase{Repo: pRepo},
-		CreateRevisionUseCase:       &usecase.CreateRevisionUseCase{ResourceRepo: rRepo, RevisionRepo: revRepo, FileStore: fStore, EventRepo: eRepo, EventPublisher: ePub},
-		ListResourcesUseCase:        &usecase.ListResourcesUseCase{Repo: rRepo},
+		RegisterResourceTypeUseCase: registerRTUC,
+		CreateResourceUseCase:       createRUC,
+		TransitionResourceUseCase:   transitionRUC,
+		GrantPermissionUseCase:      grantPUC,
+		CreateRevisionUseCase:       createRevUC,
+		ListResourcesUseCase:        listRUC,
+		ProvisionModuleUseCase:      provisionUC,
 		NatsConn:                    nc,
 	}
 
@@ -119,14 +132,13 @@ func main() {
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
 
-	// 7. Routing with Middleware
+	// 8. Routing
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// Auth Middleware
 	auth := &korsauth.AuthMiddleware{IdentityRepo: idRepo}
 	r.Use(auth.Handler)
 

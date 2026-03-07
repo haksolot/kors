@@ -62,6 +62,7 @@ type ComplexityRoot struct {
 		CreateResource       func(childComplexity int, input model.CreateResourceInput) int
 		CreateRevision       func(childComplexity int, input model.CreateRevisionInput) int
 		GrantPermission      func(childComplexity int, input model.GrantPermissionInput) int
+		ProvisionModule      func(childComplexity int, moduleName string) int
 		RegisterResourceType func(childComplexity int, input model.RegisterResourceTypeInput) int
 		TransitionResource   func(childComplexity int, input model.TransitionResourceInput) int
 	}
@@ -92,6 +93,15 @@ type ComplexityRoot struct {
 		Error      func(childComplexity int) int
 		Permission func(childComplexity int) int
 		Success    func(childComplexity int) int
+	}
+
+	ProvisioningResult struct {
+		Error      func(childComplexity int) int
+		ModuleName func(childComplexity int) int
+		Password   func(childComplexity int) int
+		Schema     func(childComplexity int) int
+		Success    func(childComplexity int) int
+		Username   func(childComplexity int) int
 	}
 
 	Query struct {
@@ -172,6 +182,7 @@ type MutationResolver interface {
 	TransitionResource(ctx context.Context, input model.TransitionResourceInput) (*model.ResourceResult, error)
 	GrantPermission(ctx context.Context, input model.GrantPermissionInput) (*model.PermissionResult, error)
 	CreateRevision(ctx context.Context, input model.CreateRevisionInput) (*model.RevisionResult, error)
+	ProvisionModule(ctx context.Context, moduleName string) (*model.ProvisioningResult, error)
 }
 type QueryResolver interface {
 	Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error)
@@ -317,6 +328,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.GrantPermission(childComplexity, args["input"].(model.GrantPermissionInput)), true
+	case "Mutation.provisionModule":
+		if e.ComplexityRoot.Mutation.ProvisionModule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_provisionModule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ProvisionModule(childComplexity, args["moduleName"].(string)), true
 	case "Mutation.registerResourceType":
 		if e.ComplexityRoot.Mutation.RegisterResourceType == nil {
 			break
@@ -439,6 +461,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PermissionResult.Success(childComplexity), true
+
+	case "ProvisioningResult.error":
+		if e.ComplexityRoot.ProvisioningResult.Error == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.Error(childComplexity), true
+	case "ProvisioningResult.moduleName":
+		if e.ComplexityRoot.ProvisioningResult.ModuleName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.ModuleName(childComplexity), true
+	case "ProvisioningResult.password":
+		if e.ComplexityRoot.ProvisioningResult.Password == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.Password(childComplexity), true
+	case "ProvisioningResult.schema":
+		if e.ComplexityRoot.ProvisioningResult.Schema == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.Schema(childComplexity), true
+	case "ProvisioningResult.success":
+		if e.ComplexityRoot.ProvisioningResult.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.Success(childComplexity), true
+	case "ProvisioningResult.username":
+		if e.ComplexityRoot.ProvisioningResult.Username == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.Username(childComplexity), true
 
 	case "Query.resource":
 		if e.ComplexityRoot.Query.Resource == nil {
@@ -918,7 +977,7 @@ type ResourceEdge {
   node: Resource!
 }
 
-# --- Mutation Results ---
+# --- Results ---
 
 type ResourceResult {
   success: Boolean!
@@ -941,6 +1000,15 @@ type PermissionResult {
 type RevisionResult {
   success: Boolean!
   revision: Revision
+  error: MutationError
+}
+
+type ProvisioningResult {
+  success: Boolean!
+  moduleName: String
+  schema: String
+  username: String
+  password: String
   error: MutationError
 }
 
@@ -997,17 +1065,12 @@ type Mutation {
   
   grantPermission(input: GrantPermissionInput!): PermissionResult!
   createRevision(input: CreateRevisionInput!): RevisionResult!
+  
+  provisionModule(moduleName: String!): ProvisioningResult!
 }
 
 type Subscription {
-  """
-  Listen to all events in the system.
-  """
   eventWasPublished: Event!
-
-  """
-  Listen to events for a specific resource.
-  """
   resourceEvents(resourceId: UUID!): Event!
 }
 `, BuiltIn: false},
@@ -1048,6 +1111,17 @@ func (ec *executionContext) field_Mutation_grantPermission_args(ctx context.Cont
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_provisionModule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "moduleName", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["moduleName"] = arg0
 	return args, nil
 }
 
@@ -1873,6 +1947,61 @@ func (ec *executionContext) fieldContext_Mutation_createRevision(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_provisionModule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_provisionModule,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ProvisionModule(ctx, fc.Args["moduleName"].(string))
+		},
+		nil,
+		ec.marshalNProvisioningResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_provisionModule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ProvisioningResult_success(ctx, field)
+			case "moduleName":
+				return ec.fieldContext_ProvisioningResult_moduleName(ctx, field)
+			case "schema":
+				return ec.fieldContext_ProvisioningResult_schema(ctx, field)
+			case "username":
+				return ec.fieldContext_ProvisioningResult_username(ctx, field)
+			case "password":
+				return ec.fieldContext_ProvisioningResult_password(ctx, field)
+			case "error":
+				return ec.fieldContext_ProvisioningResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProvisioningResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_provisionModule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MutationError_code(ctx context.Context, field graphql.CollectedField, obj *model.MutationError) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2391,6 +2520,186 @@ func (ec *executionContext) _PermissionResult_error(ctx context.Context, field g
 func (ec *executionContext) fieldContext_PermissionResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PermissionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_MutationError_code(ctx, field)
+			case "message":
+				return ec.fieldContext_MutationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_success(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_moduleName(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_moduleName,
+		func(ctx context.Context) (any, error) {
+			return obj.ModuleName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_moduleName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_schema(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_schema,
+		func(ctx context.Context) (any, error) {
+			return obj.Schema, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_schema(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_username(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_username,
+		func(ctx context.Context) (any, error) {
+			return obj.Username, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_password(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_password,
+		func(ctx context.Context) (any, error) {
+			return obj.Password, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_password(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_error(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5857,6 +6166,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "provisionModule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_provisionModule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -6052,6 +6368,55 @@ func (ec *executionContext) _PermissionResult(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._PermissionResult_permission(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._PermissionResult_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var provisioningResultImplementors = []string{"ProvisioningResult"}
+
+func (ec *executionContext) _ProvisioningResult(ctx context.Context, sel ast.SelectionSet, obj *model.ProvisioningResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, provisioningResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProvisioningResult")
+		case "success":
+			out.Values[i] = ec._ProvisioningResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "moduleName":
+			out.Values[i] = ec._ProvisioningResult_moduleName(ctx, field, obj)
+		case "schema":
+			out.Values[i] = ec._ProvisioningResult_schema(ctx, field, obj)
+		case "username":
+			out.Values[i] = ec._ProvisioningResult_username(ctx, field, obj)
+		case "password":
+			out.Values[i] = ec._ProvisioningResult_password(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._ProvisioningResult_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7115,6 +7480,20 @@ func (ec *executionContext) marshalNPermissionResult2ᚖgithubᚗcomᚋsafranᚑ
 		return graphql.Null
 	}
 	return ec._PermissionResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProvisioningResult2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v model.ProvisioningResult) graphql.Marshaler {
+	return ec._ProvisioningResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProvisioningResult2ᚖgithubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v *model.ProvisioningResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProvisioningResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRegisterResourceTypeInput2githubᚗcomᚋsafranᚑlsᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput(ctx context.Context, v any) (model.RegisterResourceTypeInput, error) {

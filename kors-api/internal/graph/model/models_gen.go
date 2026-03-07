@@ -81,6 +81,15 @@ type PermissionResult struct {
 	Error      *MutationError `json:"error,omitempty"`
 }
 
+type ProvisioningResult struct {
+	Success    bool           `json:"success"`
+	ModuleName *string        `json:"moduleName,omitempty"`
+	Schema     *string        `json:"schema,omitempty"`
+	Username   *string        `json:"username,omitempty"`
+	Password   *string        `json:"password,omitempty"`
+	Error      *MutationError `json:"error,omitempty"`
+}
+
 type Query struct {
 }
 
