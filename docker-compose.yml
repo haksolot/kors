@@ -1,0 +1,132 @@
+services:
+  # --- Infrastructure Layer ---
+  
+  kors-db:
+    container_name: kors-db
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: kors
+      POSTGRES_PASSWORD: kors_dev_secret
+      POSTGRES_DB: kors
+    ports:
+      - "5432:5432"
+    volumes:
+      - kors_db_data:/var/lib/postgresql/data
+    networks:
+      - kors-net
+
+  kors-bus:
+    container_name: kors-bus
+    image: nats:2.10-alpine
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - kors-net
+
+  kors-s3:
+    container_name: kors-s3
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: kors_admin
+      MINIO_ROOT_PASSWORD: kors_dev_secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - kors_s3_data:/data
+    networks:
+      - kors-net
+
+  kors-tracing:
+    container_name: kors-tracing
+    image: jaegertracing/all-in-one:1.50
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - kors-net
+
+  kors-sso:
+    container_name: kors-sso
+    image: quay.io/keycloak/keycloak:21.1
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    networks:
+      - kors-net
+
+  # --- Application Layer ---
+
+  kors-api:
+    container_name: kors-api
+    build:
+      context: .
+      dockerfile: kors-api/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@kors-db:5432/kors?sslmode=disable
+      - NATS_URL=nats://kors-bus:4222
+      - MINIO_URL=kors-s3:9000
+      - MINIO_ACCESS_KEY=kors_admin
+      - MINIO_SECRET_KEY=kors_dev_secret
+      - OTLP_ENDPOINT=kors-tracing:4317
+      - OTLP_INSECURE=true
+    depends_on:
+      - kors-db
+      - kors-bus
+    networks:
+      - kors-net
+
+  kors-events:
+    container_name: kors-events
+    build:
+      context: .
+      dockerfile: kors-events/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@kors-db:5432/kors?sslmode=disable
+      - NATS_URL=nats://kors-bus:4222
+    depends_on:
+      - kors-db
+      - kors-bus
+    networks:
+      - kors-net
+
+  kors-worker:
+    container_name: kors-worker
+    build:
+      context: .
+      dockerfile: kors-worker/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@kors-db:5432/kors?sslmode=disable
+      - PERMISSIONS_CLEANUP_INTERVAL=1h
+    depends_on:
+      - kors-db
+    networks:
+      - kors-net
+
+  kors-lb:
+    container_name: kors-lb
+    image: nginx:alpine
+    volumes:
+      - ./infra/docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - kors-api
+    networks:
+      - kors-net
+
+networks:
+  kors-net:
+    name: kors-network
+
+volumes:
+  kors_db_data:
+  kors_s3_data:
