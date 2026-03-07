@@ -1,0 +1,60 @@
+mutation RegisterResourceType($input: RegisterResourceTypeInput!) {
+  registerResourceType(input: $input) {
+    success
+    resourceType {
+      id
+      name
+    }
+    error { code message }
+  }
+}
+
+mutation CreateResource($input: CreateResourceInput!) {
+  createResource(input: $input) {
+    success
+    resource {
+      id
+      state
+    }
+    error { message }
+  }
+}
+
+mutation TransitionResource($input: TransitionResourceInput!) {
+  transitionResource(input: $input) {
+    success
+    resource {
+      id
+      state
+    }
+    error { code message }
+  }
+}
+
+query GetResource($id: UUID!) {
+  resource(id: $id) {
+    id
+    state
+    metadata
+    type {
+      name
+    }
+  }
+}
+
+query ListResources($first: Int, $after: String, $typeName: String) {
+  resources(first: $first, after: $after, typeName: $typeName) {
+    totalCount
+    edges {
+      cursor
+      node {
+        id
+        state
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

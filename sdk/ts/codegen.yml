@@ -1,0 +1,14 @@
+schema: "../../shared/schema/kors.graphql"
+documents: "src/**/*.graphql"
+generates:
+  src/generated/kors.ts:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-graphql-request"
+    config:
+      scalars:
+        UUID: string
+        JSON: "{ [key: string]: any }"
+        DateTime: string
+      rawRequest: true

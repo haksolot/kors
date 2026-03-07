@@ -1,0 +1,17 @@
+[tool.ariadne-codegen]
+schema_path = "../../shared/schema/kors.graphql"
+queries_path = "operations.graphql"
+target_package_name = "kors_sdk"
+client_name = "KorsClient"
+client_file_name = "client"
+async_client = true
+
+[tool.ariadne-codegen.scalars.UUID]
+type = "str"
+
+[tool.ariadne-codegen.scalars.JSON]
+type = "Any"
+import = "typing"
+
+[tool.ariadne-codegen.scalars.DateTime]
+type = "str"
