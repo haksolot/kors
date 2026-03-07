@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/safran-ls/kors/kors-api/internal/domain/resource"
 )
@@ -14,12 +15,27 @@ type ResourceRepository struct {
 	Pool *pgxpool.Pool
 }
 
+// DBTX is an interface that can be a *pgxpool.Pool or a pgx.Tx
+type DBTX interface {
+	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
+	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...interface{}) pgx.Row
+}
+
 func (r *ResourceRepository) Create(ctx context.Context, res *resource.Resource) error {
+	return r.createWithDB(ctx, r.Pool, res)
+}
+
+func (r *ResourceRepository) CreateWithTx(ctx context.Context, tx pgx.Tx, res *resource.Resource) error {
+	return r.createWithDB(ctx, tx, res)
+}
+
+func (r *ResourceRepository) createWithDB(ctx context.Context, db DBTX, res *resource.Resource) error {
 	query := `
 		INSERT INTO kors.resources (id, type_id, state, metadata, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
-	_, err := r.Pool.Exec(ctx, query,
+	_, err := db.Exec(ctx, query,
 		res.ID,
 		res.TypeID,
 		res.State,

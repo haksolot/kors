@@ -94,6 +94,17 @@ services:
     depends_on:
       - postgres
 
+  tms-km:
+    build:
+      context: ../../
+      dockerfile: TMS-KM/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgres://user_tms:nwnw0GI1FRIWX3nZ@postgres:5432/kors?sslmode=disable
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
   minio_data:
