@@ -79,6 +79,8 @@ services:
       - MINIO_BUCKET=kors-files
       - OTLP_ENDPOINT=kors-tracing:4317
       - OTLP_INSECURE=true
+      - JWKS_ENDPOINT=http://kors-sso:8080/realms/kors/protocol/openid-connect/certs
+      - APP_ENV=development
     depends_on:
       - kors-db
       - kors-bus

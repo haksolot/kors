@@ -27,6 +27,15 @@ type CreateRevisionInput struct {
 	FileName    *string   `json:"fileName,omitempty"`
 }
 
+type DeprovisionResult struct {
+	Success              bool           `json:"success"`
+	PostgresCleared      bool           `json:"postgresCleared"`
+	StorageCleared       bool           `json:"storageCleared"`
+	StorageSkippedReason *string        `json:"storageSkippedReason,omitempty"`
+	KorsDataCleared      bool           `json:"korsDataCleared"`
+	Error                *MutationError `json:"error,omitempty"`
+}
+
 type Event struct {
 	ID            uuid.UUID      `json:"id"`
 	Resource      *Resource      `json:"resource,omitempty"`
@@ -70,10 +79,30 @@ type Identity struct {
 
 func (Identity) IsEntity() {}
 
+type IdentityConnection struct {
+	Edges      []*IdentityEdge `json:"edges"`
+	PageInfo   *PageInfo       `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+type IdentityEdge struct {
+	Cursor string    `json:"cursor"`
+	Node   *Identity `json:"node"`
+}
+
 type IdentityResult struct {
 	Success  bool           `json:"success"`
 	Identity *Identity      `json:"identity,omitempty"`
 	Error    *MutationError `json:"error,omitempty"`
+}
+
+type ModuleInfo struct {
+	Name          string    `json:"name"`
+	SchemaName    string    `json:"schemaName"`
+	PgUsername    string    `json:"pgUsername"`
+	BucketName    string    `json:"bucketName"`
+	Identity      *Identity `json:"identity,omitempty"`
+	ProvisionedAt time.Time `json:"provisionedAt"`
 }
 
 type Mutation struct {
@@ -110,12 +139,14 @@ type PermissionResult struct {
 }
 
 type ProvisioningResult struct {
-	Success    bool           `json:"success"`
-	ModuleName *string        `json:"moduleName,omitempty"`
-	Schema     *string        `json:"schema,omitempty"`
-	Username   *string        `json:"username,omitempty"`
-	Password   *string        `json:"password,omitempty"`
-	Error      *MutationError `json:"error,omitempty"`
+	Success          bool           `json:"success"`
+	ModuleName       *string        `json:"moduleName,omitempty"`
+	Schema           *string        `json:"schema,omitempty"`
+	Username         *string        `json:"username,omitempty"`
+	Password         *string        `json:"password,omitempty"`
+	ConnectionString *string        `json:"connectionString,omitempty"`
+	BucketName       *string        `json:"bucketName,omitempty"`
+	Error            *MutationError `json:"error,omitempty"`
 }
 
 type Query struct {

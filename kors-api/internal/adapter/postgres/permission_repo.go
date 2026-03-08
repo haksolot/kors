@@ -39,6 +39,11 @@ func (r *PermissionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+func (r *PermissionRepository) DeleteForIdentity(ctx context.Context, identityID uuid.UUID) error {
+	_, err := r.Pool.Exec(ctx, "DELETE FROM kors.permissions WHERE identity_id = $1", identityID)
+	return err
+}
+
 func (r *PermissionRepository) FindForIdentity(ctx context.Context, identityID uuid.UUID) ([]*permission.Permission, error) {
 	query := `
 		SELECT id, identity_id, resource_id, resource_type_id, action, expires_at, created_at
@@ -46,6 +51,70 @@ func (r *PermissionRepository) FindForIdentity(ctx context.Context, identityID u
 		WHERE identity_id = $1 AND (expires_at IS NULL OR expires_at > NOW())
 	`
 	rows, err := r.Pool.Query(ctx, query, identityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*permission.Permission
+	for rows.Next() {
+		var p permission.Permission
+		err := rows.Scan(&p.ID, &p.IdentityID, &p.ResourceID, &p.ResourceTypeID, &p.Action, &p.ExpiresAt, &p.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, &p)
+	}
+	return results, nil
+}
+
+func (r *PermissionRepository) GetByID(ctx context.Context, id uuid.UUID) (*permission.Permission, error) {
+	query := `
+		SELECT id, identity_id, resource_id, resource_type_id, action, expires_at, created_at
+		FROM kors.permissions
+		WHERE id = $1
+	`
+	var p permission.Permission
+	err := r.Pool.QueryRow(ctx, query, id).Scan(
+		&p.ID, &p.IdentityID, &p.ResourceID, &p.ResourceTypeID, &p.Action, &p.ExpiresAt, &p.CreatedAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get permission by id: %w", err)
+	}
+	return &p, nil
+}
+
+func (r *PermissionRepository) List(ctx context.Context, identityID *uuid.UUID, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) ([]*permission.Permission, error) {
+	query := `
+		SELECT id, identity_id, resource_id, resource_type_id, action, expires_at, created_at
+		FROM kors.permissions
+		WHERE (expires_at IS NULL OR expires_at > NOW())
+	`
+	args := []interface{}{}
+	argIdx := 1
+
+	if identityID != nil {
+		query += fmt.Sprintf(" AND identity_id = $%d", argIdx)
+		args = append(args, *identityID)
+		argIdx++
+	}
+	if resourceID != nil {
+		query += fmt.Sprintf(" AND resource_id = $%d", argIdx)
+		args = append(args, *resourceID)
+		argIdx++
+	}
+	if resourceTypeID != nil {
+		query += fmt.Sprintf(" AND resource_type_id = $%d", argIdx)
+		args = append(args, *resourceTypeID)
+		argIdx++
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

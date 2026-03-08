@@ -4,10 +4,104 @@ package sdk
 
 import (
 	"context"
+	"time"
 
 	"github.com/Khan/genqlient/graphql"
 	"github.com/google/uuid"
 )
+
+// CreateIdentityCreateIdentityIdentityResult includes the requested fields of the GraphQL type IdentityResult.
+type CreateIdentityCreateIdentityIdentityResult struct {
+	Success  bool                                                         `json:"success"`
+	Identity CreateIdentityCreateIdentityIdentityResultIdentity           `json:"identity"`
+	Error    CreateIdentityCreateIdentityIdentityResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns CreateIdentityCreateIdentityIdentityResult.Success, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResult) GetSuccess() bool { return v.Success }
+
+// GetIdentity returns CreateIdentityCreateIdentityIdentityResult.Identity, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResult) GetIdentity() CreateIdentityCreateIdentityIdentityResultIdentity {
+	return v.Identity
+}
+
+// GetError returns CreateIdentityCreateIdentityIdentityResult.Error, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResult) GetError() CreateIdentityCreateIdentityIdentityResultErrorMutationError {
+	return v.Error
+}
+
+// CreateIdentityCreateIdentityIdentityResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type CreateIdentityCreateIdentityIdentityResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns CreateIdentityCreateIdentityIdentityResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns CreateIdentityCreateIdentityIdentityResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// CreateIdentityCreateIdentityIdentityResultIdentity includes the requested fields of the GraphQL type Identity.
+type CreateIdentityCreateIdentityIdentityResultIdentity struct {
+	Id         uuid.UUID `json:"id"`
+	ExternalId string    `json:"externalId"`
+	Name       string    `json:"name"`
+	Type       string    `json:"type"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// GetId returns CreateIdentityCreateIdentityIdentityResultIdentity.Id, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultIdentity) GetId() uuid.UUID { return v.Id }
+
+// GetExternalId returns CreateIdentityCreateIdentityIdentityResultIdentity.ExternalId, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultIdentity) GetExternalId() string {
+	return v.ExternalId
+}
+
+// GetName returns CreateIdentityCreateIdentityIdentityResultIdentity.Name, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultIdentity) GetName() string { return v.Name }
+
+// GetType returns CreateIdentityCreateIdentityIdentityResultIdentity.Type, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultIdentity) GetType() string { return v.Type }
+
+// GetCreatedAt returns CreateIdentityCreateIdentityIdentityResultIdentity.CreatedAt, and is useful for accessing the field via an interface.
+func (v *CreateIdentityCreateIdentityIdentityResultIdentity) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+type CreateIdentityInput struct {
+	ExternalId string                 `json:"externalId"`
+	Name       string                 `json:"name"`
+	Type       string                 `json:"type"`
+	Metadata   map[string]interface{} `json:"metadata"`
+}
+
+// GetExternalId returns CreateIdentityInput.ExternalId, and is useful for accessing the field via an interface.
+func (v *CreateIdentityInput) GetExternalId() string { return v.ExternalId }
+
+// GetName returns CreateIdentityInput.Name, and is useful for accessing the field via an interface.
+func (v *CreateIdentityInput) GetName() string { return v.Name }
+
+// GetType returns CreateIdentityInput.Type, and is useful for accessing the field via an interface.
+func (v *CreateIdentityInput) GetType() string { return v.Type }
+
+// GetMetadata returns CreateIdentityInput.Metadata, and is useful for accessing the field via an interface.
+func (v *CreateIdentityInput) GetMetadata() map[string]interface{} { return v.Metadata }
+
+// CreateIdentityResponse is returned by CreateIdentity on success.
+type CreateIdentityResponse struct {
+	CreateIdentity CreateIdentityCreateIdentityIdentityResult `json:"createIdentity"`
+}
+
+// GetCreateIdentity returns CreateIdentityResponse.CreateIdentity, and is useful for accessing the field via an interface.
+func (v *CreateIdentityResponse) GetCreateIdentity() CreateIdentityCreateIdentityIdentityResult {
+	return v.CreateIdentity
+}
 
 // CreateResourceCreateResourceResourceResult includes the requested fields of the GraphQL type ResourceResult.
 type CreateResourceCreateResourceResourceResult struct {
@@ -30,9 +124,6 @@ func (v *CreateResourceCreateResourceResourceResult) GetError() CreateResourceCr
 }
 
 // CreateResourceCreateResourceResourceResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
-// The GraphQL type's documentation follows.
-//
-// MutationError represents a business error occurred during a mutation.
 type CreateResourceCreateResourceResourceResultErrorMutationError struct {
 	Message string `json:"message"`
 }
@@ -79,6 +170,253 @@ func (v *CreateResourceResponse) GetCreateResource() CreateResourceCreateResourc
 	return v.CreateResource
 }
 
+// CreateRevisionCreateRevisionRevisionResult includes the requested fields of the GraphQL type RevisionResult.
+type CreateRevisionCreateRevisionRevisionResult struct {
+	Success  bool                                                         `json:"success"`
+	Revision CreateRevisionCreateRevisionRevisionResultRevision           `json:"revision"`
+	Error    CreateRevisionCreateRevisionRevisionResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns CreateRevisionCreateRevisionRevisionResult.Success, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResult) GetSuccess() bool { return v.Success }
+
+// GetRevision returns CreateRevisionCreateRevisionRevisionResult.Revision, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResult) GetRevision() CreateRevisionCreateRevisionRevisionResultRevision {
+	return v.Revision
+}
+
+// GetError returns CreateRevisionCreateRevisionRevisionResult.Error, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResult) GetError() CreateRevisionCreateRevisionRevisionResultErrorMutationError {
+	return v.Error
+}
+
+// CreateRevisionCreateRevisionRevisionResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type CreateRevisionCreateRevisionRevisionResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns CreateRevisionCreateRevisionRevisionResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns CreateRevisionCreateRevisionRevisionResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// CreateRevisionCreateRevisionRevisionResultRevision includes the requested fields of the GraphQL type Revision.
+type CreateRevisionCreateRevisionRevisionResultRevision struct {
+	Id        uuid.UUID `json:"id"`
+	FilePath  string    `json:"filePath"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetId returns CreateRevisionCreateRevisionRevisionResultRevision.Id, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResultRevision) GetId() uuid.UUID { return v.Id }
+
+// GetFilePath returns CreateRevisionCreateRevisionRevisionResultRevision.FilePath, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResultRevision) GetFilePath() string { return v.FilePath }
+
+// GetCreatedAt returns CreateRevisionCreateRevisionRevisionResultRevision.CreatedAt, and is useful for accessing the field via an interface.
+func (v *CreateRevisionCreateRevisionRevisionResultRevision) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+type CreateRevisionInput struct {
+	ResourceId  uuid.UUID `json:"resourceId"`
+	FileContent string    `json:"fileContent"`
+	FileName    string    `json:"fileName"`
+}
+
+// GetResourceId returns CreateRevisionInput.ResourceId, and is useful for accessing the field via an interface.
+func (v *CreateRevisionInput) GetResourceId() uuid.UUID { return v.ResourceId }
+
+// GetFileContent returns CreateRevisionInput.FileContent, and is useful for accessing the field via an interface.
+func (v *CreateRevisionInput) GetFileContent() string { return v.FileContent }
+
+// GetFileName returns CreateRevisionInput.FileName, and is useful for accessing the field via an interface.
+func (v *CreateRevisionInput) GetFileName() string { return v.FileName }
+
+// CreateRevisionResponse is returned by CreateRevision on success.
+type CreateRevisionResponse struct {
+	CreateRevision CreateRevisionCreateRevisionRevisionResult `json:"createRevision"`
+}
+
+// GetCreateRevision returns CreateRevisionResponse.CreateRevision, and is useful for accessing the field via an interface.
+func (v *CreateRevisionResponse) GetCreateRevision() CreateRevisionCreateRevisionRevisionResult {
+	return v.CreateRevision
+}
+
+// DeleteResourceDeleteResourceResourceResult includes the requested fields of the GraphQL type ResourceResult.
+type DeleteResourceDeleteResourceResourceResult struct {
+	Success bool                                                         `json:"success"`
+	Error   DeleteResourceDeleteResourceResourceResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns DeleteResourceDeleteResourceResourceResult.Success, and is useful for accessing the field via an interface.
+func (v *DeleteResourceDeleteResourceResourceResult) GetSuccess() bool { return v.Success }
+
+// GetError returns DeleteResourceDeleteResourceResourceResult.Error, and is useful for accessing the field via an interface.
+func (v *DeleteResourceDeleteResourceResourceResult) GetError() DeleteResourceDeleteResourceResourceResultErrorMutationError {
+	return v.Error
+}
+
+// DeleteResourceDeleteResourceResourceResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type DeleteResourceDeleteResourceResourceResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns DeleteResourceDeleteResourceResourceResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *DeleteResourceDeleteResourceResourceResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns DeleteResourceDeleteResourceResourceResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *DeleteResourceDeleteResourceResourceResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// DeleteResourceResponse is returned by DeleteResource on success.
+type DeleteResourceResponse struct {
+	DeleteResource DeleteResourceDeleteResourceResourceResult `json:"deleteResource"`
+}
+
+// GetDeleteResource returns DeleteResourceResponse.DeleteResource, and is useful for accessing the field via an interface.
+func (v *DeleteResourceResponse) GetDeleteResource() DeleteResourceDeleteResourceResourceResult {
+	return v.DeleteResource
+}
+
+// DeprovisionModuleDeprovisionModuleDeprovisionResult includes the requested fields of the GraphQL type DeprovisionResult.
+type DeprovisionModuleDeprovisionModuleDeprovisionResult struct {
+	Success              bool                                                                  `json:"success"`
+	PostgresCleared      bool                                                                  `json:"postgresCleared"`
+	StorageCleared       bool                                                                  `json:"storageCleared"`
+	KorsDataCleared      bool                                                                  `json:"korsDataCleared"`
+	StorageSkippedReason string                                                                `json:"storageSkippedReason"`
+	Error                DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns DeprovisionModuleDeprovisionModuleDeprovisionResult.Success, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetSuccess() bool { return v.Success }
+
+// GetPostgresCleared returns DeprovisionModuleDeprovisionModuleDeprovisionResult.PostgresCleared, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetPostgresCleared() bool {
+	return v.PostgresCleared
+}
+
+// GetStorageCleared returns DeprovisionModuleDeprovisionModuleDeprovisionResult.StorageCleared, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetStorageCleared() bool {
+	return v.StorageCleared
+}
+
+// GetKorsDataCleared returns DeprovisionModuleDeprovisionModuleDeprovisionResult.KorsDataCleared, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetKorsDataCleared() bool {
+	return v.KorsDataCleared
+}
+
+// GetStorageSkippedReason returns DeprovisionModuleDeprovisionModuleDeprovisionResult.StorageSkippedReason, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetStorageSkippedReason() string {
+	return v.StorageSkippedReason
+}
+
+// GetError returns DeprovisionModuleDeprovisionModuleDeprovisionResult.Error, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResult) GetError() DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError {
+	return v.Error
+}
+
+// DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleDeprovisionModuleDeprovisionResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// DeprovisionModuleResponse is returned by DeprovisionModule on success.
+type DeprovisionModuleResponse struct {
+	DeprovisionModule DeprovisionModuleDeprovisionModuleDeprovisionResult `json:"deprovisionModule"`
+}
+
+// GetDeprovisionModule returns DeprovisionModuleResponse.DeprovisionModule, and is useful for accessing the field via an interface.
+func (v *DeprovisionModuleResponse) GetDeprovisionModule() DeprovisionModuleDeprovisionModuleDeprovisionResult {
+	return v.DeprovisionModule
+}
+
+// GetIdentityIdentity includes the requested fields of the GraphQL type Identity.
+type GetIdentityIdentity struct {
+	Id         uuid.UUID `json:"id"`
+	ExternalId string    `json:"externalId"`
+	Name       string    `json:"name"`
+	Type       string    `json:"type"`
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// GetId returns GetIdentityIdentity.Id, and is useful for accessing the field via an interface.
+func (v *GetIdentityIdentity) GetId() uuid.UUID { return v.Id }
+
+// GetExternalId returns GetIdentityIdentity.ExternalId, and is useful for accessing the field via an interface.
+func (v *GetIdentityIdentity) GetExternalId() string { return v.ExternalId }
+
+// GetName returns GetIdentityIdentity.Name, and is useful for accessing the field via an interface.
+func (v *GetIdentityIdentity) GetName() string { return v.Name }
+
+// GetType returns GetIdentityIdentity.Type, and is useful for accessing the field via an interface.
+func (v *GetIdentityIdentity) GetType() string { return v.Type }
+
+// GetCreatedAt returns GetIdentityIdentity.CreatedAt, and is useful for accessing the field via an interface.
+func (v *GetIdentityIdentity) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetIdentityResponse is returned by GetIdentity on success.
+type GetIdentityResponse struct {
+	Identity GetIdentityIdentity `json:"identity"`
+}
+
+// GetIdentity returns GetIdentityResponse.Identity, and is useful for accessing the field via an interface.
+func (v *GetIdentityResponse) GetIdentity() GetIdentityIdentity { return v.Identity }
+
+// GetModuleModuleModuleInfo includes the requested fields of the GraphQL type ModuleInfo.
+type GetModuleModuleModuleInfo struct {
+	Name          string    `json:"name"`
+	SchemaName    string    `json:"schemaName"`
+	PgUsername    string    `json:"pgUsername"`
+	BucketName    string    `json:"bucketName"`
+	ProvisionedAt time.Time `json:"provisionedAt"`
+}
+
+// GetName returns GetModuleModuleModuleInfo.Name, and is useful for accessing the field via an interface.
+func (v *GetModuleModuleModuleInfo) GetName() string { return v.Name }
+
+// GetSchemaName returns GetModuleModuleModuleInfo.SchemaName, and is useful for accessing the field via an interface.
+func (v *GetModuleModuleModuleInfo) GetSchemaName() string { return v.SchemaName }
+
+// GetPgUsername returns GetModuleModuleModuleInfo.PgUsername, and is useful for accessing the field via an interface.
+func (v *GetModuleModuleModuleInfo) GetPgUsername() string { return v.PgUsername }
+
+// GetBucketName returns GetModuleModuleModuleInfo.BucketName, and is useful for accessing the field via an interface.
+func (v *GetModuleModuleModuleInfo) GetBucketName() string { return v.BucketName }
+
+// GetProvisionedAt returns GetModuleModuleModuleInfo.ProvisionedAt, and is useful for accessing the field via an interface.
+func (v *GetModuleModuleModuleInfo) GetProvisionedAt() time.Time { return v.ProvisionedAt }
+
+// GetModuleResponse is returned by GetModule on success.
+type GetModuleResponse struct {
+	Module GetModuleModuleModuleInfo `json:"module"`
+}
+
+// GetModule returns GetModuleResponse.Module, and is useful for accessing the field via an interface.
+func (v *GetModuleResponse) GetModule() GetModuleModuleModuleInfo { return v.Module }
+
 // GetResourceResource includes the requested fields of the GraphQL type Resource.
 type GetResourceResource struct {
 	Id       uuid.UUID               `json:"id"`
@@ -101,8 +439,12 @@ func (v *GetResourceResource) GetType() GetResourceResourceType { return v.Type 
 
 // GetResourceResourceType includes the requested fields of the GraphQL type ResourceType.
 type GetResourceResourceType struct {
-	Name string `json:"name"`
+	Id   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
+
+// GetId returns GetResourceResourceType.Id, and is useful for accessing the field via an interface.
+func (v *GetResourceResourceType) GetId() uuid.UUID { return v.Id }
 
 // GetName returns GetResourceResourceType.Name, and is useful for accessing the field via an interface.
 func (v *GetResourceResourceType) GetName() string { return v.Name }
@@ -114,6 +456,407 @@ type GetResourceResponse struct {
 
 // GetResource returns GetResourceResponse.Resource, and is useful for accessing the field via an interface.
 func (v *GetResourceResponse) GetResource() GetResourceResource { return v.Resource }
+
+// GetResourceTypeResourceType includes the requested fields of the GraphQL type ResourceType.
+type GetResourceTypeResourceType struct {
+	Id          uuid.UUID              `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	JsonSchema  map[string]interface{} `json:"jsonSchema"`
+	Transitions map[string]interface{} `json:"transitions"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	UpdatedAt   time.Time              `json:"updatedAt"`
+}
+
+// GetId returns GetResourceTypeResourceType.Id, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetId() uuid.UUID { return v.Id }
+
+// GetName returns GetResourceTypeResourceType.Name, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetName() string { return v.Name }
+
+// GetDescription returns GetResourceTypeResourceType.Description, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetDescription() string { return v.Description }
+
+// GetJsonSchema returns GetResourceTypeResourceType.JsonSchema, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetJsonSchema() map[string]interface{} { return v.JsonSchema }
+
+// GetTransitions returns GetResourceTypeResourceType.Transitions, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetTransitions() map[string]interface{} { return v.Transitions }
+
+// GetCreatedAt returns GetResourceTypeResourceType.CreatedAt, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// GetUpdatedAt returns GetResourceTypeResourceType.UpdatedAt, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResourceType) GetUpdatedAt() time.Time { return v.UpdatedAt }
+
+// GetResourceTypeResponse is returned by GetResourceType on success.
+type GetResourceTypeResponse struct {
+	ResourceType GetResourceTypeResourceType `json:"resourceType"`
+}
+
+// GetResourceType returns GetResourceTypeResponse.ResourceType, and is useful for accessing the field via an interface.
+func (v *GetResourceTypeResponse) GetResourceType() GetResourceTypeResourceType {
+	return v.ResourceType
+}
+
+// GrantPermissionGrantPermissionPermissionResult includes the requested fields of the GraphQL type PermissionResult.
+type GrantPermissionGrantPermissionPermissionResult struct {
+	Success    bool                                                             `json:"success"`
+	Permission GrantPermissionGrantPermissionPermissionResultPermission         `json:"permission"`
+	Error      GrantPermissionGrantPermissionPermissionResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns GrantPermissionGrantPermissionPermissionResult.Success, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResult) GetSuccess() bool { return v.Success }
+
+// GetPermission returns GrantPermissionGrantPermissionPermissionResult.Permission, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResult) GetPermission() GrantPermissionGrantPermissionPermissionResultPermission {
+	return v.Permission
+}
+
+// GetError returns GrantPermissionGrantPermissionPermissionResult.Error, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResult) GetError() GrantPermissionGrantPermissionPermissionResultErrorMutationError {
+	return v.Error
+}
+
+// GrantPermissionGrantPermissionPermissionResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type GrantPermissionGrantPermissionPermissionResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns GrantPermissionGrantPermissionPermissionResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns GrantPermissionGrantPermissionPermissionResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// GrantPermissionGrantPermissionPermissionResultPermission includes the requested fields of the GraphQL type Permission.
+type GrantPermissionGrantPermissionPermissionResultPermission struct {
+	Id        uuid.UUID `json:"id"`
+	Action    string    `json:"action"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetId returns GrantPermissionGrantPermissionPermissionResultPermission.Id, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultPermission) GetId() uuid.UUID { return v.Id }
+
+// GetAction returns GrantPermissionGrantPermissionPermissionResultPermission.Action, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultPermission) GetAction() string {
+	return v.Action
+}
+
+// GetExpiresAt returns GrantPermissionGrantPermissionPermissionResultPermission.ExpiresAt, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultPermission) GetExpiresAt() time.Time {
+	return v.ExpiresAt
+}
+
+// GetCreatedAt returns GrantPermissionGrantPermissionPermissionResultPermission.CreatedAt, and is useful for accessing the field via an interface.
+func (v *GrantPermissionGrantPermissionPermissionResultPermission) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+type GrantPermissionInput struct {
+	IdentityId     uuid.UUID `json:"identityId"`
+	ResourceId     uuid.UUID `json:"resourceId"`
+	ResourceTypeId uuid.UUID `json:"resourceTypeId"`
+	Action         string    `json:"action"`
+	ExpiresAt      time.Time `json:"expiresAt"`
+}
+
+// GetIdentityId returns GrantPermissionInput.IdentityId, and is useful for accessing the field via an interface.
+func (v *GrantPermissionInput) GetIdentityId() uuid.UUID { return v.IdentityId }
+
+// GetResourceId returns GrantPermissionInput.ResourceId, and is useful for accessing the field via an interface.
+func (v *GrantPermissionInput) GetResourceId() uuid.UUID { return v.ResourceId }
+
+// GetResourceTypeId returns GrantPermissionInput.ResourceTypeId, and is useful for accessing the field via an interface.
+func (v *GrantPermissionInput) GetResourceTypeId() uuid.UUID { return v.ResourceTypeId }
+
+// GetAction returns GrantPermissionInput.Action, and is useful for accessing the field via an interface.
+func (v *GrantPermissionInput) GetAction() string { return v.Action }
+
+// GetExpiresAt returns GrantPermissionInput.ExpiresAt, and is useful for accessing the field via an interface.
+func (v *GrantPermissionInput) GetExpiresAt() time.Time { return v.ExpiresAt }
+
+// GrantPermissionResponse is returned by GrantPermission on success.
+type GrantPermissionResponse struct {
+	GrantPermission GrantPermissionGrantPermissionPermissionResult `json:"grantPermission"`
+}
+
+// GetGrantPermission returns GrantPermissionResponse.GrantPermission, and is useful for accessing the field via an interface.
+func (v *GrantPermissionResponse) GetGrantPermission() GrantPermissionGrantPermissionPermissionResult {
+	return v.GrantPermission
+}
+
+// ListEventsEventsEventConnection includes the requested fields of the GraphQL type EventConnection.
+type ListEventsEventsEventConnection struct {
+	TotalCount int                                             `json:"totalCount"`
+	Edges      []ListEventsEventsEventConnectionEdgesEventEdge `json:"edges"`
+	PageInfo   ListEventsEventsEventConnectionPageInfo         `json:"pageInfo"`
+}
+
+// GetTotalCount returns ListEventsEventsEventConnection.TotalCount, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnection) GetTotalCount() int { return v.TotalCount }
+
+// GetEdges returns ListEventsEventsEventConnection.Edges, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnection) GetEdges() []ListEventsEventsEventConnectionEdgesEventEdge {
+	return v.Edges
+}
+
+// GetPageInfo returns ListEventsEventsEventConnection.PageInfo, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnection) GetPageInfo() ListEventsEventsEventConnectionPageInfo {
+	return v.PageInfo
+}
+
+// ListEventsEventsEventConnectionEdgesEventEdge includes the requested fields of the GraphQL type EventEdge.
+type ListEventsEventsEventConnectionEdgesEventEdge struct {
+	Cursor string                                                 `json:"cursor"`
+	Node   ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent `json:"node"`
+}
+
+// GetCursor returns ListEventsEventsEventConnectionEdgesEventEdge.Cursor, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdge) GetCursor() string { return v.Cursor }
+
+// GetNode returns ListEventsEventsEventConnectionEdgesEventEdge.Node, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdge) GetNode() ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent {
+	return v.Node
+}
+
+// ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent includes the requested fields of the GraphQL type Event.
+type ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent struct {
+	Id        uuid.UUID              `json:"id"`
+	Type      string                 `json:"type"`
+	Payload   map[string]interface{} `json:"payload"`
+	CreatedAt time.Time              `json:"createdAt"`
+}
+
+// GetId returns ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent.Id, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent) GetId() uuid.UUID { return v.Id }
+
+// GetType returns ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent.Type, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent) GetType() string { return v.Type }
+
+// GetPayload returns ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent.Payload, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent) GetPayload() map[string]interface{} {
+	return v.Payload
+}
+
+// GetCreatedAt returns ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent.CreatedAt, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionEdgesEventEdgeNodeEvent) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
+// ListEventsEventsEventConnectionPageInfo includes the requested fields of the GraphQL type PageInfo.
+type ListEventsEventsEventConnectionPageInfo struct {
+	HasNextPage bool   `json:"hasNextPage"`
+	EndCursor   string `json:"endCursor"`
+}
+
+// GetHasNextPage returns ListEventsEventsEventConnectionPageInfo.HasNextPage, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionPageInfo) GetHasNextPage() bool { return v.HasNextPage }
+
+// GetEndCursor returns ListEventsEventsEventConnectionPageInfo.EndCursor, and is useful for accessing the field via an interface.
+func (v *ListEventsEventsEventConnectionPageInfo) GetEndCursor() string { return v.EndCursor }
+
+// ListEventsResponse is returned by ListEvents on success.
+type ListEventsResponse struct {
+	Events ListEventsEventsEventConnection `json:"events"`
+}
+
+// GetEvents returns ListEventsResponse.Events, and is useful for accessing the field via an interface.
+func (v *ListEventsResponse) GetEvents() ListEventsEventsEventConnection { return v.Events }
+
+// ListIdentitiesIdentitiesIdentityConnection includes the requested fields of the GraphQL type IdentityConnection.
+type ListIdentitiesIdentitiesIdentityConnection struct {
+	TotalCount int                                                           `json:"totalCount"`
+	Edges      []ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge `json:"edges"`
+	PageInfo   ListIdentitiesIdentitiesIdentityConnectionPageInfo            `json:"pageInfo"`
+}
+
+// GetTotalCount returns ListIdentitiesIdentitiesIdentityConnection.TotalCount, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnection) GetTotalCount() int { return v.TotalCount }
+
+// GetEdges returns ListIdentitiesIdentitiesIdentityConnection.Edges, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnection) GetEdges() []ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge {
+	return v.Edges
+}
+
+// GetPageInfo returns ListIdentitiesIdentitiesIdentityConnection.PageInfo, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnection) GetPageInfo() ListIdentitiesIdentitiesIdentityConnectionPageInfo {
+	return v.PageInfo
+}
+
+// ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge includes the requested fields of the GraphQL type IdentityEdge.
+type ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge struct {
+	Cursor string                                                                  `json:"cursor"`
+	Node   ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity `json:"node"`
+}
+
+// GetCursor returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge.Cursor, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge) GetCursor() string {
+	return v.Cursor
+}
+
+// GetNode returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge.Node, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdge) GetNode() ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity {
+	return v.Node
+}
+
+// ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity includes the requested fields of the GraphQL type Identity.
+type ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity struct {
+	Id         uuid.UUID `json:"id"`
+	ExternalId string    `json:"externalId"`
+	Name       string    `json:"name"`
+	Type       string    `json:"type"`
+}
+
+// GetId returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity.Id, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity) GetId() uuid.UUID {
+	return v.Id
+}
+
+// GetExternalId returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity.ExternalId, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity) GetExternalId() string {
+	return v.ExternalId
+}
+
+// GetName returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity.Name, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity) GetName() string {
+	return v.Name
+}
+
+// GetType returns ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity.Type, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionEdgesIdentityEdgeNodeIdentity) GetType() string {
+	return v.Type
+}
+
+// ListIdentitiesIdentitiesIdentityConnectionPageInfo includes the requested fields of the GraphQL type PageInfo.
+type ListIdentitiesIdentitiesIdentityConnectionPageInfo struct {
+	HasNextPage bool   `json:"hasNextPage"`
+	EndCursor   string `json:"endCursor"`
+}
+
+// GetHasNextPage returns ListIdentitiesIdentitiesIdentityConnectionPageInfo.HasNextPage, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionPageInfo) GetHasNextPage() bool {
+	return v.HasNextPage
+}
+
+// GetEndCursor returns ListIdentitiesIdentitiesIdentityConnectionPageInfo.EndCursor, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesIdentitiesIdentityConnectionPageInfo) GetEndCursor() string {
+	return v.EndCursor
+}
+
+// ListIdentitiesResponse is returned by ListIdentities on success.
+type ListIdentitiesResponse struct {
+	Identities ListIdentitiesIdentitiesIdentityConnection `json:"identities"`
+}
+
+// GetIdentities returns ListIdentitiesResponse.Identities, and is useful for accessing the field via an interface.
+func (v *ListIdentitiesResponse) GetIdentities() ListIdentitiesIdentitiesIdentityConnection {
+	return v.Identities
+}
+
+// ListModulesDetailedProvisionedModulesModuleInfo includes the requested fields of the GraphQL type ModuleInfo.
+type ListModulesDetailedProvisionedModulesModuleInfo struct {
+	Name          string    `json:"name"`
+	SchemaName    string    `json:"schemaName"`
+	PgUsername    string    `json:"pgUsername"`
+	BucketName    string    `json:"bucketName"`
+	ProvisionedAt time.Time `json:"provisionedAt"`
+}
+
+// GetName returns ListModulesDetailedProvisionedModulesModuleInfo.Name, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedProvisionedModulesModuleInfo) GetName() string { return v.Name }
+
+// GetSchemaName returns ListModulesDetailedProvisionedModulesModuleInfo.SchemaName, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedProvisionedModulesModuleInfo) GetSchemaName() string { return v.SchemaName }
+
+// GetPgUsername returns ListModulesDetailedProvisionedModulesModuleInfo.PgUsername, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedProvisionedModulesModuleInfo) GetPgUsername() string { return v.PgUsername }
+
+// GetBucketName returns ListModulesDetailedProvisionedModulesModuleInfo.BucketName, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedProvisionedModulesModuleInfo) GetBucketName() string { return v.BucketName }
+
+// GetProvisionedAt returns ListModulesDetailedProvisionedModulesModuleInfo.ProvisionedAt, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedProvisionedModulesModuleInfo) GetProvisionedAt() time.Time {
+	return v.ProvisionedAt
+}
+
+// ListModulesDetailedResponse is returned by ListModulesDetailed on success.
+type ListModulesDetailedResponse struct {
+	ProvisionedModules []ListModulesDetailedProvisionedModulesModuleInfo `json:"provisionedModules"`
+}
+
+// GetProvisionedModules returns ListModulesDetailedResponse.ProvisionedModules, and is useful for accessing the field via an interface.
+func (v *ListModulesDetailedResponse) GetProvisionedModules() []ListModulesDetailedProvisionedModulesModuleInfo {
+	return v.ProvisionedModules
+}
+
+// ListPermissionsPermissionsPermission includes the requested fields of the GraphQL type Permission.
+type ListPermissionsPermissionsPermission struct {
+	Id        uuid.UUID `json:"id"`
+	Action    string    `json:"action"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetId returns ListPermissionsPermissionsPermission.Id, and is useful for accessing the field via an interface.
+func (v *ListPermissionsPermissionsPermission) GetId() uuid.UUID { return v.Id }
+
+// GetAction returns ListPermissionsPermissionsPermission.Action, and is useful for accessing the field via an interface.
+func (v *ListPermissionsPermissionsPermission) GetAction() string { return v.Action }
+
+// GetExpiresAt returns ListPermissionsPermissionsPermission.ExpiresAt, and is useful for accessing the field via an interface.
+func (v *ListPermissionsPermissionsPermission) GetExpiresAt() time.Time { return v.ExpiresAt }
+
+// GetCreatedAt returns ListPermissionsPermissionsPermission.CreatedAt, and is useful for accessing the field via an interface.
+func (v *ListPermissionsPermissionsPermission) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// ListPermissionsResponse is returned by ListPermissions on success.
+type ListPermissionsResponse struct {
+	Permissions []ListPermissionsPermissionsPermission `json:"permissions"`
+}
+
+// GetPermissions returns ListPermissionsResponse.Permissions, and is useful for accessing the field via an interface.
+func (v *ListPermissionsResponse) GetPermissions() []ListPermissionsPermissionsPermission {
+	return v.Permissions
+}
+
+// ListResourceTypesResourceTypesResourceType includes the requested fields of the GraphQL type ResourceType.
+type ListResourceTypesResourceTypesResourceType struct {
+	Id          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
+// GetId returns ListResourceTypesResourceTypesResourceType.Id, and is useful for accessing the field via an interface.
+func (v *ListResourceTypesResourceTypesResourceType) GetId() uuid.UUID { return v.Id }
+
+// GetName returns ListResourceTypesResourceTypesResourceType.Name, and is useful for accessing the field via an interface.
+func (v *ListResourceTypesResourceTypesResourceType) GetName() string { return v.Name }
+
+// GetDescription returns ListResourceTypesResourceTypesResourceType.Description, and is useful for accessing the field via an interface.
+func (v *ListResourceTypesResourceTypesResourceType) GetDescription() string { return v.Description }
+
+// GetCreatedAt returns ListResourceTypesResourceTypesResourceType.CreatedAt, and is useful for accessing the field via an interface.
+func (v *ListResourceTypesResourceTypesResourceType) GetCreatedAt() time.Time { return v.CreatedAt }
+
+// ListResourceTypesResponse is returned by ListResourceTypes on success.
+type ListResourceTypesResponse struct {
+	ResourceTypes []ListResourceTypesResourceTypesResourceType `json:"resourceTypes"`
+}
+
+// GetResourceTypes returns ListResourceTypesResponse.ResourceTypes, and is useful for accessing the field via an interface.
+func (v *ListResourceTypesResponse) GetResourceTypes() []ListResourceTypesResourceTypesResourceType {
+	return v.ResourceTypes
+}
 
 // ListResourcesResourcesResourceConnection includes the requested fields of the GraphQL type ResourceConnection.
 type ListResourcesResourcesResourceConnection struct {
@@ -153,8 +896,9 @@ func (v *ListResourcesResourcesResourceConnectionEdgesResourceEdge) GetNode() Li
 
 // ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource includes the requested fields of the GraphQL type Resource.
 type ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource struct {
-	Id    uuid.UUID `json:"id"`
-	State string    `json:"state"`
+	Id        uuid.UUID `json:"id"`
+	State     string    `json:"state"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // GetId returns ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource.Id, and is useful for accessing the field via an interface.
@@ -167,10 +911,12 @@ func (v *ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource) 
 	return v.State
 }
 
+// GetCreatedAt returns ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource.CreatedAt, and is useful for accessing the field via an interface.
+func (v *ListResourcesResourcesResourceConnectionEdgesResourceEdgeNodeResource) GetCreatedAt() time.Time {
+	return v.CreatedAt
+}
+
 // ListResourcesResourcesResourceConnectionPageInfo includes the requested fields of the GraphQL type PageInfo.
-// The GraphQL type's documentation follows.
-//
-// PageInfo contains metadata about a paginated result.
 type ListResourcesResourcesResourceConnectionPageInfo struct {
 	HasNextPage bool   `json:"hasNextPage"`
 	EndCursor   string `json:"endCursor"`
@@ -192,6 +938,76 @@ type ListResourcesResponse struct {
 // GetResources returns ListResourcesResponse.Resources, and is useful for accessing the field via an interface.
 func (v *ListResourcesResponse) GetResources() ListResourcesResourcesResourceConnection {
 	return v.Resources
+}
+
+// ProvisionModuleProvisionModuleProvisioningResult includes the requested fields of the GraphQL type ProvisioningResult.
+type ProvisionModuleProvisionModuleProvisioningResult struct {
+	Success          bool                                                               `json:"success"`
+	ModuleName       string                                                             `json:"moduleName"`
+	Schema           string                                                             `json:"schema"`
+	Username         string                                                             `json:"username"`
+	Password         string                                                             `json:"password"`
+	ConnectionString string                                                             `json:"connectionString"`
+	BucketName       string                                                             `json:"bucketName"`
+	Error            ProvisionModuleProvisionModuleProvisioningResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns ProvisionModuleProvisionModuleProvisioningResult.Success, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetSuccess() bool { return v.Success }
+
+// GetModuleName returns ProvisionModuleProvisionModuleProvisioningResult.ModuleName, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetModuleName() string {
+	return v.ModuleName
+}
+
+// GetSchema returns ProvisionModuleProvisionModuleProvisioningResult.Schema, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetSchema() string { return v.Schema }
+
+// GetUsername returns ProvisionModuleProvisionModuleProvisioningResult.Username, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetUsername() string { return v.Username }
+
+// GetPassword returns ProvisionModuleProvisionModuleProvisioningResult.Password, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetPassword() string { return v.Password }
+
+// GetConnectionString returns ProvisionModuleProvisionModuleProvisioningResult.ConnectionString, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetConnectionString() string {
+	return v.ConnectionString
+}
+
+// GetBucketName returns ProvisionModuleProvisionModuleProvisioningResult.BucketName, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetBucketName() string {
+	return v.BucketName
+}
+
+// GetError returns ProvisionModuleProvisionModuleProvisioningResult.Error, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResult) GetError() ProvisionModuleProvisionModuleProvisioningResultErrorMutationError {
+	return v.Error
+}
+
+// ProvisionModuleProvisionModuleProvisioningResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type ProvisionModuleProvisionModuleProvisioningResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns ProvisionModuleProvisionModuleProvisioningResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns ProvisionModuleProvisionModuleProvisioningResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleProvisionModuleProvisioningResultErrorMutationError) GetMessage() string {
+	return v.Message
+}
+
+// ProvisionModuleResponse is returned by ProvisionModule on success.
+type ProvisionModuleResponse struct {
+	ProvisionModule ProvisionModuleProvisionModuleProvisioningResult `json:"provisionModule"`
+}
+
+// GetProvisionModule returns ProvisionModuleResponse.ProvisionModule, and is useful for accessing the field via an interface.
+func (v *ProvisionModuleResponse) GetProvisionModule() ProvisionModuleProvisionModuleProvisioningResult {
+	return v.ProvisionModule
 }
 
 type RegisterResourceTypeInput struct {
@@ -236,9 +1052,6 @@ func (v *RegisterResourceTypeRegisterResourceTypeResourceTypeResult) GetError() 
 }
 
 // RegisterResourceTypeRegisterResourceTypeResourceTypeResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
-// The GraphQL type's documentation follows.
-//
-// MutationError represents a business error occurred during a mutation.
 type RegisterResourceTypeRegisterResourceTypeResourceTypeResultErrorMutationError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -278,6 +1091,72 @@ type RegisterResourceTypeResponse struct {
 // GetRegisterResourceType returns RegisterResourceTypeResponse.RegisterResourceType, and is useful for accessing the field via an interface.
 func (v *RegisterResourceTypeResponse) GetRegisterResourceType() RegisterResourceTypeRegisterResourceTypeResourceTypeResult {
 	return v.RegisterResourceType
+}
+
+// RotateModuleCredentialsResponse is returned by RotateModuleCredentials on success.
+type RotateModuleCredentialsResponse struct {
+	RotateModuleCredentials RotateModuleCredentialsRotateModuleCredentialsProvisioningResult `json:"rotateModuleCredentials"`
+}
+
+// GetRotateModuleCredentials returns RotateModuleCredentialsResponse.RotateModuleCredentials, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsResponse) GetRotateModuleCredentials() RotateModuleCredentialsRotateModuleCredentialsProvisioningResult {
+	return v.RotateModuleCredentials
+}
+
+// RotateModuleCredentialsRotateModuleCredentialsProvisioningResult includes the requested fields of the GraphQL type ProvisioningResult.
+type RotateModuleCredentialsRotateModuleCredentialsProvisioningResult struct {
+	Success          bool                                                                               `json:"success"`
+	ModuleName       string                                                                             `json:"moduleName"`
+	Username         string                                                                             `json:"username"`
+	Password         string                                                                             `json:"password"`
+	ConnectionString string                                                                             `json:"connectionString"`
+	Error            RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.Success, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetSuccess() bool {
+	return v.Success
+}
+
+// GetModuleName returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.ModuleName, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetModuleName() string {
+	return v.ModuleName
+}
+
+// GetUsername returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.Username, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetUsername() string {
+	return v.Username
+}
+
+// GetPassword returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.Password, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetPassword() string {
+	return v.Password
+}
+
+// GetConnectionString returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.ConnectionString, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetConnectionString() string {
+	return v.ConnectionString
+}
+
+// GetError returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResult.Error, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResult) GetError() RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError {
+	return v.Error
+}
+
+// RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError) GetCode() string {
+	return v.Code
+}
+
+// GetMessage returns RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *RotateModuleCredentialsRotateModuleCredentialsProvisioningResultErrorMutationError) GetMessage() string {
+	return v.Message
 }
 
 type TransitionResourceInput struct {
@@ -326,9 +1205,6 @@ func (v *TransitionResourceTransitionResourceResourceResult) GetError() Transiti
 }
 
 // TransitionResourceTransitionResourceResourceResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
-// The GraphQL type's documentation follows.
-//
-// MutationError represents a business error occurred during a mutation.
 type TransitionResourceTransitionResourceResourceResultErrorMutationError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -358,6 +1234,71 @@ func (v *TransitionResourceTransitionResourceResourceResultResource) GetState() 
 	return v.State
 }
 
+type UploadFileInput struct {
+	FileName    string `json:"fileName"`
+	FileContent string `json:"fileContent"`
+	ContentType string `json:"contentType"`
+}
+
+// GetFileName returns UploadFileInput.FileName, and is useful for accessing the field via an interface.
+func (v *UploadFileInput) GetFileName() string { return v.FileName }
+
+// GetFileContent returns UploadFileInput.FileContent, and is useful for accessing the field via an interface.
+func (v *UploadFileInput) GetFileContent() string { return v.FileContent }
+
+// GetContentType returns UploadFileInput.ContentType, and is useful for accessing the field via an interface.
+func (v *UploadFileInput) GetContentType() string { return v.ContentType }
+
+// UploadFileResponse is returned by UploadFile on success.
+type UploadFileResponse struct {
+	UploadFile UploadFileUploadFileUploadResult `json:"uploadFile"`
+}
+
+// GetUploadFile returns UploadFileResponse.UploadFile, and is useful for accessing the field via an interface.
+func (v *UploadFileResponse) GetUploadFile() UploadFileUploadFileUploadResult { return v.UploadFile }
+
+// UploadFileUploadFileUploadResult includes the requested fields of the GraphQL type UploadResult.
+type UploadFileUploadFileUploadResult struct {
+	Success  bool                                               `json:"success"`
+	Url      string                                             `json:"url"`
+	FilePath string                                             `json:"filePath"`
+	Error    UploadFileUploadFileUploadResultErrorMutationError `json:"error"`
+}
+
+// GetSuccess returns UploadFileUploadFileUploadResult.Success, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResult) GetSuccess() bool { return v.Success }
+
+// GetUrl returns UploadFileUploadFileUploadResult.Url, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResult) GetUrl() string { return v.Url }
+
+// GetFilePath returns UploadFileUploadFileUploadResult.FilePath, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResult) GetFilePath() string { return v.FilePath }
+
+// GetError returns UploadFileUploadFileUploadResult.Error, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResult) GetError() UploadFileUploadFileUploadResultErrorMutationError {
+	return v.Error
+}
+
+// UploadFileUploadFileUploadResultErrorMutationError includes the requested fields of the GraphQL type MutationError.
+type UploadFileUploadFileUploadResultErrorMutationError struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// GetCode returns UploadFileUploadFileUploadResultErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResultErrorMutationError) GetCode() string { return v.Code }
+
+// GetMessage returns UploadFileUploadFileUploadResultErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *UploadFileUploadFileUploadResultErrorMutationError) GetMessage() string { return v.Message }
+
+// __CreateIdentityInput is used internally by genqlient
+type __CreateIdentityInput struct {
+	Input CreateIdentityInput `json:"input"`
+}
+
+// GetInput returns __CreateIdentityInput.Input, and is useful for accessing the field via an interface.
+func (v *__CreateIdentityInput) GetInput() CreateIdentityInput { return v.Input }
+
 // __CreateResourceInput is used internally by genqlient
 type __CreateResourceInput struct {
 	Input CreateResourceInput `json:"input"`
@@ -365,6 +1306,50 @@ type __CreateResourceInput struct {
 
 // GetInput returns __CreateResourceInput.Input, and is useful for accessing the field via an interface.
 func (v *__CreateResourceInput) GetInput() CreateResourceInput { return v.Input }
+
+// __CreateRevisionInput is used internally by genqlient
+type __CreateRevisionInput struct {
+	Input CreateRevisionInput `json:"input"`
+}
+
+// GetInput returns __CreateRevisionInput.Input, and is useful for accessing the field via an interface.
+func (v *__CreateRevisionInput) GetInput() CreateRevisionInput { return v.Input }
+
+// __DeleteResourceInput is used internally by genqlient
+type __DeleteResourceInput struct {
+	Id uuid.UUID `json:"id"`
+}
+
+// GetId returns __DeleteResourceInput.Id, and is useful for accessing the field via an interface.
+func (v *__DeleteResourceInput) GetId() uuid.UUID { return v.Id }
+
+// __DeprovisionModuleInput is used internally by genqlient
+type __DeprovisionModuleInput struct {
+	ModuleName         string `json:"moduleName"`
+	ForceDeleteStorage bool   `json:"forceDeleteStorage"`
+}
+
+// GetModuleName returns __DeprovisionModuleInput.ModuleName, and is useful for accessing the field via an interface.
+func (v *__DeprovisionModuleInput) GetModuleName() string { return v.ModuleName }
+
+// GetForceDeleteStorage returns __DeprovisionModuleInput.ForceDeleteStorage, and is useful for accessing the field via an interface.
+func (v *__DeprovisionModuleInput) GetForceDeleteStorage() bool { return v.ForceDeleteStorage }
+
+// __GetIdentityInput is used internally by genqlient
+type __GetIdentityInput struct {
+	Id uuid.UUID `json:"id"`
+}
+
+// GetId returns __GetIdentityInput.Id, and is useful for accessing the field via an interface.
+func (v *__GetIdentityInput) GetId() uuid.UUID { return v.Id }
+
+// __GetModuleInput is used internally by genqlient
+type __GetModuleInput struct {
+	Name string `json:"name"`
+}
+
+// GetName returns __GetModuleInput.Name, and is useful for accessing the field via an interface.
+func (v *__GetModuleInput) GetName() string { return v.Name }
 
 // __GetResourceInput is used internally by genqlient
 type __GetResourceInput struct {
@@ -374,11 +1359,86 @@ type __GetResourceInput struct {
 // GetId returns __GetResourceInput.Id, and is useful for accessing the field via an interface.
 func (v *__GetResourceInput) GetId() uuid.UUID { return v.Id }
 
+// __GetResourceTypeInput is used internally by genqlient
+type __GetResourceTypeInput struct {
+	Name string `json:"name"`
+}
+
+// GetName returns __GetResourceTypeInput.Name, and is useful for accessing the field via an interface.
+func (v *__GetResourceTypeInput) GetName() string { return v.Name }
+
+// __GrantPermissionInput is used internally by genqlient
+type __GrantPermissionInput struct {
+	Input GrantPermissionInput `json:"input"`
+}
+
+// GetInput returns __GrantPermissionInput.Input, and is useful for accessing the field via an interface.
+func (v *__GrantPermissionInput) GetInput() GrantPermissionInput { return v.Input }
+
+// __ListEventsInput is used internally by genqlient
+type __ListEventsInput struct {
+	ResourceId uuid.UUID `json:"resourceId"`
+	IdentityId uuid.UUID `json:"identityId"`
+	TypeArg    string    `json:"typeArg"`
+	First      int       `json:"first"`
+	After      string    `json:"after"`
+}
+
+// GetResourceId returns __ListEventsInput.ResourceId, and is useful for accessing the field via an interface.
+func (v *__ListEventsInput) GetResourceId() uuid.UUID { return v.ResourceId }
+
+// GetIdentityId returns __ListEventsInput.IdentityId, and is useful for accessing the field via an interface.
+func (v *__ListEventsInput) GetIdentityId() uuid.UUID { return v.IdentityId }
+
+// GetTypeArg returns __ListEventsInput.TypeArg, and is useful for accessing the field via an interface.
+func (v *__ListEventsInput) GetTypeArg() string { return v.TypeArg }
+
+// GetFirst returns __ListEventsInput.First, and is useful for accessing the field via an interface.
+func (v *__ListEventsInput) GetFirst() int { return v.First }
+
+// GetAfter returns __ListEventsInput.After, and is useful for accessing the field via an interface.
+func (v *__ListEventsInput) GetAfter() string { return v.After }
+
+// __ListIdentitiesInput is used internally by genqlient
+type __ListIdentitiesInput struct {
+	TypeArg string `json:"typeArg"`
+	First   int    `json:"first"`
+	After   string `json:"after"`
+}
+
+// GetTypeArg returns __ListIdentitiesInput.TypeArg, and is useful for accessing the field via an interface.
+func (v *__ListIdentitiesInput) GetTypeArg() string { return v.TypeArg }
+
+// GetFirst returns __ListIdentitiesInput.First, and is useful for accessing the field via an interface.
+func (v *__ListIdentitiesInput) GetFirst() int { return v.First }
+
+// GetAfter returns __ListIdentitiesInput.After, and is useful for accessing the field via an interface.
+func (v *__ListIdentitiesInput) GetAfter() string { return v.After }
+
+// __ListPermissionsInput is used internally by genqlient
+type __ListPermissionsInput struct {
+	IdentityId     uuid.UUID `json:"identityId"`
+	ResourceId     uuid.UUID `json:"resourceId"`
+	ResourceTypeId uuid.UUID `json:"resourceTypeId"`
+}
+
+// GetIdentityId returns __ListPermissionsInput.IdentityId, and is useful for accessing the field via an interface.
+func (v *__ListPermissionsInput) GetIdentityId() uuid.UUID { return v.IdentityId }
+
+// GetResourceId returns __ListPermissionsInput.ResourceId, and is useful for accessing the field via an interface.
+func (v *__ListPermissionsInput) GetResourceId() uuid.UUID { return v.ResourceId }
+
+// GetResourceTypeId returns __ListPermissionsInput.ResourceTypeId, and is useful for accessing the field via an interface.
+func (v *__ListPermissionsInput) GetResourceTypeId() uuid.UUID { return v.ResourceTypeId }
+
 // __ListResourcesInput is used internally by genqlient
 type __ListResourcesInput struct {
-	First    int    `json:"first"`
-	After    string `json:"after"`
-	TypeName string `json:"typeName"`
+	First         int       `json:"first"`
+	After         string    `json:"after"`
+	TypeName      string    `json:"typeName"`
+	State         string    `json:"state"`
+	CreatedAfter  time.Time `json:"createdAfter"`
+	CreatedBefore time.Time `json:"createdBefore"`
 }
 
 // GetFirst returns __ListResourcesInput.First, and is useful for accessing the field via an interface.
@@ -390,6 +1450,23 @@ func (v *__ListResourcesInput) GetAfter() string { return v.After }
 // GetTypeName returns __ListResourcesInput.TypeName, and is useful for accessing the field via an interface.
 func (v *__ListResourcesInput) GetTypeName() string { return v.TypeName }
 
+// GetState returns __ListResourcesInput.State, and is useful for accessing the field via an interface.
+func (v *__ListResourcesInput) GetState() string { return v.State }
+
+// GetCreatedAfter returns __ListResourcesInput.CreatedAfter, and is useful for accessing the field via an interface.
+func (v *__ListResourcesInput) GetCreatedAfter() time.Time { return v.CreatedAfter }
+
+// GetCreatedBefore returns __ListResourcesInput.CreatedBefore, and is useful for accessing the field via an interface.
+func (v *__ListResourcesInput) GetCreatedBefore() time.Time { return v.CreatedBefore }
+
+// __ProvisionModuleInput is used internally by genqlient
+type __ProvisionModuleInput struct {
+	ModuleName string `json:"moduleName"`
+}
+
+// GetModuleName returns __ProvisionModuleInput.ModuleName, and is useful for accessing the field via an interface.
+func (v *__ProvisionModuleInput) GetModuleName() string { return v.ModuleName }
+
 // __RegisterResourceTypeInput is used internally by genqlient
 type __RegisterResourceTypeInput struct {
 	Input RegisterResourceTypeInput `json:"input"`
@@ -398,6 +1475,14 @@ type __RegisterResourceTypeInput struct {
 // GetInput returns __RegisterResourceTypeInput.Input, and is useful for accessing the field via an interface.
 func (v *__RegisterResourceTypeInput) GetInput() RegisterResourceTypeInput { return v.Input }
 
+// __RotateModuleCredentialsInput is used internally by genqlient
+type __RotateModuleCredentialsInput struct {
+	ModuleName string `json:"moduleName"`
+}
+
+// GetModuleName returns __RotateModuleCredentialsInput.ModuleName, and is useful for accessing the field via an interface.
+func (v *__RotateModuleCredentialsInput) GetModuleName() string { return v.ModuleName }
+
 // __TransitionResourceInput is used internally by genqlient
 type __TransitionResourceInput struct {
 	Input TransitionResourceInput `json:"input"`
@@ -405,6 +1490,59 @@ type __TransitionResourceInput struct {
 
 // GetInput returns __TransitionResourceInput.Input, and is useful for accessing the field via an interface.
 func (v *__TransitionResourceInput) GetInput() TransitionResourceInput { return v.Input }
+
+// __UploadFileInput is used internally by genqlient
+type __UploadFileInput struct {
+	Input UploadFileInput `json:"input"`
+}
+
+// GetInput returns __UploadFileInput.Input, and is useful for accessing the field via an interface.
+func (v *__UploadFileInput) GetInput() UploadFileInput { return v.Input }
+
+// The mutation executed by CreateIdentity.
+const CreateIdentity_Operation = `
+mutation CreateIdentity ($input: CreateIdentityInput!) {
+	createIdentity(input: $input) {
+		success
+		identity {
+			id
+			externalId
+			name
+			type
+			createdAt
+		}
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func CreateIdentity(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input CreateIdentityInput,
+) (data_ *CreateIdentityResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "CreateIdentity",
+		Query:  CreateIdentity_Operation,
+		Variables: &__CreateIdentityInput{
+			Input: input,
+		},
+	}
+
+	data_ = &CreateIdentityResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
 
 // The mutation executed by CreateResource.
 const CreateResource_Operation = `
@@ -447,6 +1585,207 @@ func CreateResource(
 	return data_, err_
 }
 
+// The mutation executed by CreateRevision.
+const CreateRevision_Operation = `
+mutation CreateRevision ($input: CreateRevisionInput!) {
+	createRevision(input: $input) {
+		success
+		revision {
+			id
+			filePath
+			createdAt
+		}
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func CreateRevision(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input CreateRevisionInput,
+) (data_ *CreateRevisionResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "CreateRevision",
+		Query:  CreateRevision_Operation,
+		Variables: &__CreateRevisionInput{
+			Input: input,
+		},
+	}
+
+	data_ = &CreateRevisionResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by DeleteResource.
+const DeleteResource_Operation = `
+mutation DeleteResource ($id: UUID!) {
+	deleteResource(id: $id) {
+		success
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func DeleteResource(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	id uuid.UUID,
+) (data_ *DeleteResourceResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "DeleteResource",
+		Query:  DeleteResource_Operation,
+		Variables: &__DeleteResourceInput{
+			Id: id,
+		},
+	}
+
+	data_ = &DeleteResourceResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by DeprovisionModule.
+const DeprovisionModule_Operation = `
+mutation DeprovisionModule ($moduleName: String!, $forceDeleteStorage: Boolean) {
+	deprovisionModule(moduleName: $moduleName, forceDeleteStorage: $forceDeleteStorage) {
+		success
+		postgresCleared
+		storageCleared
+		korsDataCleared
+		storageSkippedReason
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func DeprovisionModule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	moduleName string,
+	forceDeleteStorage bool,
+) (data_ *DeprovisionModuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "DeprovisionModule",
+		Query:  DeprovisionModule_Operation,
+		Variables: &__DeprovisionModuleInput{
+			ModuleName:         moduleName,
+			ForceDeleteStorage: forceDeleteStorage,
+		},
+	}
+
+	data_ = &DeprovisionModuleResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by GetIdentity.
+const GetIdentity_Operation = `
+query GetIdentity ($id: UUID!) {
+	identity(id: $id) {
+		id
+		externalId
+		name
+		type
+		createdAt
+	}
+}
+`
+
+func GetIdentity(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	id uuid.UUID,
+) (data_ *GetIdentityResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetIdentity",
+		Query:  GetIdentity_Operation,
+		Variables: &__GetIdentityInput{
+			Id: id,
+		},
+	}
+
+	data_ = &GetIdentityResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by GetModule.
+const GetModule_Operation = `
+query GetModule ($name: String!) {
+	module(name: $name) {
+		name
+		schemaName
+		pgUsername
+		bucketName
+		provisionedAt
+	}
+}
+`
+
+func GetModule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	name string,
+) (data_ *GetModuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetModule",
+		Query:  GetModule_Operation,
+		Variables: &__GetModuleInput{
+			Name: name,
+		},
+	}
+
+	data_ = &GetModuleResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by GetResource.
 const GetResource_Operation = `
 query GetResource ($id: UUID!) {
@@ -455,6 +1794,7 @@ query GetResource ($id: UUID!) {
 		state
 		metadata
 		type {
+			id
 			name
 		}
 	}
@@ -486,16 +1826,315 @@ func GetResource(
 	return data_, err_
 }
 
+// The query executed by GetResourceType.
+const GetResourceType_Operation = `
+query GetResourceType ($name: String!) {
+	resourceType(name: $name) {
+		id
+		name
+		description
+		jsonSchema
+		transitions
+		createdAt
+		updatedAt
+	}
+}
+`
+
+func GetResourceType(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	name string,
+) (data_ *GetResourceTypeResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetResourceType",
+		Query:  GetResourceType_Operation,
+		Variables: &__GetResourceTypeInput{
+			Name: name,
+		},
+	}
+
+	data_ = &GetResourceTypeResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by GrantPermission.
+const GrantPermission_Operation = `
+mutation GrantPermission ($input: GrantPermissionInput!) {
+	grantPermission(input: $input) {
+		success
+		permission {
+			id
+			action
+			expiresAt
+			createdAt
+		}
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func GrantPermission(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input GrantPermissionInput,
+) (data_ *GrantPermissionResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GrantPermission",
+		Query:  GrantPermission_Operation,
+		Variables: &__GrantPermissionInput{
+			Input: input,
+		},
+	}
+
+	data_ = &GrantPermissionResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListEvents.
+const ListEvents_Operation = `
+query ListEvents ($resourceId: UUID, $identityId: UUID, $typeArg: String, $first: Int, $after: String) {
+	events(resourceId: $resourceId, identityId: $identityId, type: $typeArg, first: $first, after: $after) {
+		totalCount
+		edges {
+			cursor
+			node {
+				id
+				type
+				payload
+				createdAt
+			}
+		}
+		pageInfo {
+			hasNextPage
+			endCursor
+		}
+	}
+}
+`
+
+func ListEvents(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	resourceId uuid.UUID,
+	identityId uuid.UUID,
+	typeArg string,
+	first int,
+	after string,
+) (data_ *ListEventsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListEvents",
+		Query:  ListEvents_Operation,
+		Variables: &__ListEventsInput{
+			ResourceId: resourceId,
+			IdentityId: identityId,
+			TypeArg:    typeArg,
+			First:      first,
+			After:      after,
+		},
+	}
+
+	data_ = &ListEventsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListIdentities.
+const ListIdentities_Operation = `
+query ListIdentities ($typeArg: String, $first: Int, $after: String) {
+	identities(type: $typeArg, first: $first, after: $after) {
+		totalCount
+		edges {
+			cursor
+			node {
+				id
+				externalId
+				name
+				type
+			}
+		}
+		pageInfo {
+			hasNextPage
+			endCursor
+		}
+	}
+}
+`
+
+func ListIdentities(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	typeArg string,
+	first int,
+	after string,
+) (data_ *ListIdentitiesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListIdentities",
+		Query:  ListIdentities_Operation,
+		Variables: &__ListIdentitiesInput{
+			TypeArg: typeArg,
+			First:   first,
+			After:   after,
+		},
+	}
+
+	data_ = &ListIdentitiesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListModulesDetailed.
+const ListModulesDetailed_Operation = `
+query ListModulesDetailed {
+	provisionedModules {
+		name
+		schemaName
+		pgUsername
+		bucketName
+		provisionedAt
+	}
+}
+`
+
+func ListModulesDetailed(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *ListModulesDetailedResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListModulesDetailed",
+		Query:  ListModulesDetailed_Operation,
+	}
+
+	data_ = &ListModulesDetailedResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListPermissions.
+const ListPermissions_Operation = `
+query ListPermissions ($identityId: UUID, $resourceId: UUID, $resourceTypeId: UUID) {
+	permissions(identityId: $identityId, resourceId: $resourceId, resourceTypeId: $resourceTypeId) {
+		id
+		action
+		expiresAt
+		createdAt
+	}
+}
+`
+
+func ListPermissions(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	identityId uuid.UUID,
+	resourceId uuid.UUID,
+	resourceTypeId uuid.UUID,
+) (data_ *ListPermissionsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListPermissions",
+		Query:  ListPermissions_Operation,
+		Variables: &__ListPermissionsInput{
+			IdentityId:     identityId,
+			ResourceId:     resourceId,
+			ResourceTypeId: resourceTypeId,
+		},
+	}
+
+	data_ = &ListPermissionsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListResourceTypes.
+const ListResourceTypes_Operation = `
+query ListResourceTypes {
+	resourceTypes {
+		id
+		name
+		description
+		createdAt
+	}
+}
+`
+
+func ListResourceTypes(
+	ctx_ context.Context,
+	client_ graphql.Client,
+) (data_ *ListResourceTypesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListResourceTypes",
+		Query:  ListResourceTypes_Operation,
+	}
+
+	data_ = &ListResourceTypesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The query executed by ListResources.
 const ListResources_Operation = `
-query ListResources ($first: Int, $after: String, $typeName: String) {
-	resources(first: $first, after: $after, typeName: $typeName) {
+query ListResources ($first: Int, $after: String, $typeName: String, $state: String, $createdAfter: DateTime, $createdBefore: DateTime) {
+	resources(first: $first, after: $after, typeName: $typeName, state: $state, createdAfter: $createdAfter, createdBefore: $createdBefore) {
 		totalCount
 		edges {
 			cursor
 			node {
 				id
 				state
+				createdAt
 			}
 		}
 		pageInfo {
@@ -512,18 +2151,68 @@ func ListResources(
 	first int,
 	after string,
 	typeName string,
+	state string,
+	createdAfter time.Time,
+	createdBefore time.Time,
 ) (data_ *ListResourcesResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "ListResources",
 		Query:  ListResources_Operation,
 		Variables: &__ListResourcesInput{
-			First:    first,
-			After:    after,
-			TypeName: typeName,
+			First:         first,
+			After:         after,
+			TypeName:      typeName,
+			State:         state,
+			CreatedAfter:  createdAfter,
+			CreatedBefore: createdBefore,
 		},
 	}
 
 	data_ = &ListResourcesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by ProvisionModule.
+const ProvisionModule_Operation = `
+mutation ProvisionModule ($moduleName: String!) {
+	provisionModule(moduleName: $moduleName) {
+		success
+		moduleName
+		schema
+		username
+		password
+		connectionString
+		bucketName
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func ProvisionModule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	moduleName string,
+) (data_ *ProvisionModuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ProvisionModule",
+		Query:  ProvisionModule_Operation,
+		Variables: &__ProvisionModuleInput{
+			ModuleName: moduleName,
+		},
+	}
+
+	data_ = &ProvisionModuleResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -577,6 +2266,48 @@ func RegisterResourceType(
 	return data_, err_
 }
 
+// The mutation executed by RotateModuleCredentials.
+const RotateModuleCredentials_Operation = `
+mutation RotateModuleCredentials ($moduleName: String!) {
+	rotateModuleCredentials(moduleName: $moduleName) {
+		success
+		moduleName
+		username
+		password
+		connectionString
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func RotateModuleCredentials(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	moduleName string,
+) (data_ *RotateModuleCredentialsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "RotateModuleCredentials",
+		Query:  RotateModuleCredentials_Operation,
+		Variables: &__RotateModuleCredentialsInput{
+			ModuleName: moduleName,
+		},
+	}
+
+	data_ = &RotateModuleCredentialsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by TransitionResource.
 const TransitionResource_Operation = `
 mutation TransitionResource ($input: TransitionResourceInput!) {
@@ -608,6 +2339,46 @@ func TransitionResource(
 	}
 
 	data_ = &TransitionResourceResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by UploadFile.
+const UploadFile_Operation = `
+mutation UploadFile ($input: UploadFileInput!) {
+	uploadFile(input: $input) {
+		success
+		url
+		filePath
+		error {
+			code
+			message
+		}
+	}
+}
+`
+
+func UploadFile(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input UploadFileInput,
+) (data_ *UploadFileResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "UploadFile",
+		Query:  UploadFile_Operation,
+		Variables: &__UploadFileInput{
+			Input: input,
+		},
+	}
+
+	data_ = &UploadFileResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

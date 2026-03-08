@@ -75,12 +75,20 @@ func (r *ResourceRepository) GetByID(ctx context.Context, id uuid.UUID) (*resour
 }
 
 func (r *ResourceRepository) Update(ctx context.Context, res *resource.Resource) error {
+	return r.updateWithDB(ctx, r.Pool, res)
+}
+
+func (r *ResourceRepository) UpdateWithTx(ctx context.Context, tx pgx.Tx, res *resource.Resource) error {
+	return r.updateWithDB(ctx, tx, res)
+}
+
+func (r *ResourceRepository) updateWithDB(ctx context.Context, db DBTX, res *resource.Resource) error {
 	query := `
 		UPDATE kors.resources
 		SET state = $1, metadata = $2, updated_at = $3
 		WHERE id = $4 AND deleted_at IS NULL
 	`
-	_, err := r.Pool.Exec(ctx, query,
+	_, err := db.Exec(ctx, query,
 		res.State,
 		res.Metadata,
 		res.UpdatedAt,
@@ -100,25 +108,45 @@ func (r *ResourceRepository) SoftDelete(ctx context.Context, id uuid.UUID) error
     return err
 }
 
-func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UUID, typeName *string) ([]*resource.Resource, bool, int, error) {
+func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UUID, filter resource.ListFilter) ([]*resource.Resource, bool, int, error) {
 	// 1. Get Total Count
 	var totalCount int
-	countQuery := "SELECT count(*) FROM kors.resources r WHERE r.deleted_at IS NULL"
-	if typeName != nil {
-		countQuery = "SELECT count(*) FROM kors.resources r JOIN kors.resource_types rt ON r.type_id = rt.id WHERE rt.name = $1 AND r.deleted_at IS NULL"
-		err := r.Pool.QueryRow(ctx, countQuery, *typeName).Scan(&totalCount)
-		if err != nil {
-			return nil, false, 0, err
-		}
-	} else {
-		err := r.Pool.QueryRow(ctx, countQuery).Scan(&totalCount)
-		if err != nil {
-			return nil, false, 0, err
-		}
+	countQuery := "SELECT count(*) FROM kors.resources r"
+	if filter.TypeName != nil {
+		countQuery += " JOIN kors.resource_types rt ON r.type_id = rt.id"
+	}
+	countQuery += " WHERE r.deleted_at IS NULL"
+	
+	argsCount := []interface{}{}
+	argIdx := 1
+
+	if filter.TypeName != nil {
+		countQuery += fmt.Sprintf(" AND rt.name = $%d", argIdx)
+		argsCount = append(argsCount, *filter.TypeName)
+		argIdx++
+	}
+	if filter.State != nil {
+		countQuery += fmt.Sprintf(" AND r.state = $%d", argIdx)
+		argsCount = append(argsCount, *filter.State)
+		argIdx++
+	}
+	if filter.CreatedAfter != nil {
+		countQuery += fmt.Sprintf(" AND r.created_at >= $%d", argIdx)
+		argsCount = append(argsCount, *filter.CreatedAfter)
+		argIdx++
+	}
+	if filter.CreatedBefore != nil {
+		countQuery += fmt.Sprintf(" AND r.created_at <= $%d", argIdx)
+		argsCount = append(argsCount, *filter.CreatedBefore)
+		argIdx++
+	}
+
+	err := r.Pool.QueryRow(ctx, countQuery, argsCount...).Scan(&totalCount)
+	if err != nil {
+		return nil, false, 0, err
 	}
 
 	// 2. Fetch Data
-	// We fetch first + 1 to know if there is a next page
 	query := `
 		SELECT r.id, r.type_id, r.state, r.metadata, r.created_at, r.updated_at, r.deleted_at
 		FROM kors.resources r
@@ -126,16 +154,30 @@ func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UU
 		WHERE r.deleted_at IS NULL
 	`
 	args := []interface{}{}
-	argIdx := 1
+	argIdx = 1
 
-	if typeName != nil {
+	if filter.TypeName != nil {
 		query += fmt.Sprintf(" AND rt.name = $%d", argIdx)
-		args = append(args, *typeName)
+		args = append(args, *filter.TypeName)
+		argIdx++
+	}
+	if filter.State != nil {
+		query += fmt.Sprintf(" AND r.state = $%d", argIdx)
+		args = append(args, *filter.State)
+		argIdx++
+	}
+	if filter.CreatedAfter != nil {
+		query += fmt.Sprintf(" AND r.created_at >= $%d", argIdx)
+		args = append(args, *filter.CreatedAfter)
+		argIdx++
+	}
+	if filter.CreatedBefore != nil {
+		query += fmt.Sprintf(" AND r.created_at <= $%d", argIdx)
+		args = append(args, *filter.CreatedBefore)
 		argIdx++
 	}
 
 	if after != nil {
-		// Seek pagination logic (using created_at or ID for stable sorting)
 		query += fmt.Sprintf(" AND r.created_at < (SELECT created_at FROM kors.resources WHERE id = $%d)", argIdx)
 		args = append(args, *after)
 		argIdx++

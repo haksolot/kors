@@ -19,9 +19,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
+	"github.com/pressly/goose/v3"
 	"github.com/haksolot/kors/kors-api/internal/adapter/postgres"
 	korsauth "github.com/haksolot/kors/kors-api/internal/middleware"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
@@ -96,6 +98,14 @@ func main() {
 		log.Fatalf("Critical: failed to connect to database: %v", err)
 	}
 	defer pool.Close()
+
+	// Run migrations
+	log.Println("Running database migrations...")
+	db := stdlib.OpenDB(*pool.Config().ConnConfig)
+	if err := goose.Up(db, "/migrations"); err != nil {
+		log.Printf("Warning: migrations failed: %v", err)
+	}
+	db.Close()
 
 	// 2. NATS Connection
 	nc, jsCtx, err := connectNATS(cfg.NatsURL)

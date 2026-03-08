@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/haksolot/kors/kors-api/internal/adapter/postgres"
 	"github.com/haksolot/kors/kors-api/internal/domain/event"
 	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/domain/resource"
@@ -80,19 +79,11 @@ func (uc *CreateResourceUseCase) Execute(ctx context.Context, input CreateResour
 	}
 	defer tx.Rollback(ctx) // No-op si Commit reussit
 
-	pgRepo, ok := uc.ResourceRepo.(*postgres.ResourceRepository)
-	if !ok {
-		return nil, fmt.Errorf("internal error: ResourceRepo must be *postgres.ResourceRepository for transactional writes")
-	}
-	if err := pgRepo.CreateWithTx(ctx, tx, res); err != nil {
+	if err := uc.ResourceRepo.CreateWithTx(ctx, tx, res); err != nil {
 		return nil, fmt.Errorf("failed to persist resource: %w", err)
 	}
 
-	pgEventRepo, ok := uc.EventRepo.(*postgres.EventRepository)
-	if !ok {
-		return nil, fmt.Errorf("internal error: EventRepo must be *postgres.EventRepository for transactional writes")
-	}
-	if err := pgEventRepo.CreateWithTx(ctx, tx, ev); err != nil {
+	if err := uc.EventRepo.CreateWithTx(ctx, tx, ev); err != nil {
 		return nil, fmt.Errorf("failed to persist event: %w", err)
 	}
 

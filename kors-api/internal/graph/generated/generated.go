@@ -41,6 +41,15 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	DeprovisionResult struct {
+		Error                func(childComplexity int) int
+		KorsDataCleared      func(childComplexity int) int
+		PostgresCleared      func(childComplexity int) int
+		StorageCleared       func(childComplexity int) int
+		StorageSkippedReason func(childComplexity int) int
+		Success              func(childComplexity int) int
+	}
+
 	Entity struct {
 		FindEventByID        func(childComplexity int, id uuid.UUID) int
 		FindIdentityByID     func(childComplexity int, id uuid.UUID) int
@@ -81,23 +90,44 @@ type ComplexityRoot struct {
 		UpdatedAt  func(childComplexity int) int
 	}
 
+	IdentityConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	IdentityEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
 	IdentityResult struct {
 		Error    func(childComplexity int) int
 		Identity func(childComplexity int) int
 		Success  func(childComplexity int) int
 	}
 
+	ModuleInfo struct {
+		BucketName    func(childComplexity int) int
+		Identity      func(childComplexity int) int
+		Name          func(childComplexity int) int
+		PgUsername    func(childComplexity int) int
+		ProvisionedAt func(childComplexity int) int
+		SchemaName    func(childComplexity int) int
+	}
+
 	Mutation struct {
-		CreateIdentity       func(childComplexity int, input model.CreateIdentityInput) int
-		CreateResource       func(childComplexity int, input model.CreateResourceInput) int
-		CreateRevision       func(childComplexity int, input model.CreateRevisionInput) int
-		DeleteResource       func(childComplexity int, id uuid.UUID) int
-		DeprovisionModule    func(childComplexity int, moduleName string) int
-		GrantPermission      func(childComplexity int, input model.GrantPermissionInput) int
-		ProvisionModule      func(childComplexity int, moduleName string) int
-		RegisterResourceType func(childComplexity int, input model.RegisterResourceTypeInput) int
-		TransitionResource   func(childComplexity int, input model.TransitionResourceInput) int
-		UploadFile           func(childComplexity int, input model.UploadFileInput) int
+		CreateIdentity          func(childComplexity int, input model.CreateIdentityInput) int
+		CreateResource          func(childComplexity int, input model.CreateResourceInput) int
+		CreateRevision          func(childComplexity int, input model.CreateRevisionInput) int
+		DeleteResource          func(childComplexity int, id uuid.UUID) int
+		DeprovisionModule       func(childComplexity int, moduleName string, forceDeleteStorage *bool) int
+		GrantPermission         func(childComplexity int, input model.GrantPermissionInput) int
+		ProvisionModule         func(childComplexity int, moduleName string) int
+		RegisterResourceType    func(childComplexity int, input model.RegisterResourceTypeInput) int
+		RotateModuleCredentials func(childComplexity int, moduleName string) int
+		TransitionResource      func(childComplexity int, input model.TransitionResourceInput) int
+		UploadFile              func(childComplexity int, input model.UploadFileInput) int
 	}
 
 	MutationError struct {
@@ -129,20 +159,27 @@ type ComplexityRoot struct {
 	}
 
 	ProvisioningResult struct {
-		Error      func(childComplexity int) int
-		ModuleName func(childComplexity int) int
-		Password   func(childComplexity int) int
-		Schema     func(childComplexity int) int
-		Success    func(childComplexity int) int
-		Username   func(childComplexity int) int
+		BucketName       func(childComplexity int) int
+		ConnectionString func(childComplexity int) int
+		Error            func(childComplexity int) int
+		ModuleName       func(childComplexity int) int
+		Password         func(childComplexity int) int
+		Schema           func(childComplexity int) int
+		Success          func(childComplexity int) int
+		Username         func(childComplexity int) int
 	}
 
 	Query struct {
+		Events             func(childComplexity int, resourceID *uuid.UUID, identityID *uuid.UUID, typeArg *string, first *int, after *string) int
+		Identities         func(childComplexity int, typeArg *string, first *int, after *string) int
+		Identity           func(childComplexity int, id uuid.UUID) int
+		Module             func(childComplexity int, name string) int
+		Permissions        func(childComplexity int, identityID *uuid.UUID, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) int
 		ProvisionedModules func(childComplexity int) int
 		Resource           func(childComplexity int, id uuid.UUID) int
 		ResourceType       func(childComplexity int, name string) int
 		ResourceTypes      func(childComplexity int) int
-		Resources          func(childComplexity int, first *int, after *string, typeName *string) int
+		Resources          func(childComplexity int, first *int, after *string, typeName *string, state *string, createdAfter *time.Time, createdBefore *time.Time) int
 		__resolve__service func(childComplexity int) int
 		__resolve_entities func(childComplexity int, representations []map[string]any) int
 	}
@@ -251,15 +288,21 @@ type MutationResolver interface {
 	GrantPermission(ctx context.Context, input model.GrantPermissionInput) (*model.PermissionResult, error)
 	CreateRevision(ctx context.Context, input model.CreateRevisionInput) (*model.RevisionResult, error)
 	ProvisionModule(ctx context.Context, moduleName string) (*model.ProvisioningResult, error)
-	DeprovisionModule(ctx context.Context, moduleName string) (bool, error)
+	DeprovisionModule(ctx context.Context, moduleName string, forceDeleteStorage *bool) (*model.DeprovisionResult, error)
+	RotateModuleCredentials(ctx context.Context, moduleName string) (*model.ProvisioningResult, error)
 	UploadFile(ctx context.Context, input model.UploadFileInput) (*model.UploadResult, error)
 }
 type QueryResolver interface {
 	Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error)
-	Resources(ctx context.Context, first *int, after *string, typeName *string) (*model.ResourceConnection, error)
+	Resources(ctx context.Context, first *int, after *string, typeName *string, state *string, createdAfter *time.Time, createdBefore *time.Time) (*model.ResourceConnection, error)
 	ResourceType(ctx context.Context, name string) (*model.ResourceType, error)
 	ResourceTypes(ctx context.Context) ([]*model.ResourceType, error)
-	ProvisionedModules(ctx context.Context) ([]string, error)
+	Identity(ctx context.Context, id uuid.UUID) (*model.Identity, error)
+	Identities(ctx context.Context, typeArg *string, first *int, after *string) (*model.IdentityConnection, error)
+	Events(ctx context.Context, resourceID *uuid.UUID, identityID *uuid.UUID, typeArg *string, first *int, after *string) (*model.EventConnection, error)
+	Permissions(ctx context.Context, identityID *uuid.UUID, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) ([]*model.Permission, error)
+	ProvisionedModules(ctx context.Context) ([]*model.ModuleInfo, error)
+	Module(ctx context.Context, name string) (*model.ModuleInfo, error)
 }
 type ResourceResolver interface {
 	Revisions(ctx context.Context, obj *model.Resource, first *int, after *string) (*model.RevisionConnection, error)
@@ -282,6 +325,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := newExecutionContext(nil, e, nil)
 	_ = ec
 	switch typeName + "." + field {
+
+	case "DeprovisionResult.error":
+		if e.ComplexityRoot.DeprovisionResult.Error == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.Error(childComplexity), true
+	case "DeprovisionResult.korsDataCleared":
+		if e.ComplexityRoot.DeprovisionResult.KorsDataCleared == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.KorsDataCleared(childComplexity), true
+	case "DeprovisionResult.postgresCleared":
+		if e.ComplexityRoot.DeprovisionResult.PostgresCleared == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.PostgresCleared(childComplexity), true
+	case "DeprovisionResult.storageCleared":
+		if e.ComplexityRoot.DeprovisionResult.StorageCleared == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.StorageCleared(childComplexity), true
+	case "DeprovisionResult.storageSkippedReason":
+		if e.ComplexityRoot.DeprovisionResult.StorageSkippedReason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.StorageSkippedReason(childComplexity), true
+	case "DeprovisionResult.success":
+		if e.ComplexityRoot.DeprovisionResult.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DeprovisionResult.Success(childComplexity), true
 
 	case "Entity.findEventByID":
 		if e.ComplexityRoot.Entity.FindEventByID == nil {
@@ -468,6 +548,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Identity.UpdatedAt(childComplexity), true
 
+	case "IdentityConnection.edges":
+		if e.ComplexityRoot.IdentityConnection.Edges == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityConnection.Edges(childComplexity), true
+	case "IdentityConnection.pageInfo":
+		if e.ComplexityRoot.IdentityConnection.PageInfo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityConnection.PageInfo(childComplexity), true
+	case "IdentityConnection.totalCount":
+		if e.ComplexityRoot.IdentityConnection.TotalCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityConnection.TotalCount(childComplexity), true
+
+	case "IdentityEdge.cursor":
+		if e.ComplexityRoot.IdentityEdge.Cursor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityEdge.Cursor(childComplexity), true
+	case "IdentityEdge.node":
+		if e.ComplexityRoot.IdentityEdge.Node == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdentityEdge.Node(childComplexity), true
+
 	case "IdentityResult.error":
 		if e.ComplexityRoot.IdentityResult.Error == nil {
 			break
@@ -486,6 +598,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.IdentityResult.Success(childComplexity), true
+
+	case "ModuleInfo.bucketName":
+		if e.ComplexityRoot.ModuleInfo.BucketName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.BucketName(childComplexity), true
+	case "ModuleInfo.identity":
+		if e.ComplexityRoot.ModuleInfo.Identity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.Identity(childComplexity), true
+	case "ModuleInfo.name":
+		if e.ComplexityRoot.ModuleInfo.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.Name(childComplexity), true
+	case "ModuleInfo.pgUsername":
+		if e.ComplexityRoot.ModuleInfo.PgUsername == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.PgUsername(childComplexity), true
+	case "ModuleInfo.provisionedAt":
+		if e.ComplexityRoot.ModuleInfo.ProvisionedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.ProvisionedAt(childComplexity), true
+	case "ModuleInfo.schemaName":
+		if e.ComplexityRoot.ModuleInfo.SchemaName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ModuleInfo.SchemaName(childComplexity), true
 
 	case "Mutation.createIdentity":
 		if e.ComplexityRoot.Mutation.CreateIdentity == nil {
@@ -541,7 +690,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.DeprovisionModule(childComplexity, args["moduleName"].(string)), true
+		return e.ComplexityRoot.Mutation.DeprovisionModule(childComplexity, args["moduleName"].(string), args["forceDeleteStorage"].(*bool)), true
 	case "Mutation.grantPermission":
 		if e.ComplexityRoot.Mutation.GrantPermission == nil {
 			break
@@ -575,6 +724,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RegisterResourceType(childComplexity, args["input"].(model.RegisterResourceTypeInput)), true
+	case "Mutation.rotateModuleCredentials":
+		if e.ComplexityRoot.Mutation.RotateModuleCredentials == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rotateModuleCredentials_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RotateModuleCredentials(childComplexity, args["moduleName"].(string)), true
 	case "Mutation.transitionResource":
 		if e.ComplexityRoot.Mutation.TransitionResource == nil {
 			break
@@ -698,6 +858,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PermissionResult.Success(childComplexity), true
 
+	case "ProvisioningResult.bucketName":
+		if e.ComplexityRoot.ProvisioningResult.BucketName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.BucketName(childComplexity), true
+	case "ProvisioningResult.connectionString":
+		if e.ComplexityRoot.ProvisioningResult.ConnectionString == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProvisioningResult.ConnectionString(childComplexity), true
 	case "ProvisioningResult.error":
 		if e.ComplexityRoot.ProvisioningResult.Error == nil {
 			break
@@ -735,6 +907,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ProvisioningResult.Username(childComplexity), true
 
+	case "Query.events":
+		if e.ComplexityRoot.Query.Events == nil {
+			break
+		}
+
+		args, err := ec.field_Query_events_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Events(childComplexity, args["resourceId"].(*uuid.UUID), args["identityId"].(*uuid.UUID), args["type"].(*string), args["first"].(*int), args["after"].(*string)), true
+	case "Query.identities":
+		if e.ComplexityRoot.Query.Identities == nil {
+			break
+		}
+
+		args, err := ec.field_Query_identities_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Identities(childComplexity, args["type"].(*string), args["first"].(*int), args["after"].(*string)), true
+	case "Query.identity":
+		if e.ComplexityRoot.Query.Identity == nil {
+			break
+		}
+
+		args, err := ec.field_Query_identity_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Identity(childComplexity, args["id"].(uuid.UUID)), true
+
+	case "Query.module":
+		if e.ComplexityRoot.Query.Module == nil {
+			break
+		}
+
+		args, err := ec.field_Query_module_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Module(childComplexity, args["name"].(string)), true
+	case "Query.permissions":
+		if e.ComplexityRoot.Query.Permissions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_permissions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Permissions(childComplexity, args["identityId"].(*uuid.UUID), args["resourceId"].(*uuid.UUID), args["resourceTypeId"].(*uuid.UUID)), true
 	case "Query.provisionedModules":
 		if e.ComplexityRoot.Query.ProvisionedModules == nil {
 			break
@@ -779,7 +1007,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Resources(childComplexity, args["first"].(*int), args["after"].(*string), args["typeName"].(*string)), true
+		return e.ComplexityRoot.Query.Resources(childComplexity, args["first"].(*int), args["after"].(*string), args["typeName"].(*string), args["state"].(*string), args["createdAfter"].(*time.Time), args["createdBefore"].(*time.Time)), true
 	case "Query._service":
 		if e.ComplexityRoot.Query.__resolve__service == nil {
 			break
@@ -1323,6 +1551,8 @@ type ProvisioningResult {
   schema: String
   username: String
   password: String
+  connectionString: String
+  bucketName: String
   error: MutationError
 }
 
@@ -1375,6 +1605,17 @@ type RevisionEdge {
   node: Revision!
 }
 
+type IdentityConnection {
+  edges: [IdentityEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type IdentityEdge {
+  cursor: String!
+  node: Identity!
+}
+
 # --- Inputs ---
 
 input CreateIdentityInput {
@@ -1423,6 +1664,15 @@ input CreateRevisionInput {
   fileName: String
 }
 
+type ModuleInfo {
+  name: String!
+  schemaName: String!
+  pgUsername: String!
+  bucketName: String!
+  identity: Identity
+  provisionedAt: DateTime!
+}
+
 # --- Roots ---
 
 type Query {
@@ -1434,7 +1684,14 @@ type Query {
   """
   List resources with optional filtering by type and cursor-based pagination.
   """
-  resources(first: Int, after: String, typeName: String): ResourceConnection!
+  resources(
+    first: Int
+    after: String
+    typeName: String
+    state: String
+    createdAfter: DateTime
+    createdBefore: DateTime
+  ): ResourceConnection!
   
   """
   Retrieves a Resource Type definition by its unique name.
@@ -1445,11 +1702,51 @@ type Query {
   List all registered Resource Types.
   """
   resourceTypes: [ResourceType!]!
+
+  """
+  Retourne une identite par son UUID interne.
+  """
+  identity(id: UUID!): Identity
+
+  """
+  Liste les identites avec filtre optionnel sur le type. Admin requis.
+  """
+  identities(type: String, first: Int, after: String): IdentityConnection!
+
+  """
+  Liste les evenements avec filtres optionnels et pagination.
+  """
+  events(
+    resourceId: UUID
+    identityId: UUID
+    type: String
+    first: Int
+    after: String
+  ): EventConnection!
+
+  """
+  Liste les permissions avec filtres optionnels. Admin requis ou self-query.
+  """
+  permissions(identityId: UUID, resourceId: UUID, resourceTypeId: UUID): [Permission!]!
   
   """
-  Lists all provisioned modules in the KORS ecosystem.
+  Liste tous les modules provisiones avec leurs details. Admin requis.
   """
-  provisionedModules: [String!]!
+  provisionedModules: [ModuleInfo!]!
+
+  """
+  Retourne les details d'un module specifique. Admin requis.
+  """
+  module(name: String!): ModuleInfo
+}
+
+type DeprovisionResult {
+  success: Boolean!
+  postgresCleared: Boolean!
+  storageCleared: Boolean!
+  storageSkippedReason: String
+  korsDataCleared: Boolean!
+  error: MutationError
 }
 
 type Mutation {
@@ -1505,7 +1802,13 @@ type Mutation {
   """
   Removes a module and all its associated data (schema, user, bucket).
   """
-  deprovisionModule(moduleName: String!): Boolean!
+  deprovisionModule(moduleName: String!, forceDeleteStorage: Boolean): DeprovisionResult!
+
+  """
+  Genere un nouveau mot de passe Postgres pour le role du module.
+  Retourne les nouveaux credentials complets. Admin requis.
+  """
+  rotateModuleCredentials(moduleName: String!): ProvisioningResult!
 
   """
   Uploads a file to the module's dedicated MinIO bucket.
@@ -1718,6 +2021,11 @@ func (ec *executionContext) field_Mutation_deprovisionModule_args(ctx context.Co
 		return nil, err
 	}
 	args["moduleName"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "forceDeleteStorage", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["forceDeleteStorage"] = arg1
 	return args, nil
 }
 
@@ -1751,6 +2059,17 @@ func (ec *executionContext) field_Mutation_registerResourceType_args(ctx context
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_rotateModuleCredentials_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "moduleName", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["moduleName"] = arg0
 	return args, nil
 }
 
@@ -1798,6 +2117,101 @@ func (ec *executionContext) field_Query__entities_args(ctx context.Context, rawA
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_events_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "resourceId", ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "identityId", ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["identityId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "type", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["type"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_identities_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "type", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["type"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "first", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "after", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_identity_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_module_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_permissions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "identityId", ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["identityId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "resourceId", ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "resourceTypeId", ec.unmarshalOUUID2ᚖgithubᚗcomᚋgoogleᚋuuidᚐUUID)
+	if err != nil {
+		return nil, err
+	}
+	args["resourceTypeId"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_resourceType_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1838,6 +2252,21 @@ func (ec *executionContext) field_Query_resources_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["typeName"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "state", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["state"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "createdAfter", ec.unmarshalODateTime2ᚖtimeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["createdAfter"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "createdBefore", ec.unmarshalODateTime2ᚖtimeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["createdBefore"] = arg5
 	return args, nil
 }
 
@@ -1919,6 +2348,186 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _DeprovisionResult_success(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeprovisionResult_postgresCleared(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_postgresCleared,
+		func(ctx context.Context) (any, error) {
+			return obj.PostgresCleared, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_postgresCleared(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeprovisionResult_storageCleared(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_storageCleared,
+		func(ctx context.Context) (any, error) {
+			return obj.StorageCleared, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_storageCleared(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeprovisionResult_storageSkippedReason(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_storageSkippedReason,
+		func(ctx context.Context) (any, error) {
+			return obj.StorageSkippedReason, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_storageSkippedReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeprovisionResult_korsDataCleared(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_korsDataCleared,
+		func(ctx context.Context) (any, error) {
+			return obj.KorsDataCleared, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_korsDataCleared(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeprovisionResult_error(ctx context.Context, field graphql.CollectedField, obj *model.DeprovisionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DeprovisionResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DeprovisionResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeprovisionResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_MutationError_code(ctx, field)
+			case "message":
+				return ec.fieldContext_MutationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Entity_findEventByID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -2877,6 +3486,183 @@ func (ec *executionContext) fieldContext_Identity_updatedAt(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _IdentityConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.IdentityConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IdentityConnection_edges,
+		func(ctx context.Context) (any, error) {
+			return obj.Edges, nil
+		},
+		nil,
+		ec.marshalNIdentityEdge2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityEdgeᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IdentityConnection_edges(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IdentityConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "cursor":
+				return ec.fieldContext_IdentityEdge_cursor(ctx, field)
+			case "node":
+				return ec.fieldContext_IdentityEdge_node(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IdentityEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IdentityConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.IdentityConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IdentityConnection_pageInfo,
+		func(ctx context.Context) (any, error) {
+			return obj.PageInfo, nil
+		},
+		nil,
+		ec.marshalNPageInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IdentityConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IdentityConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IdentityConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *model.IdentityConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IdentityConnection_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IdentityConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IdentityConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IdentityEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.IdentityEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IdentityEdge_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IdentityEdge_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IdentityEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IdentityEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.IdentityEdge) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IdentityEdge_node,
+		func(ctx context.Context) (any, error) {
+			return obj.Node, nil
+		},
+		nil,
+		ec.marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IdentityEdge_node(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IdentityEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Identity_id(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Identity_externalId(ctx, field)
+			case "name":
+				return ec.fieldContext_Identity_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Identity_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Identity_metadata(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Identity_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Identity_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Identity", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _IdentityResult_success(ctx context.Context, field graphql.CollectedField, obj *model.IdentityResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2981,6 +3767,196 @@ func (ec *executionContext) fieldContext_IdentityResult_error(_ context.Context,
 				return ec.fieldContext_MutationError_message(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_schemaName(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_schemaName,
+		func(ctx context.Context) (any, error) {
+			return obj.SchemaName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_schemaName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_pgUsername(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_pgUsername,
+		func(ctx context.Context) (any, error) {
+			return obj.PgUsername, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_pgUsername(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_bucketName(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_bucketName,
+		func(ctx context.Context) (any, error) {
+			return obj.BucketName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_bucketName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_identity(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_identity,
+		func(ctx context.Context) (any, error) {
+			return obj.Identity, nil
+		},
+		nil,
+		ec.marshalOIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_identity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Identity_id(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Identity_externalId(ctx, field)
+			case "name":
+				return ec.fieldContext_Identity_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Identity_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Identity_metadata(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Identity_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Identity_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Identity", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModuleInfo_provisionedAt(ctx context.Context, field graphql.CollectedField, obj *model.ModuleInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModuleInfo_provisionedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ProvisionedAt, nil
+		},
+		nil,
+		ec.marshalNDateTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModuleInfo_provisionedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModuleInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3364,6 +4340,10 @@ func (ec *executionContext) fieldContext_Mutation_provisionModule(ctx context.Co
 				return ec.fieldContext_ProvisioningResult_username(ctx, field)
 			case "password":
 				return ec.fieldContext_ProvisioningResult_password(ctx, field)
+			case "connectionString":
+				return ec.fieldContext_ProvisioningResult_connectionString(ctx, field)
+			case "bucketName":
+				return ec.fieldContext_ProvisioningResult_bucketName(ctx, field)
 			case "error":
 				return ec.fieldContext_ProvisioningResult_error(ctx, field)
 			}
@@ -3392,10 +4372,10 @@ func (ec *executionContext) _Mutation_deprovisionModule(ctx context.Context, fie
 		ec.fieldContext_Mutation_deprovisionModule,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().DeprovisionModule(ctx, fc.Args["moduleName"].(string))
+			return ec.Resolvers.Mutation().DeprovisionModule(ctx, fc.Args["moduleName"].(string), fc.Args["forceDeleteStorage"].(*bool))
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNDeprovisionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐDeprovisionResult,
 		true,
 		true,
 	)
@@ -3408,7 +4388,21 @@ func (ec *executionContext) fieldContext_Mutation_deprovisionModule(ctx context.
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_DeprovisionResult_success(ctx, field)
+			case "postgresCleared":
+				return ec.fieldContext_DeprovisionResult_postgresCleared(ctx, field)
+			case "storageCleared":
+				return ec.fieldContext_DeprovisionResult_storageCleared(ctx, field)
+			case "storageSkippedReason":
+				return ec.fieldContext_DeprovisionResult_storageSkippedReason(ctx, field)
+			case "korsDataCleared":
+				return ec.fieldContext_DeprovisionResult_korsDataCleared(ctx, field)
+			case "error":
+				return ec.fieldContext_DeprovisionResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeprovisionResult", field.Name)
 		},
 	}
 	defer func() {
@@ -3419,6 +4413,65 @@ func (ec *executionContext) fieldContext_Mutation_deprovisionModule(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deprovisionModule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rotateModuleCredentials(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_rotateModuleCredentials,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RotateModuleCredentials(ctx, fc.Args["moduleName"].(string))
+		},
+		nil,
+		ec.marshalNProvisioningResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rotateModuleCredentials(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ProvisioningResult_success(ctx, field)
+			case "moduleName":
+				return ec.fieldContext_ProvisioningResult_moduleName(ctx, field)
+			case "schema":
+				return ec.fieldContext_ProvisioningResult_schema(ctx, field)
+			case "username":
+				return ec.fieldContext_ProvisioningResult_username(ctx, field)
+			case "password":
+				return ec.fieldContext_ProvisioningResult_password(ctx, field)
+			case "connectionString":
+				return ec.fieldContext_ProvisioningResult_connectionString(ctx, field)
+			case "bucketName":
+				return ec.fieldContext_ProvisioningResult_bucketName(ctx, field)
+			case "error":
+				return ec.fieldContext_ProvisioningResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProvisioningResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rotateModuleCredentials_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4155,6 +5208,64 @@ func (ec *executionContext) fieldContext_ProvisioningResult_password(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _ProvisioningResult_connectionString(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_connectionString,
+		func(ctx context.Context) (any, error) {
+			return obj.ConnectionString, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_connectionString(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProvisioningResult_bucketName(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProvisioningResult_bucketName,
+		func(ctx context.Context) (any, error) {
+			return obj.BucketName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProvisioningResult_bucketName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProvisioningResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProvisioningResult_error(ctx context.Context, field graphql.CollectedField, obj *model.ProvisioningResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4255,7 +5366,7 @@ func (ec *executionContext) _Query_resources(ctx context.Context, field graphql.
 		ec.fieldContext_Query_resources,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Resources(ctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["typeName"].(*string))
+			return ec.Resolvers.Query().Resources(ctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["typeName"].(*string), fc.Args["state"].(*string), fc.Args["createdAfter"].(*time.Time), fc.Args["createdBefore"].(*time.Time))
 		},
 		nil,
 		ec.marshalNResourceConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection,
@@ -4398,6 +5509,218 @@ func (ec *executionContext) fieldContext_Query_resourceTypes(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_identity(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_identity,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Identity(ctx, fc.Args["id"].(uuid.UUID))
+		},
+		nil,
+		ec.marshalOIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_identity(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Identity_id(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Identity_externalId(ctx, field)
+			case "name":
+				return ec.fieldContext_Identity_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Identity_type(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Identity_metadata(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Identity_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Identity_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Identity", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_identity_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_identities(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_identities,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Identities(ctx, fc.Args["type"].(*string), fc.Args["first"].(*int), fc.Args["after"].(*string))
+		},
+		nil,
+		ec.marshalNIdentityConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityConnection,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_identities(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_IdentityConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_IdentityConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_IdentityConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IdentityConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_identities_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_events(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_events,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Events(ctx, fc.Args["resourceId"].(*uuid.UUID), fc.Args["identityId"].(*uuid.UUID), fc.Args["type"].(*string), fc.Args["first"].(*int), fc.Args["after"].(*string))
+		},
+		nil,
+		ec.marshalNEventConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEventConnection,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_events(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_EventConnection_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_EventConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_EventConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EventConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_events_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_permissions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_permissions,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Permissions(ctx, fc.Args["identityId"].(*uuid.UUID), fc.Args["resourceId"].(*uuid.UUID), fc.Args["resourceTypeId"].(*uuid.UUID))
+		},
+		nil,
+		ec.marshalNPermission2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_permissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Permission_id(ctx, field)
+			case "identity":
+				return ec.fieldContext_Permission_identity(ctx, field)
+			case "resource":
+				return ec.fieldContext_Permission_resource(ctx, field)
+			case "resourceType":
+				return ec.fieldContext_Permission_resourceType(ctx, field)
+			case "action":
+				return ec.fieldContext_Permission_action(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_Permission_expiresAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Permission_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Permission", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_permissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_provisionedModules(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4408,7 +5731,7 @@ func (ec *executionContext) _Query_provisionedModules(ctx context.Context, field
 			return ec.Resolvers.Query().ProvisionedModules(ctx)
 		},
 		nil,
-		ec.marshalNString2ᚕstringᚄ,
+		ec.marshalNModuleInfo2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfoᚄ,
 		true,
 		true,
 	)
@@ -4421,8 +5744,77 @@ func (ec *executionContext) fieldContext_Query_provisionedModules(_ context.Cont
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ModuleInfo_name(ctx, field)
+			case "schemaName":
+				return ec.fieldContext_ModuleInfo_schemaName(ctx, field)
+			case "pgUsername":
+				return ec.fieldContext_ModuleInfo_pgUsername(ctx, field)
+			case "bucketName":
+				return ec.fieldContext_ModuleInfo_bucketName(ctx, field)
+			case "identity":
+				return ec.fieldContext_ModuleInfo_identity(ctx, field)
+			case "provisionedAt":
+				return ec.fieldContext_ModuleInfo_provisionedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModuleInfo", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_module(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_module,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().Module(ctx, fc.Args["name"].(string))
+		},
+		nil,
+		ec.marshalOModuleInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfo,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_module(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_ModuleInfo_name(ctx, field)
+			case "schemaName":
+				return ec.fieldContext_ModuleInfo_schemaName(ctx, field)
+			case "pgUsername":
+				return ec.fieldContext_ModuleInfo_pgUsername(ctx, field)
+			case "bucketName":
+				return ec.fieldContext_ModuleInfo_bucketName(ctx, field)
+			case "identity":
+				return ec.fieldContext_ModuleInfo_identity(ctx, field)
+			case "provisionedAt":
+				return ec.fieldContext_ModuleInfo_provisionedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModuleInfo", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_module_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -8037,6 +9429,64 @@ func (ec *executionContext) __Entity(ctx context.Context, sel ast.SelectionSet, 
 
 // region    **************************** object.gotpl ****************************
 
+var deprovisionResultImplementors = []string{"DeprovisionResult"}
+
+func (ec *executionContext) _DeprovisionResult(ctx context.Context, sel ast.SelectionSet, obj *model.DeprovisionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deprovisionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeprovisionResult")
+		case "success":
+			out.Values[i] = ec._DeprovisionResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "postgresCleared":
+			out.Values[i] = ec._DeprovisionResult_postgresCleared(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "storageCleared":
+			out.Values[i] = ec._DeprovisionResult_storageCleared(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "storageSkippedReason":
+			out.Values[i] = ec._DeprovisionResult_storageSkippedReason(ctx, field, obj)
+		case "korsDataCleared":
+			out.Values[i] = ec._DeprovisionResult_korsDataCleared(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._DeprovisionResult_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var entityImplementors = []string{"Entity"}
 
 func (ec *executionContext) _Entity(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -8430,6 +9880,99 @@ func (ec *executionContext) _Identity(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var identityConnectionImplementors = []string{"IdentityConnection"}
+
+func (ec *executionContext) _IdentityConnection(ctx context.Context, sel ast.SelectionSet, obj *model.IdentityConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, identityConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IdentityConnection")
+		case "edges":
+			out.Values[i] = ec._IdentityConnection_edges(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageInfo":
+			out.Values[i] = ec._IdentityConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._IdentityConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var identityEdgeImplementors = []string{"IdentityEdge"}
+
+func (ec *executionContext) _IdentityEdge(ctx context.Context, sel ast.SelectionSet, obj *model.IdentityEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, identityEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IdentityEdge")
+		case "cursor":
+			out.Values[i] = ec._IdentityEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "node":
+			out.Values[i] = ec._IdentityEdge_node(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var identityResultImplementors = []string{"IdentityResult"}
 
 func (ec *executionContext) _IdentityResult(ctx context.Context, sel ast.SelectionSet, obj *model.IdentityResult) graphql.Marshaler {
@@ -8450,6 +9993,67 @@ func (ec *executionContext) _IdentityResult(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._IdentityResult_identity(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._IdentityResult_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var moduleInfoImplementors = []string{"ModuleInfo"}
+
+func (ec *executionContext) _ModuleInfo(ctx context.Context, sel ast.SelectionSet, obj *model.ModuleInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, moduleInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModuleInfo")
+		case "name":
+			out.Values[i] = ec._ModuleInfo_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "schemaName":
+			out.Values[i] = ec._ModuleInfo_schemaName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pgUsername":
+			out.Values[i] = ec._ModuleInfo_pgUsername(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bucketName":
+			out.Values[i] = ec._ModuleInfo_bucketName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "identity":
+			out.Values[i] = ec._ModuleInfo_identity(ctx, field, obj)
+		case "provisionedAt":
+			out.Values[i] = ec._ModuleInfo_provisionedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8551,6 +10155,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deprovisionModule":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deprovisionModule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rotateModuleCredentials":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rotateModuleCredentials(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -8804,6 +10415,10 @@ func (ec *executionContext) _ProvisioningResult(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ProvisioningResult_username(ctx, field, obj)
 		case "password":
 			out.Values[i] = ec._ProvisioningResult_password(ctx, field, obj)
+		case "connectionString":
+			out.Values[i] = ec._ProvisioningResult_connectionString(ctx, field, obj)
+		case "bucketName":
+			out.Values[i] = ec._ProvisioningResult_bucketName(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._ProvisioningResult_error(ctx, field, obj)
 		default:
@@ -8930,6 +10545,91 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "identity":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_identity(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "identities":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_identities(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "events":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_events(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "permissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_permissions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "provisionedModules":
 			field := field
 
@@ -8943,6 +10643,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "module":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_module(ctx, field)
 				return res
 			}
 
@@ -10056,6 +11775,20 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 	return res
 }
 
+func (ec *executionContext) marshalNDeprovisionResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐDeprovisionResult(ctx context.Context, sel ast.SelectionSet, v model.DeprovisionResult) graphql.Marshaler {
+	return ec._DeprovisionResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDeprovisionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐDeprovisionResult(ctx context.Context, sel ast.SelectionSet, v *model.DeprovisionResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DeprovisionResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNEvent2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v model.Event) graphql.Marshaler {
 	return ec._Event(ctx, sel, &v)
 }
@@ -10068,6 +11801,20 @@ func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋko
 		return graphql.Null
 	}
 	return ec._Event(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEventConnection2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEventConnection(ctx context.Context, sel ast.SelectionSet, v model.EventConnection) graphql.Marshaler {
+	return ec._EventConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEventConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEventConnection(ctx context.Context, sel ast.SelectionSet, v *model.EventConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EventConnection(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNEventEdge2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEventEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EventEdge) graphql.Marshaler {
@@ -10131,6 +11878,46 @@ func (ec *executionContext) marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkors�
 	return ec._Identity(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNIdentityConnection2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityConnection(ctx context.Context, sel ast.SelectionSet, v model.IdentityConnection) graphql.Marshaler {
+	return ec._IdentityConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIdentityConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityConnection(ctx context.Context, sel ast.SelectionSet, v *model.IdentityConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IdentityConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNIdentityEdge2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.IdentityEdge) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNIdentityEdge2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityEdge(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNIdentityEdge2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityEdge(ctx context.Context, sel ast.SelectionSet, v *model.IdentityEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IdentityEdge(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNIdentityResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentityResult(ctx context.Context, sel ast.SelectionSet, v model.IdentityResult) graphql.Marshaler {
 	return ec._IdentityResult(ctx, sel, &v)
 }
@@ -10183,6 +11970,32 @@ func (ec *executionContext) marshalNJSON2map(ctx context.Context, sel ast.Select
 	return res
 }
 
+func (ec *executionContext) marshalNModuleInfo2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ModuleInfo) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNModuleInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfo(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNModuleInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfo(ctx context.Context, sel ast.SelectionSet, v *model.ModuleInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModuleInfo(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -10195,6 +12008,22 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaksolotᚋkors�
 
 func (ec *executionContext) marshalNPermission2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v model.Permission) graphql.Marshaler {
 	return ec._Permission(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPermission2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Permission) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
@@ -10434,36 +12263,6 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
-}
-
-func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]string, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
-	}
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
 }
 
 func (ec *executionContext) unmarshalNTransitionResourceInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐTransitionResourceInput(ctx context.Context, v any) (model.TransitionResourceInput, error) {
@@ -10954,6 +12753,13 @@ func (ec *executionContext) marshalOJSON2map(ctx context.Context, sel ast.Select
 	_ = ctx
 	res := graphql.MarshalMap(v)
 	return res
+}
+
+func (ec *executionContext) marshalOModuleInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐModuleInfo(ctx context.Context, sel ast.SelectionSet, v *model.ModuleInfo) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ModuleInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError(ctx context.Context, sel ast.SelectionSet, v *model.MutationError) graphql.Marshaler {

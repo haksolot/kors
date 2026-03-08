@@ -1,14 +1,8 @@
-extend schema
-  @link(url: "https://specs.apollo.dev/federation/v2.3",
-        import: ["@key", "@shareable", "@extends", "@external"])
-
 scalar UUID
 scalar JSON
 scalar DateTime
 
-# --- KORS Primitives (Federated Entities) ---
-
-type Identity @key(fields: "id") {
+type Identity {
   id: UUID!
   externalId: String
   name: String!
@@ -18,7 +12,7 @@ type Identity @key(fields: "id") {
   updatedAt: DateTime!
 }
 
-type ResourceType @key(fields: "id") {
+type ResourceType {
   id: UUID!
   name: String!
   description: String
@@ -28,7 +22,7 @@ type ResourceType @key(fields: "id") {
   updatedAt: DateTime!
 }
 
-type Resource @key(fields: "id") {
+type Resource {
   id: UUID!
   type: ResourceType!
   state: String!
@@ -38,7 +32,7 @@ type Resource @key(fields: "id") {
   revisions(first: Int, after: String): RevisionConnection!
 }
 
-type Event @key(fields: "id") {
+type Event {
   id: UUID!
   resource: Resource
   identity: Identity!
@@ -48,7 +42,7 @@ type Event @key(fields: "id") {
   createdAt: DateTime!
 }
 
-type Revision @key(fields: "id") {
+type Revision {
   id: UUID!
   resource: Resource!
   identity: Identity!
@@ -58,7 +52,7 @@ type Revision @key(fields: "id") {
   createdAt: DateTime!
 }
 
-type Permission @key(fields: "id") {
+type Permission {
   id: UUID!
   identity: Identity!
   resource: Resource
@@ -236,67 +230,15 @@ type ModuleInfo {
 # --- Roots ---
 
 type Query {
-  """
-  Retrieves a single Resource by its UUID.
-  """
   resource(id: UUID!): Resource
-
-  """
-  List resources with optional filtering by type and cursor-based pagination.
-  """
-  resources(
-    first: Int
-    after: String
-    typeName: String
-    state: String
-    createdAfter: DateTime
-    createdBefore: DateTime
-  ): ResourceConnection!
-  
-  """
-  Retrieves a Resource Type definition by its unique name.
-  """
+  resources(first: Int, after: String, typeName: String, state: String, createdAfter: DateTime, createdBefore: DateTime): ResourceConnection!
   resourceType(name: String!): ResourceType
-
-  """
-  List all registered Resource Types.
-  """
   resourceTypes: [ResourceType!]!
-
-  """
-  Retourne une identite par son UUID interne.
-  """
   identity(id: UUID!): Identity
-
-  """
-  Liste les identites avec filtre optionnel sur le type. Admin requis.
-  """
   identities(type: String, first: Int, after: String): IdentityConnection!
-
-  """
-  Liste les evenements avec filtres optionnels et pagination.
-  """
-  events(
-    resourceId: UUID
-    identityId: UUID
-    type: String
-    first: Int
-    after: String
-  ): EventConnection!
-
-  """
-  Liste les permissions avec filtres optionnels. Admin requis ou self-query.
-  """
+  events(resourceId: UUID, identityId: UUID, type: String, first: Int, after: String): EventConnection!
   permissions(identityId: UUID, resourceId: UUID, resourceTypeId: UUID): [Permission!]!
-  
-  """
-  Liste tous les modules provisiones avec leurs details. Admin requis.
-  """
   provisionedModules: [ModuleInfo!]!
-
-  """
-  Retourne les details d'un module specifique. Admin requis.
-  """
   module(name: String!): ModuleInfo
 }
 
@@ -310,70 +252,16 @@ type DeprovisionResult {
 }
 
 type Mutation {
-  """
-  Registers a new identity (user, service, or system) in the KORS registry.
-  Admin permission required.
-  """
   createIdentity(input: CreateIdentityInput!): IdentityResult!
-
-  """
-  Soft-deletes a resource. The resource is hidden from all queries but preserved for audit trail.
-  Requires 'admin' permission on the resource or its type.
-  """
   deleteResource(id: UUID!): ResourceResult!
-
-  """
-  Registers a new Resource Type in KORS.
-  Defining a type requires a JSON Schema for metadata validation and a set of allowed state transitions.
-  """
   registerResourceType(input: RegisterResourceTypeInput!): ResourceTypeResult!
-  
-  """
-  Creates a new Resource instance.
-  The resource will be initialized with the provided state and metadata.
-  This operation is tracked and triggers a 'kors.resource.created' event.
-  """
   createResource(input: CreateResourceInput!): ResourceResult!
-
-  """
-  Triggers a state transition for an existing Resource.
-  The transition must be allowed by the Resource Type's transition graph.
-  """
   transitionResource(input: TransitionResourceInput!): ResourceResult!
-  
-  """
-  Grants a specific permission to an identity (user or service).
-  Permissions can be scoped to a specific resource or an entire resource type.
-  """
   grantPermission(input: GrantPermissionInput!): PermissionResult!
-
-  """
-  Creates a new revision (snapshot) of a resource.
-  Optionally attaches a file to the revision.
-  """
   createRevision(input: CreateRevisionInput!): RevisionResult!
-  
-  """
-  Provisions a new module by creating a dedicated database schema, user, and MinIO bucket.
-  Only administrators can perform this action.
-  """
   provisionModule(moduleName: String!): ProvisioningResult!
-
-  """
-  Removes a module and all its associated data (schema, user, bucket).
-  """
   deprovisionModule(moduleName: String!, forceDeleteStorage: Boolean): DeprovisionResult!
-
-  """
-  Genere un nouveau mot de passe Postgres pour le role du module.
-  Retourne les nouveaux credentials complets. Admin requis.
-  """
   rotateModuleCredentials(moduleName: String!): ProvisioningResult!
-
-  """
-  Uploads a file to the module's dedicated MinIO bucket.
-  The file is isolated from other modules and can be accessed via the returned pre-signed URL.
-  """
   uploadFile(input: UploadFileInput!): UploadResult!
 }
 

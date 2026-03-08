@@ -15,7 +15,15 @@ import (
 
 // Tools is the resolver for the tools field.
 func (r *queryResolver) Tools(ctx context.Context) ([]*model.Resource, error) {
-	panic(fmt.Errorf("not implemented: Tools - tools"))
+	tools, err := r.Store.ListAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*model.Resource, 0, len(tools))
+	for _, t := range tools {
+		result = append(result, &model.Resource{Id: t.ID.String()})
+	}
+	return result, nil
 }
 
 // Query returns generated.QueryResolver implementation.

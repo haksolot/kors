@@ -30,6 +30,9 @@ func (p *Permission) IsExpired() bool {
 type Repository interface {
 	Create(ctx context.Context, p *Permission) error
 	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteForIdentity(ctx context.Context, identityID uuid.UUID) error
 	FindForIdentity(ctx context.Context, identityID uuid.UUID) ([]*Permission, error)
 	Check(ctx context.Context, identityID uuid.UUID, action string, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) (bool, error)
+	List(ctx context.Context, identityID *uuid.UUID, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) ([]*Permission, error) // NOUVEAU
+	GetByID(ctx context.Context, id uuid.UUID) (*Permission, error) // NOUVEAU
 }

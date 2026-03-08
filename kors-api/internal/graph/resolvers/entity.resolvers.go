@@ -7,7 +7,6 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
@@ -16,17 +15,61 @@ import (
 
 // FindEventByID is the resolver for the findEventByID field.
 func (r *entityResolver) FindEventByID(ctx context.Context, id uuid.UUID) (*model.Event, error) {
-	panic(fmt.Errorf("not implemented: FindEventByID - findEventByID"))
+	e, err := r.ListEventsUseCase.Repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if e == nil {
+		return nil, nil
+	}
+	return &model.Event{
+		ID:            e.ID,
+		Type:          e.Type,
+		Payload:       e.Payload,
+		NatsMessageID: e.NatsMessageID,
+		CreatedAt:     e.CreatedAt,
+	}, nil
 }
 
 // FindIdentityByID is the resolver for the findIdentityByID field.
 func (r *entityResolver) FindIdentityByID(ctx context.Context, id uuid.UUID) (*model.Identity, error) {
-	panic(fmt.Errorf("not implemented: FindIdentityByID - findIdentityByID"))
+	ident, err := r.IdentityRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if ident == nil {
+		return nil, nil
+	}
+	var extID *string
+	if ident.ExternalID != "" {
+		extID = &ident.ExternalID
+	}
+	return &model.Identity{
+		ID:         ident.ID,
+		ExternalID: extID,
+		Name:       ident.Name,
+		Type:       ident.Type,
+		Metadata:   ident.Metadata,
+		CreatedAt:  ident.CreatedAt,
+		UpdatedAt:  ident.UpdatedAt,
+	}, nil
 }
 
 // FindPermissionByID is the resolver for the findPermissionByID field.
 func (r *entityResolver) FindPermissionByID(ctx context.Context, id uuid.UUID) (*model.Permission, error) {
-	panic(fmt.Errorf("not implemented: FindPermissionByID - findPermissionByID"))
+	p, err := r.ListPermissionsUseCase.Repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	return &model.Permission{
+		ID:        p.ID,
+		Action:    p.Action,
+		ExpiresAt: p.ExpiresAt,
+		CreatedAt: p.CreatedAt,
+	}, nil
 }
 
 // FindResourceByID is the resolver for the findResourceByID field.
@@ -50,12 +93,40 @@ func (r *entityResolver) FindResourceByID(ctx context.Context, id uuid.UUID) (*m
 
 // FindResourceTypeByID is the resolver for the findResourceTypeByID field.
 func (r *entityResolver) FindResourceTypeByID(ctx context.Context, id uuid.UUID) (*model.ResourceType, error) {
-	panic(fmt.Errorf("not implemented: FindResourceTypeByID - findResourceTypeByID"))
+	rt, err := r.GetResourceTypeUseCase.Repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if rt == nil {
+		return nil, nil
+	}
+	desc := rt.Description
+	return &model.ResourceType{
+		ID:          rt.ID,
+		Name:        rt.Name,
+		Description: &desc,
+		JSONSchema:  rt.JSONSchema,
+		Transitions: rt.Transitions,
+		CreatedAt:   rt.CreatedAt,
+		UpdatedAt:   rt.UpdatedAt,
+	}, nil
 }
 
 // FindRevisionByID is the resolver for the findRevisionByID field.
 func (r *entityResolver) FindRevisionByID(ctx context.Context, id uuid.UUID) (*model.Revision, error) {
-	panic(fmt.Errorf("not implemented: FindRevisionByID - findRevisionByID"))
+	rev, err := r.CreateRevisionUseCase.RevisionRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if rev == nil {
+		return nil, nil
+	}
+	return &model.Revision{
+		ID:        rev.ID,
+		Snapshot:  rev.Snapshot,
+		FilePath:  rev.FilePath,
+		CreatedAt: rev.CreatedAt,
+	}, nil
 }
 
 // Entity returns generated.EntityResolver implementation.

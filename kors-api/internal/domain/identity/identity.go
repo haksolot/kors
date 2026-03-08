@@ -21,4 +21,6 @@ type Repository interface {
 	Create(ctx context.Context, id *Identity) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Identity, error)
 	GetByExternalID(ctx context.Context, externalID string) (*Identity, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	List(ctx context.Context, identityType *string, first int, after *uuid.UUID) ([]*Identity, bool, int, error) // NOUVEAU
 }

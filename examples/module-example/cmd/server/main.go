@@ -31,14 +31,17 @@ func main() {
 	defer stop()
 
 	// 1. Database
-	dbURL := os.Getenv("DATABASE_URL")
-	pool, _ := pgxpool.New(context.Background(), dbURL)
-	defer pool.Close()
+	adminDBURL := os.Getenv("DATABASE_URL")
+	
+	log.Println("Running module migrations using admin credentials...")
+	adminDB, _ := stdlib.OpenDB(*pgxpool.New(context.Background(), adminDBURL).Config().ConnConfig)
+	_ = goose.Up(adminDB, "/migrations")
+	adminDB.Close()
 
-	log.Println("Running module migrations...")
-	db := stdlib.OpenDB(*pool.Config().ConnConfig)
-	_ = goose.Up(db, "/migrations")
-	db.Close()
+	// Application connection using module credentials (connectionString from provisionModule)
+	moduleDBURL := getEnv("MODULE_DATABASE_URL", adminDBURL)
+	pool, _ := pgxpool.New(context.Background(), moduleDBURL)
+	defer pool.Close()
 
 	// 2. NATS
 	nc, _ := nats.Connect(os.Getenv("NATS_URL"))
@@ -78,6 +81,13 @@ func main() {
 
 	log.Println("TMS Module running on :8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 func getKeycloakToken() (string, error) {
@@ -128,6 +138,6 @@ func handleKorsEvent(ctx context.Context, pool *pgxpool.Pool, msg *nats.Msg) {
 	json.Unmarshal(msg.Data, &ev)
 	if ev.Payload["to_state"] == "maintenance" {
 		log.Printf("TMS: Maintenance detected for %s", ev.ResourceID)
-		_, _ = pool.Exec(ctx, "UPDATE tms.tools SET last_maintenance_at = NOW() WHERE id = $1", ev.ResourceID)
+		_, _ = pool.Exec(ctx, "UPDATE tools SET last_maintenance_at = NOW() WHERE id = $1", ev.ResourceID)
 	}
 }

@@ -25,21 +25,33 @@ type CreateIdentityUseCase struct {
 }
 
 func (uc *CreateIdentityUseCase) Execute(ctx context.Context, input CreateIdentityInput) (*identity.Identity, error) {
-    // Seul un admin peut creer des identites
-    allowed, err := uc.PermissionRepo.Check(ctx, input.CallerID, "admin", nil, nil)
-    if err != nil {
-        return nil, fmt.Errorf("failed to check permission: %w", err)
-    }
-    if !allowed {
-        return nil, fmt.Errorf("admin permission required to create identities")
-    }
+	isAdmin, err := uc.PermissionRepo.Check(ctx, input.CallerID, "admin", nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	hasWrite, err := uc.PermissionRepo.Check(ctx, input.CallerID, "write", nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
 
-    if !validIdentityTypes[input.Type] {
-        return nil, fmt.Errorf("invalid identity type %q: must be one of user, service, system", input.Type)
-    }
-    if input.ExternalID == "" || input.Name == "" {
-        return nil, fmt.Errorf("externalId and name are required")
-    }
+	switch input.Type {
+	case "user":
+		// write or admin suffice to create a user
+		if !hasWrite && !isAdmin {
+			return nil, fmt.Errorf("write or admin permission required to create user identities")
+		}
+	case "service", "system":
+		// only admin can create service or system identities
+		if !isAdmin {
+			return nil, fmt.Errorf("admin permission required to create %s identities", input.Type)
+		}
+	default:
+		return nil, fmt.Errorf("invalid identity type %q: must be one of user, service, system", input.Type)
+	}
+
+	if input.ExternalID == "" || input.Name == "" {
+		return nil, fmt.Errorf("externalId and name are required")
+	}
 
     // Verifier l'unicite
     existing, err := uc.Repo.GetByExternalID(ctx, input.ExternalID)

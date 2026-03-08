@@ -1,4 +1,4 @@
-schema: ../../shared/schema/kors.graphql
+schema: schema.graphql
 operations:
   - operations.graphql
 generated: generated.go

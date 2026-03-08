@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/haksolot/kors/kors-api/internal/domain/event"
 	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/domain/resource"
@@ -21,6 +22,7 @@ type TransitionResourceInput struct {
 }
 
 type TransitionResourceUseCase struct {
+	Pool             *pgxpool.Pool // NOUVEAU
 	ResourceRepo     resource.Repository
 	ResourceTypeRepo resourcetype.Repository
 	EventRepo        event.Repository
@@ -86,10 +88,6 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 	res.UpdatedAt = time.Now()
 	res.Metadata = mergedMetadata
 
-	if err := uc.ResourceRepo.Update(ctx, res); err != nil {
-		return nil, fmt.Errorf("failed to update resource: %w", err)
-	}
-
 	// 6. Create Audit Event
 	ev := &event.Event{
 		ID:         uuid.New(),
@@ -103,16 +101,31 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		CreatedAt: time.Now(),
 	}
 
-	// 7. Persist Event
-	if err := uc.EventRepo.Create(ctx, ev); err != nil {
-		uc.Logger.Warn().Err(err).Msg("failed to record event for transition")
+	// 7. Persist Resource and Event in an atomic transaction
+	tx, err := uc.Pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if err := uc.ResourceRepo.UpdateWithTx(ctx, tx, res); err != nil {
+		return nil, fmt.Errorf("failed to update resource: %w", err)
+	}
+	if err := uc.EventRepo.CreateWithTx(ctx, tx, ev); err != nil {
+		return nil, fmt.Errorf("failed to persist transition event: %w", err)
 	}
 
 	// 8. Broadcast to NATS bus
 	if uc.EventPublisher != nil {
 		if err := uc.EventPublisher.Publish(ctx, ev); err != nil {
-			uc.Logger.Warn().Err(err).Msg("failed to broadcast event on NATS")
+			// NATS is not transactional. We log the failure but commit anyway
+			// so we don't lose the transition. A retry worker can recover.
+			uc.Logger.Warn().Err(err).Msg("failed to broadcast transition event on NATS")
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transition: %w", err)
 	}
 
 	return res, nil

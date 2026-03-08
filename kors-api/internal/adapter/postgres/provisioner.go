@@ -4,10 +4,14 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"net/url"
+	"os"
 	"regexp"
+	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/haksolot/kors/kors-api/internal/domain/provisioning"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var moduleNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{1,30}$`)
@@ -20,6 +24,19 @@ func validateModuleName(name string) error {
 		)
 	}
 	return nil
+}
+
+func buildConnectionString(username, password, schema string) string {
+	base := os.Getenv("DATABASE_URL")
+	u, err := url.Parse(base)
+	if err != nil {
+		return ""
+	}
+	u.User = url.UserPassword(username, password)
+	q := u.Query()
+	q.Set("options", fmt.Sprintf("-csearch_path=%s,kors", schema))
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 type PostgresProvisioner struct {
@@ -39,7 +56,8 @@ func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName st
 	// 1. Create Schema
 	// 2. Create Role
 	// 3. Grant usage on KORS schema (Read-Only)
-	// 4. Set owner of new schema to the new role
+	// 4. Set search_path for the new role
+	// 5. Set owner of new schema to the new role
 	queries := []string{
 		fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", schema),
 		fmt.Sprintf("DROP ROLE IF EXISTS %s", username), // Cleanup if exists
@@ -47,6 +65,7 @@ func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName st
 		fmt.Sprintf("GRANT USAGE ON SCHEMA kors TO %s", username),
 		fmt.Sprintf("GRANT SELECT ON ALL TABLES IN SCHEMA kors TO %s", username),
 		fmt.Sprintf("ALTER DEFAULT PRIVILEGES IN SCHEMA kors GRANT SELECT ON TABLES TO %s", username),
+		fmt.Sprintf("ALTER ROLE %s SET search_path TO %s, kors", username, schema),
 		fmt.Sprintf("ALTER SCHEMA %s OWNER TO %s", schema, username),
 	}
 
@@ -56,11 +75,14 @@ func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName st
 		}
 	}
 
+	bucketName := fmt.Sprintf("module-%s", strings.ReplaceAll(strings.ToLower(moduleName), "_", "-"))
 	return &provisioning.ModuleCredentials{
-		ModuleName: moduleName,
-		Schema:     schema,
-		Username:   username,
-		Password:   password,
+		ModuleName:       moduleName,
+		Schema:           schema,
+		Username:         username,
+		Password:         password,
+		ConnectionString: buildConnectionString(username, password, schema),
+		BucketName:       bucketName,
 	}, nil
 }
 
@@ -100,29 +122,80 @@ func (p *PostgresProvisioner) DeprovisionModule(ctx context.Context, moduleName 
 	return nil
 }
 
+func (p *PostgresProvisioner) RegisterModule(ctx context.Context, r *provisioning.ModuleRecord) error {
+	_, err := p.Pool.Exec(ctx, `
+        INSERT INTO kors.modules
+            (name, schema_name, pg_username, minio_bucket, identity_id, provisioned_at, provisioned_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (name) DO UPDATE SET
+            schema_name    = EXCLUDED.schema_name,
+            pg_username    = EXCLUDED.pg_username,
+            minio_bucket   = EXCLUDED.minio_bucket,
+            identity_id    = EXCLUDED.identity_id,
+            provisioned_at = EXCLUDED.provisioned_at,
+            provisioned_by = EXCLUDED.provisioned_by
+    `, r.Name, r.SchemaName, r.PgUsername, r.MinioBucket,
+		r.IdentityID, r.ProvisionedAt, r.ProvisionedBy)
+	return err
+}
+
+func (p *PostgresProvisioner) UnregisterModule(ctx context.Context, moduleName string) error {
+	_, err := p.Pool.Exec(ctx, "DELETE FROM kors.modules WHERE name = $1", moduleName)
+	return err
+}
+
+func (p *PostgresProvisioner) GetModule(ctx context.Context, moduleName string) (*provisioning.ModuleRecord, error) {
+	var r provisioning.ModuleRecord
+	err := p.Pool.QueryRow(ctx, `
+        SELECT name, schema_name, pg_username, minio_bucket, identity_id, provisioned_at, provisioned_by
+        FROM kors.modules WHERE name = $1
+    `, moduleName).Scan(&r.Name, &r.SchemaName, &r.PgUsername, &r.MinioBucket,
+		&r.IdentityID, &r.ProvisionedAt, &r.ProvisionedBy)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &r, nil
+}
+
 func (p *PostgresProvisioner) ListModules(ctx context.Context) ([]string, error) {
-	// We search for roles that follow our naming convention "user_*"
-	query := `
-		SELECT rolname 
-		FROM pg_roles 
-		WHERE rolname LIKE 'user_%'
-	`
-	rows, err := p.Pool.Query(ctx, query)
+	rows, err := p.Pool.Query(ctx, "SELECT name FROM kors.modules ORDER BY provisioned_at DESC")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-
-	var modules []string
+	var names []string
 	for rows.Next() {
-		var rolname string
-		if err := rows.Scan(&rolname); err != nil {
+		var name string
+		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		// Remove "user_" prefix to get original module name
-		modules = append(modules, rolname[5:])
+		names = append(names, name)
 	}
-	return modules, nil
+	return names, nil
+}
+
+func (p *PostgresProvisioner) RotatePassword(ctx context.Context, moduleName string) (*provisioning.ModuleCredentials, error) {
+	if err := validateModuleName(moduleName); err != nil {
+		return nil, err
+	}
+	username := fmt.Sprintf("user_%s", moduleName)
+	newPassword := generateRandomPassword(16)
+	_, err := p.Pool.Exec(ctx, fmt.Sprintf("ALTER ROLE %s WITH PASSWORD '%s'", username, newPassword))
+	if err != nil {
+		return nil, fmt.Errorf("failed to rotate password: %w", err)
+	}
+	bucketName := fmt.Sprintf("module-%s", strings.ReplaceAll(strings.ToLower(moduleName), "_", "-"))
+	return &provisioning.ModuleCredentials{
+		ModuleName:       moduleName,
+		Schema:           moduleName,
+		Username:         username,
+		Password:         newPassword,
+		ConnectionString: buildConnectionString(username, newPassword, moduleName),
+		BucketName:       bucketName,
+	}, nil
 }
 
 func generateRandomPassword(n int) string {

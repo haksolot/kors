@@ -49,7 +49,7 @@ type Resource {
   metadata: JSON!
   createdAt: DateTime!
   updatedAt: DateTime!
-  revisions: [Revision!]!
+  revisions(first: Int, after: String): RevisionConnection!
 }
 
 type Event {
@@ -82,6 +82,15 @@ type Permission {
   createdAt: DateTime!
 }
 
+type ModuleInfo {
+  name: String!
+  schemaName: String!
+  pgUsername: String!
+  bucketName: String!
+  identity: Identity
+  provisionedAt: DateTime!
+}
+
 # --- Connections (Pagination) ---
 
 type ResourceConnection {
@@ -95,7 +104,46 @@ type ResourceEdge {
   node: Resource!
 }
 
+type EventConnection {
+  edges: [EventEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type EventEdge {
+  cursor: String!
+  node: Event!
+}
+
+type RevisionConnection {
+  edges: [RevisionEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type RevisionEdge {
+  cursor: String!
+  node: Revision!
+}
+
+type IdentityConnection {
+  edges: [IdentityEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type IdentityEdge {
+  cursor: String!
+  node: Identity!
+}
+
 # --- Results ---
+
+type IdentityResult {
+  success: Boolean!
+  identity: Identity
+  error: MutationError
+}
 
 type ResourceResult {
   success: Boolean!
@@ -127,6 +175,17 @@ type ProvisioningResult {
   schema: String
   username: String
   password: String
+  connectionString: String
+  bucketName: String
+  error: MutationError
+}
+
+type DeprovisionResult {
+  success: Boolean!
+  postgresCleared: Boolean!
+  storageCleared: Boolean!
+  storageSkippedReason: String
+  korsDataCleared: Boolean!
   error: MutationError
 }
 
@@ -139,9 +198,16 @@ type UploadResult {
 
 # --- Inputs ---
 
+input CreateIdentityInput {
+  externalId: String!
+  name: String!
+  type: String!
+  metadata: JSON
+}
+
 input UploadFileInput {
   fileName: String!
-  fileContent: String! # Base64 encoded file
+  fileContent: String! 
   contentType: String
 }
 
@@ -174,30 +240,25 @@ input GrantPermissionInput {
 
 input CreateRevisionInput {
   resourceId: UUID!
-  fileContent: String # Base64 encoded file
+  fileContent: String 
   fileName: String
 }
 
-# --- Roots ---
+# --- Roots (Standard for federation) ---
 
 type Query {
   resource(id: UUID!): Resource
-  resources(first: Int, after: String, typeName: String): ResourceConnection!
-  
+  resources(first: Int, after: String, typeName: String, state: String, createdAfter: DateTime, createdBefore: DateTime): ResourceConnection!
   resourceType(name: String!): ResourceType
   resourceTypes: [ResourceType!]!
 }
 
 type Mutation {
   registerResourceType(input: RegisterResourceTypeInput!): ResourceTypeResult!
-  
   createResource(input: CreateResourceInput!): ResourceResult!
   transitionResource(input: TransitionResourceInput!): ResourceResult!
-  
   grantPermission(input: GrantPermissionInput!): PermissionResult!
   createRevision(input: CreateRevisionInput!): RevisionResult!
-  
-  provisionModule(moduleName: String!): ProvisioningResult!
   uploadFile(input: UploadFileInput!): UploadResult!
 }
 

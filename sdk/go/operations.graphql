@@ -40,25 +40,93 @@ mutation UploadFile($input: UploadFileInput!) {
   }
 }
 
+mutation CreateIdentity($input: CreateIdentityInput!) {
+  createIdentity(input: $input) {
+    success
+    identity { id externalId name type createdAt }
+    error { code message }
+  }
+}
+
+mutation GrantPermission($input: GrantPermissionInput!) {
+  grantPermission(input: $input) {
+    success
+    permission { id action expiresAt createdAt }
+    error { code message }
+  }
+}
+
+mutation CreateRevision($input: CreateRevisionInput!) {
+  createRevision(input: $input) {
+    success
+    revision { id filePath createdAt }
+    error { code message }
+  }
+}
+
+mutation DeleteResource($id: UUID!) {
+  deleteResource(id: $id) {
+    success
+    error { code message }
+  }
+}
+
+mutation ProvisionModule($moduleName: String!) {
+  provisionModule(moduleName: $moduleName) {
+    success
+    moduleName
+    schema
+    username
+    password
+    connectionString
+    bucketName
+    error { code message }
+  }
+}
+
+mutation DeprovisionModule($moduleName: String!, $forceDeleteStorage: Boolean) {
+  deprovisionModule(moduleName: $moduleName, forceDeleteStorage: $forceDeleteStorage) {
+    success
+    postgresCleared
+    storageCleared
+    korsDataCleared
+    storageSkippedReason
+    error { code message }
+  }
+}
+
+mutation RotateModuleCredentials($moduleName: String!) {
+  rotateModuleCredentials(moduleName: $moduleName) {
+    success
+    moduleName
+    username
+    password
+    connectionString
+    error { code message }
+  }
+}
+
 query GetResource($id: UUID!) {
   resource(id: $id) {
     id
     state
     metadata
     type {
+      id
       name
     }
   }
 }
 
-query ListResources($first: Int, $after: String, $typeName: String) {
-  resources(first: $first, after: $after, typeName: $typeName) {
+query ListResources($first: Int, $after: String, $typeName: String, $state: String, $createdAfter: DateTime, $createdBefore: DateTime) {
+  resources(first: $first, after: $after, typeName: $typeName, state: $state, createdAfter: $createdAfter, createdBefore: $createdBefore) {
     totalCount
     edges {
       cursor
       node {
         id
         state
+        createdAt
       }
     }
     pageInfo {
@@ -66,4 +134,51 @@ query ListResources($first: Int, $after: String, $typeName: String) {
       endCursor
     }
   }
+}
+
+query GetResourceType($name: String!) {
+  resourceType(name: $name) {
+    id name description jsonSchema transitions createdAt updatedAt
+  }
+}
+
+query ListResourceTypes {
+  resourceTypes { id name description createdAt }
+}
+
+query ListEvents($resourceId: UUID, $identityId: UUID, $typeArg: String, $first: Int, $after: String) {
+  events(resourceId: $resourceId, identityId: $identityId, type: $typeArg, first: $first, after: $after) {
+    totalCount
+    edges {
+      cursor
+      node { id type payload createdAt }
+    }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+query ListPermissions($identityId: UUID, $resourceId: UUID, $resourceTypeId: UUID) {
+  permissions(identityId: $identityId, resourceId: $resourceId, resourceTypeId: $resourceTypeId) {
+    id action expiresAt createdAt
+  }
+}
+
+query GetIdentity($id: UUID!) {
+  identity(id: $id) { id externalId name type createdAt }
+}
+
+query ListIdentities($typeArg: String, $first: Int, $after: String) {
+  identities(type: $typeArg, first: $first, after: $after) {
+    totalCount
+    edges { cursor node { id externalId name type } }
+    pageInfo { hasNextPage endCursor }
+  }
+}
+
+query GetModule($name: String!) {
+  module(name: $name) { name schemaName pgUsername bucketName provisionedAt }
+}
+
+query ListModulesDetailed {
+  provisionedModules { name schemaName pgUsername bucketName provisionedAt }
 }

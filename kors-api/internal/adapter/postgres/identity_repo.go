@@ -83,3 +83,74 @@ func (r *IdentityRepository) GetByID(ctx context.Context, internalID uuid.UUID) 
 	}
 	return &id, nil
 }
+
+func (r *IdentityRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	_, err := r.Pool.Exec(ctx, "DELETE FROM kors.identities WHERE id = $1", id)
+	return err
+}
+
+func (r *IdentityRepository) List(ctx context.Context, identityType *string, first int, after *uuid.UUID) ([]*identity.Identity, bool, int, error) {
+	// 1. Get Total Count
+	var totalCount int
+	countQuery := "SELECT count(*) FROM kors.identities WHERE 1=1"
+	argsCount := []interface{}{}
+	argIdx := 1
+
+	if identityType != nil {
+		countQuery += fmt.Sprintf(" AND type = $%d", argIdx)
+		argsCount = append(argsCount, *identityType)
+		argIdx++
+	}
+
+	err := r.Pool.QueryRow(ctx, countQuery, argsCount...).Scan(&totalCount)
+	if err != nil {
+		return nil, false, 0, err
+	}
+
+	// 2. Fetch Data
+	query := `
+		SELECT id, external_id, name, type, metadata, created_at, updated_at
+		FROM kors.identities
+		WHERE 1=1
+	`
+	args := []interface{}{}
+	argIdx = 1
+
+	if identityType != nil {
+		query += fmt.Sprintf(" AND type = $%d", argIdx)
+		args = append(args, *identityType)
+		argIdx++
+	}
+
+	if after != nil {
+		query += fmt.Sprintf(" AND created_at < (SELECT created_at FROM kors.identities WHERE id = $%d)", argIdx)
+		args = append(args, *after)
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", argIdx)
+	args = append(args, first+1)
+
+	rows, err := r.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, false, 0, err
+	}
+	defer rows.Close()
+
+	var results []*identity.Identity
+	for rows.Next() {
+		var id identity.Identity
+		err := rows.Scan(&id.ID, &id.ExternalID, &id.Name, &id.Type, &id.Metadata, &id.CreatedAt, &id.UpdatedAt)
+		if err != nil {
+			return nil, false, 0, err
+		}
+		results = append(results, &id)
+	}
+
+	hasNextPage := len(results) > first
+	if hasNextPage {
+		results = results[:first]
+	}
+
+	return results, hasNextPage, totalCount, nil
+}

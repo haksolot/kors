@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
@@ -101,6 +102,7 @@ func (r *mutationResolver) TransitionResource(ctx context.Context, input model.T
 // GrantPermission is the resolver for the grantPermission field.
 func (r *mutationResolver) GrantPermission(ctx context.Context, input model.GrantPermissionInput) (*model.PermissionResult, error) {
 	p, err := r.GrantPermissionUseCase.Execute(ctx, usecase.GrantPermissionInput{
+		CallerID:       getIdentityID(ctx),
 		IdentityID:     input.IdentityID,
 		ResourceID:     input.ResourceID,
 		ResourceTypeID: input.ResourceTypeID,
@@ -137,13 +139,59 @@ func (r *mutationResolver) ProvisionModule(ctx context.Context, moduleName strin
 	if err != nil {
 		return &model.ProvisioningResult{Success: false, Error: &model.MutationError{Code: "PROVISIONING_FAILED", Message: err.Error()}}, nil
 	}
-	return &model.ProvisioningResult{Success: true, ModuleName: &creds.ModuleName, Schema: &creds.Schema, Username: &creds.Username, Password: &creds.Password}, nil
+	return &model.ProvisioningResult{
+		Success:          true,
+		ModuleName:       &creds.ModuleName,
+		Schema:           &creds.Schema,
+		Username:         &creds.Username,
+		Password:         &creds.Password,
+		ConnectionString: &creds.ConnectionString,
+		BucketName:       &creds.BucketName,
+	}, nil
 }
 
 // DeprovisionModule is the resolver for the deprovisionModule field.
-func (r *mutationResolver) DeprovisionModule(ctx context.Context, moduleName string) (bool, error) {
-	err := r.ModuleGovernanceUseCase.Deprovision(ctx, moduleName, getIdentityID(ctx))
-	return err == nil, err
+func (r *mutationResolver) DeprovisionModule(ctx context.Context, moduleName string, forceDeleteStorage *bool) (*model.DeprovisionResult, error) {
+	force := false
+	if forceDeleteStorage != nil {
+		force = *forceDeleteStorage
+	}
+	report, err := r.ModuleGovernanceUseCase.Deprovision(ctx, moduleName, getIdentityID(ctx), force)
+	if err != nil {
+		if report == nil {
+			return &model.DeprovisionResult{Success: false, Error: &model.MutationError{Code: "DEPROVISIONING_FAILED", Message: err.Error()}}, nil
+		}
+		return &model.DeprovisionResult{
+			Success:              false,
+			PostgresCleared:      report.PostgresCleared,
+			StorageCleared:       report.StorageCleared,
+			StorageSkippedReason: &report.StorageSkippedReason,
+			KorsDataCleared:      report.KorsDataCleared,
+			Error:                &model.MutationError{Code: "DEPROVISIONING_FAILED", Message: err.Error()},
+		}, nil
+	}
+	return &model.DeprovisionResult{
+		Success:              true,
+		PostgresCleared:      report.PostgresCleared,
+		StorageCleared:       report.StorageCleared,
+		StorageSkippedReason: &report.StorageSkippedReason,
+		KorsDataCleared:      report.KorsDataCleared,
+	}, nil
+}
+
+// RotateModuleCredentials is the resolver for the rotateModuleCredentials field.
+func (r *mutationResolver) RotateModuleCredentials(ctx context.Context, moduleName string) (*model.ProvisioningResult, error) {
+	creds, err := r.ModuleGovernanceUseCase.Rotate(ctx, moduleName, getIdentityID(ctx))
+	if err != nil {
+		return &model.ProvisioningResult{Success: false, Error: &model.MutationError{Code: "ROTATION_FAILED", Message: err.Error()}}, nil
+	}
+	return &model.ProvisioningResult{
+		Success:          true,
+		ModuleName:       &creds.ModuleName,
+		Username:         &creds.Username,
+		Password:         &creds.Password,
+		ConnectionString: &creds.ConnectionString,
+	}, nil
 }
 
 // UploadFile is the resolver for the uploadFile field.
@@ -185,12 +233,37 @@ func (r *queryResolver) Resource(ctx context.Context, id uuid.UUID) (*model.Reso
 }
 
 // Resources is the resolver for the resources field.
-func (r *queryResolver) Resources(ctx context.Context, first *int, after *string, typeName *string) (*model.ResourceConnection, error) {
+func (r *queryResolver) Resources(ctx context.Context, first *int, after *string, typeName *string, state *string, createdAfter *time.Time, createdBefore *time.Time) (*model.ResourceConnection, error) {
 	limit := 20
 	if first != nil {
 		limit = *first
 	}
-	result, err := r.ListResourcesUseCase.Execute(ctx, usecase.ListResourcesInput{First: limit, After: after, TypeName: typeName})
+
+	var fTypeName *string
+	if typeName != nil && *typeName != "" {
+		fTypeName = typeName
+	}
+	var fState *string
+	if state != nil && *state != "" {
+		fState = state
+	}
+	var fAfter *time.Time
+	if createdAfter != nil && !createdAfter.IsZero() {
+		fAfter = createdAfter
+	}
+	var fBefore *time.Time
+	if createdBefore != nil && !createdBefore.IsZero() {
+		fBefore = createdBefore
+	}
+
+	result, err := r.ListResourcesUseCase.Execute(ctx, usecase.ListResourcesInput{
+		First:         limit,
+		After:         after,
+		TypeName:      fTypeName,
+		State:         fState,
+		CreatedAfter:  fAfter,
+		CreatedBefore: fBefore,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -233,9 +306,229 @@ func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceTyp
 	return res, nil
 }
 
-// ProvisionedModules is the resolver for the provisionedModules field.
-func (r *queryResolver) ProvisionedModules(ctx context.Context) ([]string, error) {
-	return r.ModuleGovernanceUseCase.List(ctx, getIdentityID(ctx))
+// Identity is the resolver for the identity field.
+func (r *queryResolver) Identity(ctx context.Context, id uuid.UUID) (*model.Identity, error) {
+	ident, err := r.GetIdentityUseCase.Execute(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if ident == nil {
+		return nil, nil
+	}
+	var extID *string
+	if ident.ExternalID != "" {
+		extID = &ident.ExternalID
+	}
+	return &model.Identity{
+		ID:         ident.ID,
+		ExternalID: extID,
+		Name:       ident.Name,
+		Type:       ident.Type,
+		Metadata:   ident.Metadata,
+		CreatedAt:  ident.CreatedAt,
+		UpdatedAt:  ident.UpdatedAt,
+	}, nil
+}
+
+// Identities is the resolver for the identities field.
+func (r *queryResolver) Identities(ctx context.Context, typeArg *string, first *int, after *string) (*model.IdentityConnection, error) {
+	limit := 20
+	if first != nil {
+		limit = *first
+	}
+
+	var filterType *string
+	if typeArg != nil && *typeArg != "" {
+		filterType = typeArg
+	}
+
+	result, err := r.ListIdentitiesUseCase.Execute(ctx, usecase.ListIdentitiesInput{
+		CallerID:     getIdentityID(ctx),
+		IdentityType: filterType,
+		First:        limit,
+		After:        after,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*model.IdentityEdge, len(result.Identities))
+	for i, id := range result.Identities {
+		var extID *string
+		if id.ExternalID != "" {
+			extID = &id.ExternalID
+		}
+		edges[i] = &model.IdentityEdge{
+			Cursor: pagination.EncodeCursor(id.ID.String()),
+			Node: &model.Identity{
+				ID:         id.ID,
+				ExternalID: extID,
+				Name:       id.Name,
+				Type:       id.Type,
+				Metadata:   id.Metadata,
+				CreatedAt:  id.CreatedAt,
+				UpdatedAt:  id.UpdatedAt,
+			},
+		}
+	}
+
+	var endCursor *string
+	if len(edges) > 0 {
+		c := edges[len(edges)-1].Cursor
+		endCursor = &c
+	}
+
+	return &model.IdentityConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage: result.HasNextPage,
+			EndCursor:   endCursor,
+		},
+		TotalCount: result.TotalCount,
+	}, nil
+}
+
+// Events is the resolver for the events field.
+func (r *queryResolver) Events(ctx context.Context, resourceID *uuid.UUID, identityID *uuid.UUID, typeArg *string, first *int, after *string) (*model.EventConnection, error) {
+	limit := 20
+	if first != nil {
+		limit = *first
+	}
+
+	var resID *uuid.UUID
+	if resourceID != nil && *resourceID != uuid.Nil {
+		resID = resourceID
+	}
+	var idID *uuid.UUID
+	if identityID != nil && *identityID != uuid.Nil {
+		idID = identityID
+	}
+	var fType *string
+	if typeArg != nil && *typeArg != "" {
+		fType = typeArg
+	}
+
+	result, err := r.ListEventsUseCase.Execute(ctx, usecase.ListEventsInput{
+		ResourceID: resID,
+		IdentityID: idID,
+		Type:       fType,
+		First:      limit,
+		After:      after,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*model.EventEdge, len(result.Events))
+	for i, e := range result.Events {
+		var resPtr *model.Resource
+		if e.ResourceID != nil {
+			resPtr = &model.Resource{ID: *e.ResourceID}
+		}
+		edges[i] = &model.EventEdge{
+			Cursor: pagination.EncodeCursor(e.ID.String()),
+			Node: &model.Event{
+				ID:            e.ID,
+				Resource:      resPtr,
+				Identity:      &model.Identity{ID: e.IdentityID},
+				Type:          e.Type,
+				Payload:       e.Payload,
+				NatsMessageID: e.NatsMessageID,
+				CreatedAt:     e.CreatedAt,
+			},
+		}
+	}
+
+	var endCursor *string
+	if len(edges) > 0 {
+		c := edges[len(edges)-1].Cursor
+		endCursor = &c
+	}
+
+	return &model.EventConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage: result.HasNextPage,
+			EndCursor:   endCursor,
+		},
+		TotalCount: result.TotalCount,
+	}, nil
+}
+
+// Permissions is the resolver for the permissions field.
+func (r *queryResolver) Permissions(ctx context.Context, identityID *uuid.UUID, resourceID *uuid.UUID, resourceTypeID *uuid.UUID) ([]*model.Permission, error) {
+	var idID *uuid.UUID
+	if identityID != nil && *identityID != uuid.Nil {
+		idID = identityID
+	}
+	var resID *uuid.UUID
+	if resourceID != nil && *resourceID != uuid.Nil {
+		resID = resourceID
+	}
+	var rtID *uuid.UUID
+	if resourceTypeID != nil && *resourceTypeID != uuid.Nil {
+		rtID = resourceTypeID
+	}
+
+	perms, err := r.ListPermissionsUseCase.Execute(ctx, usecase.ListPermissionsInput{
+		CallerID:       getIdentityID(ctx),
+		IdentityID:     idID,
+		ResourceID:     resID,
+		ResourceTypeID: rtID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*model.Permission, len(perms))
+	for i, p := range perms {
+		var resPtr *model.Resource
+		if p.ResourceID != nil {
+			resPtr = &model.Resource{ID: *p.ResourceID}
+		}
+		var rtPtr *model.ResourceType
+		if p.ResourceTypeID != nil {
+			rtPtr = &model.ResourceType{ID: *p.ResourceTypeID}
+		}
+		res[i] = &model.Permission{
+			ID:           p.ID,
+			Identity:     &model.Identity{ID: p.IdentityID},
+			Resource:     resPtr,
+			ResourceType: rtPtr,
+			Action:       p.Action,
+			ExpiresAt:    p.ExpiresAt,
+			CreatedAt:    p.CreatedAt,
+		}
+	}
+	return res, nil
+}
+
+// ResourceType is the resolver for the resourceType field.
+func (r *queryResolver) ProvisionedModules(ctx context.Context) ([]*model.ModuleInfo, error) {
+	records, err := r.ModuleGovernanceUseCase.ListDetailed(ctx, getIdentityID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*model.ModuleInfo, 0, len(records))
+	for _, rec := range records {
+		info, err := r.mapModuleRecordToInfo(ctx, rec)
+		if err == nil {
+			res = append(res, info)
+		}
+	}
+	return res, nil
+}
+
+// Module is the resolver for the module field.
+func (r *queryResolver) Module(ctx context.Context, name string) (*model.ModuleInfo, error) {
+	rec, err := r.ModuleGovernanceUseCase.GetByName(ctx, name, getIdentityID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	return r.mapModuleRecordToInfo(ctx, rec)
 }
 
 // Revisions is the resolver for the revisions field.
@@ -276,18 +569,18 @@ func (r *resourceResolver) Revisions(ctx context.Context, obj *model.Resource, f
 			},
 		}
 	}
-	
+
 	var endCursor *string
 	if len(edges) > 0 {
 		c := edges[len(edges)-1].Cursor
 		endCursor = &c
 	}
-	
+
 	return &model.RevisionConnection{
 		Edges: edges,
 		PageInfo: &model.PageInfo{
 			HasNextPage: hasNext,
-			EndCursor: endCursor,
+			EndCursor:   endCursor,
 		},
 		TotalCount: total,
 	}, nil

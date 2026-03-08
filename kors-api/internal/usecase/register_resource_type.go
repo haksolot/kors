@@ -36,13 +36,17 @@ func (uc *RegisterResourceTypeUseCase) Execute(ctx context.Context, input Regist
 		return nil, fmt.Errorf("resource type name is required")
 	}
 
-	// 1. Check Permission (admin required)
-	allowed, err := uc.PermissionRepo.Check(ctx, input.IdentityID, "admin", nil, nil)
+	// 1. Check Permission (write global OR admin global required)
+	allowedWrite, err := uc.PermissionRepo.Check(ctx, input.IdentityID, "write", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check permission: %w", err)
 	}
-	if !allowed {
-		return nil, fmt.Errorf("identity %s is not authorized to register types (admin role required)", input.IdentityID)
+	allowedAdmin, err := uc.PermissionRepo.Check(ctx, input.IdentityID, "admin", nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowedWrite && !allowedAdmin {
+		return nil, fmt.Errorf("identity %s is not authorized to register types (write or admin required)", input.IdentityID)
 	}
 
 	// 2. Create domain object
