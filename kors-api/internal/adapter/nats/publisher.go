@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/nats-io/nats.go"
-	"github.com/kors-project/kors/kors-api/internal/domain/event"
+	"github.com/haksolot/kors/kors-api/internal/domain/event"
 )
 
 type NatsPublisher struct {

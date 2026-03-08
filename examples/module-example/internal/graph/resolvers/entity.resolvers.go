@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/kors-project/kors/examples/module-example/internal/graph/generated"
-	"github.com/kors-project/kors/examples/module-example/internal/graph/model"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/generated"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/model"
 )
 
 func (r *entityResolver) FindResourceByID(ctx context.Context, id uuid.UUID) (*model.Resource, error) {

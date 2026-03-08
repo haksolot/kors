@@ -1,4 +1,4 @@
-module github.com/kors-project/kors/examples/module-example
+module github.com/haksolot/kors/examples/module-example
 
 go 1.25.8
 

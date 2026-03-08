@@ -9,8 +9,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kors-project/kors/examples/module-example/internal/graph/generated"
-	"github.com/kors-project/kors/examples/module-example/internal/graph/model"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/generated"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/model"
 )
 
 // Tools is the resolver for the tools field.

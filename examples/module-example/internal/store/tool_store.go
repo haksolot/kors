@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kors-project/kors/examples/module-example/internal/model"
+	"github.com/haksolot/kors/examples/module-example/internal/model"
 )
 
 type ToolStore struct {

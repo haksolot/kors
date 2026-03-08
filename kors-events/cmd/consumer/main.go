@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
-	korsnats "github.com/kors-project/kors/kors-events/internal/adapter/nats"
-	"github.com/kors-project/kors/kors-events/internal/adapter/postgres"
+	korsnats "github.com/haksolot/kors/kors-events/internal/adapter/nats"
+	"github.com/haksolot/kors/kors-events/internal/adapter/postgres"
 )
 
 func main() {

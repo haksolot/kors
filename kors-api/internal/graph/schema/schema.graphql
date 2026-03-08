@@ -171,6 +171,8 @@ type Query {
   
   resourceType(name: String!): ResourceType
   resourceTypes: [ResourceType!]!
+  
+  provisionedModules: [String!]!
 }
 
 type Mutation {
@@ -183,6 +185,7 @@ type Mutation {
   createRevision(input: CreateRevisionInput!): RevisionResult!
   
   provisionModule(moduleName: String!): ProvisioningResult!
+  deprovisionModule(moduleName: String!): Boolean!
 }
 
 type Subscription {

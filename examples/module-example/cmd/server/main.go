@@ -10,9 +10,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"github.com/kors-project/kors/examples/module-example/internal/graph/generated"
-	"github.com/kors-project/kors/examples/module-example/internal/graph/resolvers"
-	"github.com/kors-project/kors/examples/module-example/internal/store"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/generated"
+	"github.com/haksolot/kors/examples/module-example/internal/graph/resolvers"
+	"github.com/haksolot/kors/examples/module-example/internal/store"
 )
 
 func main() {

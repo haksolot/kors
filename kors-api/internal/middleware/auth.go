@@ -6,8 +6,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/kors-project/kors/kors-api/internal/domain/identity"
-	"github.com/kors-project/kors/shared/korsctx"
+	"github.com/haksolot/kors/kors-api/internal/domain/identity"
+	"github.com/haksolot/kors/shared/korsctx"
 )
 
 type AuthMiddleware struct {

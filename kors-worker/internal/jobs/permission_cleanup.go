@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/kors-project/kors/kors-worker/internal/adapter/postgres"
+	"github.com/haksolot/kors/kors-worker/internal/adapter/postgres"
 )
 
 type PermissionCleanupJob struct {

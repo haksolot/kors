@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kors-project/kors/kors-api/internal/graph/generated"
-	"github.com/kors-project/kors/kors-api/internal/graph/model"
+	"github.com/haksolot/kors/kors-api/internal/graph/generated"
+	"github.com/haksolot/kors/kors-api/internal/graph/model"
 )
 
 // FindEventByID is the resolver for the findEventByID field.
@@ -32,9 +32,13 @@ func (r *entityResolver) FindPermissionByID(ctx context.Context, id uuid.UUID) (
 // FindResourceByID is the resolver for the findResourceByID field.
 func (r *entityResolver) FindResourceByID(ctx context.Context, id uuid.UUID) (*model.Resource, error) {
 	res, err := r.ListResourcesUseCase.Repo.GetByID(ctx, id)
-	if err != nil { return nil, err }
-	if res == nil { return nil, nil }
-	
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+
 	return &model.Resource{
 		ID:        res.ID,
 		State:     res.State,

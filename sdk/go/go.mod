@@ -1,4 +1,4 @@
-module github.com/kors-project/kors/sdk/go
+module github.com/haksolot/kors/sdk/go
 
 go 1.25.8
 

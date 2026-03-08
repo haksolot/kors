@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kors-project/kors/kors-api/internal/domain/provisioning"
+	"github.com/haksolot/kors/kors-api/internal/domain/provisioning"
 )
 
 type PostgresProvisioner struct {
@@ -46,6 +46,57 @@ func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName st
 		Username:   username,
 		Password:   password,
 	}, nil
+}
+
+func (p *PostgresProvisioner) DeprovisionModule(ctx context.Context, moduleName string) error {
+	username := fmt.Sprintf("user_%s", moduleName)
+	schema := moduleName
+
+	// 1. Reassign objects and drop dependencies
+	// These steps are required to drop a role that owns objects or has privileges
+	cleanupQueries := []string{
+		fmt.Sprintf("DROP SCHEMA IF EXISTS %s CASCADE", schema),
+		fmt.Sprintf("REASSIGN OWNED BY %s TO kors", username),
+		fmt.Sprintf("DROP OWNED BY %s", username),
+	}
+
+	for _, q := range cleanupQueries {
+		// Ignore errors on REASSIGN if the role doesn't exist anymore or has no objects
+		_, _ = p.Pool.Exec(ctx, q)
+	}
+
+	// 2. Finally drop the role
+	_, err := p.Pool.Exec(ctx, fmt.Sprintf("DROP ROLE IF EXISTS %s", username))
+	if err != nil {
+		return fmt.Errorf("failed to drop role: %w", err)
+	}
+
+	return nil
+}
+
+func (p *PostgresProvisioner) ListModules(ctx context.Context) ([]string, error) {
+	// We search for roles that follow our naming convention "user_*"
+	query := `
+		SELECT rolname 
+		FROM pg_roles 
+		WHERE rolname LIKE 'user_%'
+	`
+	rows, err := p.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var modules []string
+	for rows.Next() {
+		var rolname string
+		if err := rows.Scan(&rolname); err != nil {
+			return nil, err
+		}
+		// Remove "user_" prefix to get original module name
+		modules = append(modules, rolname[5:])
+	}
+	return modules, nil
 }
 
 func generateRandomPassword(n int) string {

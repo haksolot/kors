@@ -11,10 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
-	"github.com/kors-project/kors/kors-api/internal/graph/generated"
-	"github.com/kors-project/kors/kors-api/internal/graph/model"
-	"github.com/kors-project/kors/kors-api/internal/usecase"
-	"github.com/kors-project/kors/shared/korsctx"
+	"github.com/haksolot/kors/kors-api/internal/graph/generated"
+	"github.com/haksolot/kors/kors-api/internal/graph/model"
+	"github.com/haksolot/kors/kors-api/internal/usecase"
+	"github.com/haksolot/kors/shared/korsctx"
 )
 
 func getIdentityID(ctx context.Context) uuid.UUID {
@@ -89,9 +89,15 @@ func (r *mutationResolver) CreateRevision(ctx context.Context, input model.Creat
 
 // ProvisionModule is the resolver for the provisionModule field.
 func (r *mutationResolver) ProvisionModule(ctx context.Context, moduleName string) (*model.ProvisioningResult, error) {
-	creds, err := r.ProvisionModuleUseCase.Execute(ctx, moduleName, getIdentityID(ctx))
+	creds, err := r.ModuleGovernanceUseCase.Provision(ctx, moduleName, getIdentityID(ctx))
 	if err != nil { return &model.ProvisioningResult{Success: false, Error: &model.MutationError{Code: "PROVISIONING_FAILED", Message: err.Error()}}, nil }
 	return &model.ProvisioningResult{Success: true, ModuleName: &creds.ModuleName, Schema: &creds.Schema, Username: &creds.Username, Password: &creds.Password}, nil
+}
+
+// DeprovisionModule is the resolver for the deprovisionModule field.
+func (r *mutationResolver) DeprovisionModule(ctx context.Context, moduleName string) (bool, error) {
+	err := r.ModuleGovernanceUseCase.Deprovision(ctx, moduleName, getIdentityID(ctx))
+	return err == nil, err
 }
 
 // Resource is the resolver for the resource field.
@@ -122,6 +128,11 @@ func (r *queryResolver) ResourceType(ctx context.Context, name string) (*model.R
 // ResourceTypes is the resolver for the resourceTypes field.
 func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceType, error) {
 	return nil, nil
+}
+
+// ProvisionedModules is the resolver for the provisionedModules field.
+func (r *queryResolver) ProvisionedModules(ctx context.Context) ([]string, error) {
+	return r.ModuleGovernanceUseCase.List(ctx, getIdentityID(ctx))
 }
 
 // EventWasPublished is the resolver for the eventWasPublished field.

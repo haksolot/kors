@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/kors-project/kors/kors-api/internal/domain/resource"
+	"github.com/haksolot/kors/kors-api/internal/domain/resource"
 )
 
 type ListResourcesInput struct {

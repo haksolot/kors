@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kors-project/kors/kors-api/internal/domain/event"
-	"github.com/kors-project/kors/kors-api/internal/domain/permission"
-	"github.com/kors-project/kors/kors-api/internal/domain/resource"
-	"github.com/kors-project/kors/kors-api/internal/domain/resourcetype"
+	"github.com/haksolot/kors/kors-api/internal/domain/event"
+	"github.com/haksolot/kors/kors-api/internal/domain/permission"
+	"github.com/haksolot/kors/kors-api/internal/domain/resource"
+	"github.com/haksolot/kors/kors-api/internal/domain/resourcetype"
 )
 
 type TransitionResourceInput struct {

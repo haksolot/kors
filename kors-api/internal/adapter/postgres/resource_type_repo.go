@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kors-project/kors/kors-api/internal/domain/resourcetype"
+	"github.com/haksolot/kors/kors-api/internal/domain/resourcetype"
 )
 
 type ResourceTypeRepository struct {

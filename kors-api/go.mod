@@ -1,8 +1,8 @@
-module github.com/kors-project/kors/kors-api
+module github.com/haksolot/kors/kors-api
 
 go 1.25.8
 
-replace github.com/safran-ls/kors/shared => ../shared
+replace github.com/haksolot/kors/shared => ../shared
 
 require (
 	github.com/99designs/gqlgen v0.17.87
@@ -12,10 +12,10 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/joho/godotenv v1.5.1
+	github.com/haksolot/kors/shared v0.0.0-00010101000000-000000000000
 	github.com/minio/minio-go/v7 v7.0.99
 	github.com/nats-io/nats.go v1.49.0
 	github.com/pressly/goose/v3 v3.27.0
-	github.com/safran-ls/kors/shared v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.40.0
@@ -88,7 +88,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 // indirect
 	go.opentelemetry.io/otel v1.42.0 // indirect
 	go.opentelemetry.io/otel/metric v1.42.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
