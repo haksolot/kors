@@ -9,13 +9,51 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
 	"github.com/haksolot/kors/kors-api/internal/graph/model"
 	"github.com/haksolot/kors/kors-api/internal/usecase"
+	"github.com/haksolot/kors/shared/pagination"
 	nats "github.com/nats-io/nats.go"
 )
+
+// CreateIdentity is the resolver for the createIdentity field.
+func (r *mutationResolver) CreateIdentity(ctx context.Context, input model.CreateIdentityInput) (*model.IdentityResult, error) {
+	id, err := r.CreateIdentityUseCase.Execute(ctx, usecase.CreateIdentityInput{
+		ExternalID: input.ExternalID,
+		Name:       input.Name,
+		Type:       input.Type,
+		Metadata:   input.Metadata,
+		CallerID:   getIdentityID(ctx),
+	})
+	if err != nil {
+		return &model.IdentityResult{Success: false, Error: &model.MutationError{Code: "CREATION_FAILED", Message: err.Error()}}, nil
+	}
+	var extID *string
+	if id.ExternalID != "" {
+		extID = &id.ExternalID
+	}
+	return &model.IdentityResult{Success: true, Identity: &model.Identity{
+		ID:         id.ID,
+		ExternalID: extID,
+		Name:       id.Name,
+		Type:       id.Type,
+		Metadata:   id.Metadata,
+		CreatedAt:  id.CreatedAt,
+		UpdatedAt:  id.UpdatedAt,
+	}}, nil
+}
+
+// DeleteResource is the resolver for the deleteResource field.
+func (r *mutationResolver) DeleteResource(ctx context.Context, id uuid.UUID) (*model.ResourceResult, error) {
+	err := r.DeleteResourceUseCase.Execute(ctx, id, getIdentityID(ctx))
+	if err != nil {
+		return &model.ResourceResult{Success: false, Error: &model.MutationError{Code: "DELETE_FAILED", Message: err.Error()}}, nil
+	}
+	return &model.ResourceResult{Success: true}, nil
+}
 
 // RegisterResourceType is the resolver for the registerResourceType field.
 func (r *mutationResolver) RegisterResourceType(ctx context.Context, input model.RegisterResourceTypeInput) (*model.ResourceTypeResult, error) {
@@ -136,7 +174,14 @@ func (r *mutationResolver) UploadFile(ctx context.Context, input model.UploadFil
 
 // Resource is the resolver for the resource field.
 func (r *queryResolver) Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error) {
-	return nil, nil
+	res, err := r.GetResourceUseCase.Execute(ctx, id, getIdentityID(ctx))
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+	return &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}, nil
 }
 
 // Resources is the resolver for the resources field.
@@ -151,7 +196,7 @@ func (r *queryResolver) Resources(ctx context.Context, first *int, after *string
 	}
 	edges := make([]*model.ResourceEdge, len(result.Resources))
 	for i, res := range result.Resources {
-		edges[i] = &model.ResourceEdge{Cursor: res.ID.String(), Node: &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}}
+		edges[i] = &model.ResourceEdge{Cursor: pagination.EncodeCursor(res.ID.String()), Node: &model.Resource{ID: res.ID, State: res.State, Metadata: res.Metadata, CreatedAt: res.CreatedAt, UpdatedAt: res.UpdatedAt}}
 	}
 	var endCursor *string
 	if len(edges) > 0 {
@@ -163,17 +208,89 @@ func (r *queryResolver) Resources(ctx context.Context, first *int, after *string
 
 // ResourceType is the resolver for the resourceType field.
 func (r *queryResolver) ResourceType(ctx context.Context, name string) (*model.ResourceType, error) {
-	return nil, nil
+	rt, err := r.GetResourceTypeUseCase.ExecuteByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if rt == nil {
+		return nil, nil
+	}
+	description := rt.Description
+	return &model.ResourceType{ID: rt.ID, Name: rt.Name, Description: &description, JSONSchema: rt.JSONSchema, Transitions: rt.Transitions, CreatedAt: rt.CreatedAt, UpdatedAt: rt.UpdatedAt}, nil
 }
 
 // ResourceTypes is the resolver for the resourceTypes field.
 func (r *queryResolver) ResourceTypes(ctx context.Context) ([]*model.ResourceType, error) {
-	return nil, nil
+	rts, err := r.GetResourceTypeUseCase.ExecuteList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var res []*model.ResourceType
+	for _, rt := range rts {
+		description := rt.Description
+		res = append(res, &model.ResourceType{ID: rt.ID, Name: rt.Name, Description: &description, JSONSchema: rt.JSONSchema, Transitions: rt.Transitions, CreatedAt: rt.CreatedAt, UpdatedAt: rt.UpdatedAt})
+	}
+	return res, nil
 }
 
 // ProvisionedModules is the resolver for the provisionedModules field.
 func (r *queryResolver) ProvisionedModules(ctx context.Context) ([]string, error) {
 	return r.ModuleGovernanceUseCase.List(ctx, getIdentityID(ctx))
+}
+
+// Revisions is the resolver for the revisions field.
+func (r *resourceResolver) Revisions(ctx context.Context, obj *model.Resource, first *int, after *string) (*model.RevisionConnection, error) {
+	limit := 20
+	if first != nil {
+		limit = *first
+	}
+	var afterID *uuid.UUID
+	if after != nil {
+		rawID, err := pagination.DecodeCursor(*after)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
+		}
+		id, err := uuid.Parse(rawID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor ID: %w", err)
+		}
+		afterID = &id
+	}
+
+	revs, hasNext, total, err := r.CreateRevisionUseCase.RevisionRepo.ListByResourcePaginated(ctx, obj.ID, limit, afterID)
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*model.RevisionEdge, len(revs))
+	for i, rev := range revs {
+		edges[i] = &model.RevisionEdge{
+			Cursor: pagination.EncodeCursor(rev.ID.String()),
+			Node: &model.Revision{
+				ID:        rev.ID,
+				Resource:  obj,
+				Identity:  &model.Identity{ID: rev.IdentityID},
+				Snapshot:  rev.Snapshot,
+				FilePath:  rev.FilePath,
+				CreatedAt: rev.CreatedAt,
+			},
+		}
+	}
+	
+	var endCursor *string
+	if len(edges) > 0 {
+		c := edges[len(edges)-1].Cursor
+		endCursor = &c
+	}
+	
+	return &model.RevisionConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage: hasNext,
+			EndCursor: endCursor,
+		},
+		TotalCount: total,
+	}, nil
 }
 
 // EventWasPublished is the resolver for the eventWasPublished field.
@@ -222,9 +339,13 @@ func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResol
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+// Resource returns generated.ResourceResolver implementation.
+func (r *Resolver) Resource() generated.ResourceResolver { return &resourceResolver{r} }
+
 // Subscription returns generated.SubscriptionResolver implementation.
 func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subscriptionResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type resourceResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }

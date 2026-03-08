@@ -3,17 +3,18 @@ package nats
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 	"github.com/haksolot/kors/kors-events/internal/domain/event"
 )
 
 type EventConsumer struct {
 	JS        nats.JetStreamContext
 	EventRepo event.Repository
+	Handlers  []event.Handler
 }
 
 func (c *EventConsumer) Start(ctx context.Context) error {
@@ -25,7 +26,7 @@ func (c *EventConsumer) Start(ctx context.Context) error {
 		FilterSubject: "kors.>",
 	})
 	if err != nil {
-		fmt.Printf("Warning: failed to ensure durable consumer: %v\n", err)
+		log.Warn().Err(err).Msg("failed to ensure durable consumer")
 	}
 
 	// 2. Subscribe and process
@@ -36,7 +37,7 @@ func (c *EventConsumer) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to pull subscribe: %w", err)
 	}
 
-	fmt.Println("kors-events: Balanced consumer started, listening for events...")
+	log.Info().Msg("kors-events: Balanced consumer started, listening for events...")
 
 	for {
 		select {
@@ -48,7 +49,7 @@ func (c *EventConsumer) Start(ctx context.Context) error {
 				if err == nats.ErrTimeout {
 					continue
 				}
-				log.Printf("Error fetching messages: %v", err)
+				log.Error().Err(err).Msg("Error fetching messages")
 				continue
 			}
 
@@ -63,14 +64,14 @@ func (c *EventConsumer) handleMessage(ctx context.Context, msg *nats.Msg) {
 	// 1. Extract Event ID (used as Nats-Msg-Id for idempotency)
 	msgID := msg.Header.Get(nats.MsgIdHdr)
 	if msgID == "" {
-		log.Printf("Error: message without MsgIdHdr, skipping.")
+		log.Error().Msg("message without MsgIdHdr, skipping.")
 		msg.Term()
 		return
 	}
 
 	eventID, err := uuid.Parse(msgID)
 	if err != nil {
-		log.Printf("Error parsing event ID %s: %v", msgID, err)
+		log.Error().Err(err).Str("msgID", msgID).Msg("Error parsing event ID")
 		msg.Term()
 		return
 	}
@@ -80,17 +81,23 @@ func (c *EventConsumer) handleMessage(ctx context.Context, msg *nats.Msg) {
 	// kors-events here is for REAL-TIME reactions (e.g. notifications).
 	processed, err := c.EventRepo.IsProcessed(ctx, eventID)
 	if err != nil {
-		log.Printf("Error checking idempotency: %v", err)
+		log.Error().Err(err).Msg("Error checking idempotency")
 		return // Let NATS retry
 	}
 
 	if !processed {
-		log.Printf("Event %s not found in DB, something is wrong (API should write first)", eventID)
+		log.Warn().Str("eventID", eventID.String()).Msg("Event not found in DB, something is wrong (API should write first)")
 		// We could wait or handle out-of-sync
 	}
 
-	log.Printf("kors-events: Processed event %s [%s]", eventID, msg.Subject)
+	log.Info().Str("eventID", eventID.String()).Str("subject", msg.Subject).Msg("kors-events: Processed event")
 
 	// 3. Acknowledge message
 	msg.Ack()
+
+	for _, h := range c.Handlers {
+		if err := h.Handle(ctx, msg.Subject, msg.Data); err != nil {
+			log.Error().Err(err).Str("subject", msg.Subject).Msg("handler error for subject")
+		}
+	}
 }

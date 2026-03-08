@@ -81,3 +81,53 @@ func (r *RevisionRepository) ListByResource(ctx context.Context, resourceID uuid
 	}
 	return results, nil
 }
+
+func (r *RevisionRepository) ListByResourcePaginated(ctx context.Context, resourceID uuid.UUID, first int, after *uuid.UUID) ([]*revision.Revision, bool, int, error) {
+	// 1. Total count
+	var totalCount int
+	err := r.Pool.QueryRow(ctx, "SELECT count(*) FROM kors.revisions WHERE resource_id = $1", resourceID).Scan(&totalCount)
+	if err != nil {
+		return nil, false, 0, err
+	}
+
+	// 2. Query
+	query := `
+		SELECT id, resource_id, identity_id, snapshot, file_path, created_at
+		FROM kors.revisions
+		WHERE resource_id = $1
+	`
+	args := []interface{}{resourceID}
+	argIdx := 2
+
+	if after != nil {
+		query += fmt.Sprintf(" AND created_at < (SELECT created_at FROM kors.revisions WHERE id = $%d)", argIdx)
+		args = append(args, *after)
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", argIdx)
+	args = append(args, first+1)
+
+	rows, err := r.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, false, 0, err
+	}
+	defer rows.Close()
+
+	var results []*revision.Revision
+	for rows.Next() {
+		var rev revision.Revision
+		err := rows.Scan(&rev.ID, &rev.ResourceID, &rev.IdentityID, &rev.Snapshot, &rev.FilePath, &rev.CreatedAt)
+		if err != nil {
+			return nil, false, 0, err
+		}
+		results = append(results, &rev)
+	}
+
+	hasNextPage := len(results) > first
+	if hasNextPage {
+		results = results[:first]
+	}
+
+	return results, hasNextPage, totalCount, nil
+}

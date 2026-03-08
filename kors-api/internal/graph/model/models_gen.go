@@ -8,6 +8,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type CreateIdentityInput struct {
+	ExternalID string         `json:"externalId"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Metadata   map[string]any `json:"metadata,omitempty"`
+}
+
 type CreateResourceInput struct {
 	TypeName     string         `json:"typeName"`
 	InitialState string         `json:"initialState"`
@@ -32,6 +39,17 @@ type Event struct {
 
 func (Event) IsEntity() {}
 
+type EventConnection struct {
+	Edges      []*EventEdge `json:"edges"`
+	PageInfo   *PageInfo    `json:"pageInfo"`
+	TotalCount int          `json:"totalCount"`
+}
+
+type EventEdge struct {
+	Cursor string `json:"cursor"`
+	Node   *Event `json:"node"`
+}
+
 type GrantPermissionInput struct {
 	IdentityID     uuid.UUID  `json:"identityId"`
 	ResourceID     *uuid.UUID `json:"resourceId,omitempty"`
@@ -51,6 +69,12 @@ type Identity struct {
 }
 
 func (Identity) IsEntity() {}
+
+type IdentityResult struct {
+	Success  bool           `json:"success"`
+	Identity *Identity      `json:"identity,omitempty"`
+	Error    *MutationError `json:"error,omitempty"`
+}
 
 type Mutation struct {
 }
@@ -105,13 +129,13 @@ type RegisterResourceTypeInput struct {
 }
 
 type Resource struct {
-	ID        uuid.UUID      `json:"id"`
-	Type      *ResourceType  `json:"type"`
-	State     string         `json:"state"`
-	Metadata  map[string]any `json:"metadata"`
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	Revisions []*Revision    `json:"revisions"`
+	ID        uuid.UUID           `json:"id"`
+	Type      *ResourceType       `json:"type"`
+	State     string              `json:"state"`
+	Metadata  map[string]any      `json:"metadata"`
+	CreatedAt time.Time           `json:"createdAt"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+	Revisions *RevisionConnection `json:"revisions"`
 }
 
 func (Resource) IsEntity() {}
@@ -162,6 +186,17 @@ type Revision struct {
 }
 
 func (Revision) IsEntity() {}
+
+type RevisionConnection struct {
+	Edges      []*RevisionEdge `json:"edges"`
+	PageInfo   *PageInfo       `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+type RevisionEdge struct {
+	Cursor string    `json:"cursor"`
+	Node   *Revision `json:"node"`
+}
 
 type RevisionResult struct {
 	Success  bool           `json:"success"`

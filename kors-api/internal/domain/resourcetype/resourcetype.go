@@ -2,9 +2,12 @@ package resourcetype
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // ResourceType represents a registered type in KORS with its validation rules and lifecycle.
@@ -16,6 +19,28 @@ type ResourceType struct {
 	Transitions map[string]interface{}
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+// ValidateMetadata validates the provided metadata against the type's JSONSchema.
+// Returns nil if schema is empty or validation passes.
+func (rt *ResourceType) ValidateMetadata(metadata map[string]interface{}) error {
+	if len(rt.JSONSchema) == 0 {
+		return nil
+	}
+	schemaLoader := gojsonschema.NewGoLoader(rt.JSONSchema)
+	documentLoader := gojsonschema.NewGoLoader(metadata)
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	if err != nil {
+		return fmt.Errorf("schema validation error: %w", err)
+	}
+	if !result.Valid() {
+		errs := make([]string, len(result.Errors()))
+		for i, e := range result.Errors() {
+			errs[i] = e.String()
+		}
+		return fmt.Errorf("metadata does not match schema: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 // CanTransitionTo checks if a transition from fromState to toState is allowed.

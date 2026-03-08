@@ -10,6 +10,7 @@ import (
 	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/domain/resource"
 	"github.com/haksolot/kors/kors-api/internal/domain/resourcetype"
+	"github.com/rs/zerolog"
 )
 
 type TransitionResourceInput struct {
@@ -25,6 +26,7 @@ type TransitionResourceUseCase struct {
 	EventRepo        event.Repository
 	PermissionRepo   permission.Repository
 	EventPublisher   event.Publisher
+	Logger           zerolog.Logger
 }
 
 func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input TransitionResourceInput) (*resource.Resource, error) {
@@ -61,17 +63,28 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 		return nil, fmt.Errorf("transition from '%s' to '%s' not allowed for type '%s'", oldState, input.ToState, rt.Name)
 	}
 
+	// Merge existing metadata with input
+	mergedMetadata := make(map[string]interface{})
+	if res.Metadata != nil {
+		for k, v := range res.Metadata {
+			mergedMetadata[k] = v
+		}
+	}
+	if input.Metadata != nil {
+		for k, v := range input.Metadata {
+			mergedMetadata[k] = v
+		}
+	}
+
+	// Validate against schema
+	if err := rt.ValidateMetadata(mergedMetadata); err != nil {
+		return nil, fmt.Errorf("metadata validation failed: %w", err)
+	}
+
 	// 5. Update Resource
 	res.State = input.ToState
 	res.UpdatedAt = time.Now()
-	if input.Metadata != nil {
-		if res.Metadata == nil {
-			res.Metadata = make(map[string]interface{})
-		}
-		for k, v := range input.Metadata {
-			res.Metadata[k] = v
-		}
-	}
+	res.Metadata = mergedMetadata
 
 	if err := uc.ResourceRepo.Update(ctx, res); err != nil {
 		return nil, fmt.Errorf("failed to update resource: %w", err)
@@ -92,13 +105,13 @@ func (uc *TransitionResourceUseCase) Execute(ctx context.Context, input Transiti
 
 	// 7. Persist Event
 	if err := uc.EventRepo.Create(ctx, ev); err != nil {
-		fmt.Printf("Warning: failed to record event for transition: %v\n", err)
+		uc.Logger.Warn().Err(err).Msg("failed to record event for transition")
 	}
 
 	// 8. Broadcast to NATS bus
 	if uc.EventPublisher != nil {
 		if err := uc.EventPublisher.Publish(ctx, ev); err != nil {
-			fmt.Printf("Warning: failed to broadcast event on NATS: %v\n", err)
+			uc.Logger.Warn().Err(err).Msg("failed to broadcast event on NATS")
 		}
 	}
 

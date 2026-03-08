@@ -15,6 +15,8 @@ FROM alpine:3.18
 WORKDIR /
 
 COPY --from=builder /module-example /module-example
+# Copy migrations folder for auto-migration
+COPY --from=builder /app/examples/module-example/migrations /migrations
 COPY examples/module-example/.env .env
 
 EXPOSE 8081

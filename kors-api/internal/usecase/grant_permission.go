@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +21,14 @@ type GrantPermissionUseCase struct {
 	Repo permission.Repository
 }
 
+var validActions = map[string]bool{
+    "read": true, "write": true, "transition": true, "admin": true,
+}
+
 func (uc *GrantPermissionUseCase) Execute(ctx context.Context, input GrantPermissionInput) (*permission.Permission, error) {
+	if !validActions[input.Action] {
+        return nil, fmt.Errorf("invalid action %q: must be one of read, write, transition, admin", input.Action)
+    }
 	p := &permission.Permission{
 		ID:             uuid.New(),
 		IdentityID:     input.IdentityID,

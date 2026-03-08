@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +11,18 @@ import (
 	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/domain/provisioning"
 )
+
+var moduleNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{1,30}$`)
+
+func validateModuleName(name string) error {
+	if !moduleNameRegex.MatchString(name) {
+		return fmt.Errorf(
+			"invalid module name %q: must match ^[a-z][a-z0-9_]{1,30}$ (lowercase, start with letter, max 30 chars)",
+			name,
+		)
+	}
+	return nil
+}
 
 type ModuleGovernanceUseCase struct {
 	Provisioner        provisioning.Service
@@ -19,6 +32,7 @@ type ModuleGovernanceUseCase struct {
 }
 
 func (uc *ModuleGovernanceUseCase) Provision(ctx context.Context, moduleName string, identityID uuid.UUID) (*provisioning.ModuleCredentials, error) {
+	if err := validateModuleName(moduleName); err != nil { return nil, err }
 	if err := uc.checkAdmin(ctx, identityID); err != nil { return nil, err }
 	
 	// Create KORS Identity for the module if not exists
@@ -48,6 +62,7 @@ func (uc *ModuleGovernanceUseCase) Provision(ctx context.Context, moduleName str
 }
 
 func (uc *ModuleGovernanceUseCase) Deprovision(ctx context.Context, moduleName string, identityID uuid.UUID) error {
+	if err := validateModuleName(moduleName); err != nil { return err }
 	if err := uc.checkAdmin(ctx, identityID); err != nil { return err }
 
 	// Deprovision MinIO Bucket

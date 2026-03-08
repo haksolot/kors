@@ -31,6 +31,8 @@ type UploadFileOutput struct {
 	Error    string
 }
 
+const maxUploadSizeBytes = 50 * 1024 * 1024 // 50 MB
+
 func (uc *UploadFileUseCase) Execute(ctx context.Context, input UploadFileInput) (*UploadFileOutput, error) {
 	identityID, ok := korsctx.FromContext(ctx)
 	if !ok || identityID == uuid.Nil {
@@ -46,6 +48,9 @@ func (uc *UploadFileUseCase) Execute(ctx context.Context, input UploadFileInput)
 	if err != nil {
 		return &UploadFileOutput{Success: false, Error: "invalid base64 content"}, nil
 	}
+	if len(content) > maxUploadSizeBytes {
+        return &UploadFileOutput{Success: false, Error: fmt.Sprintf("file too large: max %d MB", maxUploadSizeBytes/1024/1024)}, nil
+    }
 
 	// Module bucket name: e.g., "module-<module_name>"
 	// Fallback to "kors-files" if identity type is not 'service'

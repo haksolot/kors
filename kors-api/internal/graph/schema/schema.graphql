@@ -35,7 +35,7 @@ type Resource @key(fields: "id") {
   metadata: JSON!
   createdAt: DateTime!
   updatedAt: DateTime!
-  revisions: [Revision!]!
+  revisions(first: Int, after: String): RevisionConnection!
 }
 
 type Event @key(fields: "id") {
@@ -73,6 +73,12 @@ type Permission @key(fields: "id") {
 type MutationError {
   code: String!
   message: String!
+}
+
+type IdentityResult {
+  success: Boolean!
+  identity: Identity
+  error: MutationError
 }
 
 type ResourceResult {
@@ -135,7 +141,36 @@ type ResourceEdge {
   node: Resource!
 }
 
+type EventConnection {
+  edges: [EventEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type EventEdge {
+  cursor: String!
+  node: Event!
+}
+
+type RevisionConnection {
+  edges: [RevisionEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type RevisionEdge {
+  cursor: String!
+  node: Revision!
+}
+
 # --- Inputs ---
+
+input CreateIdentityInput {
+  externalId: String!
+  name: String!
+  type: String!
+  metadata: JSON
+}
 
 input UploadFileInput {
   fileName: String!
@@ -206,6 +241,18 @@ type Query {
 }
 
 type Mutation {
+  """
+  Registers a new identity (user, service, or system) in the KORS registry.
+  Admin permission required.
+  """
+  createIdentity(input: CreateIdentityInput!): IdentityResult!
+
+  """
+  Soft-deletes a resource. The resource is hidden from all queries but preserved for audit trail.
+  Requires 'admin' permission on the resource or its type.
+  """
+  deleteResource(id: UUID!): ResourceResult!
+
   """
   Registers a new Resource Type in KORS.
   Defining a type requires a JSON Schema for metadata validation and a set of allowed state transitions.

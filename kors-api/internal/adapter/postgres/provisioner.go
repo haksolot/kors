@@ -2,19 +2,35 @@ package postgres
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
-	"time"
+	"regexp"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/haksolot/kors/kors-api/internal/domain/provisioning"
 )
+
+var moduleNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_]{1,30}$`)
+
+func validateModuleName(name string) error {
+	if !moduleNameRegex.MatchString(name) {
+		return fmt.Errorf(
+			"invalid module name %q: must match ^[a-z][a-z0-9_]{1,30}$ (lowercase, start with letter, max 30 chars)",
+			name,
+		)
+	}
+	return nil
+}
 
 type PostgresProvisioner struct {
 	Pool *pgxpool.Pool
 }
 
 func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName string) (*provisioning.ModuleCredentials, error) {
+	if err := validateModuleName(moduleName); err != nil {
+		return nil, err
+	}
+
 	username := fmt.Sprintf("user_%s", moduleName)
 	schema := moduleName
 	password := generateRandomPassword(16)
@@ -49,6 +65,10 @@ func (p *PostgresProvisioner) ProvisionModule(ctx context.Context, moduleName st
 }
 
 func (p *PostgresProvisioner) DeprovisionModule(ctx context.Context, moduleName string) error {
+	if err := validateModuleName(moduleName); err != nil {
+		return err
+	}
+
 	username := fmt.Sprintf("user_%s", moduleName)
 	schema := moduleName
 
@@ -107,10 +127,12 @@ func (p *PostgresProvisioner) ListModules(ctx context.Context) ([]string, error)
 
 func generateRandomPassword(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rand.Seed(time.Now().UnixNano())
 	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("crypto/rand failed: %v", err))
+	}
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = letters[int(b[i])%len(letters)]
 	}
 	return string(b)
 }

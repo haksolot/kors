@@ -9,6 +9,7 @@ import (
 	korsminio "github.com/haksolot/kors/kors-api/internal/adapter/minio"
 	"github.com/haksolot/kors/kors-api/internal/usecase"
 	"github.com/haksolot/kors/shared/korsctx"
+	"github.com/rs/zerolog/log"
 	"github.com/google/uuid"
 	"context"
 )
@@ -30,6 +31,10 @@ type Resolver struct {
 	ListResourcesUseCase        *usecase.ListResourcesUseCase
 	ModuleGovernanceUseCase     *usecase.ModuleGovernanceUseCase
 	UploadFileUseCase           *usecase.UploadFileUseCase
+	GetResourceUseCase          *usecase.GetResourceUseCase
+	GetResourceTypeUseCase      *usecase.GetResourceTypeUseCase
+	CreateIdentityUseCase       *usecase.CreateIdentityUseCase
+	DeleteResourceUseCase       *usecase.DeleteResourceUseCase
 	NatsConn                    *nats.Conn
 }
 
@@ -50,12 +55,16 @@ func NewResolver(pool *pgxpool.Pool, nc *nats.Conn, js nats.JetStreamContext, mC
 	return &Resolver{
 		NatsConn: nc,
 		RegisterResourceTypeUseCase: &usecase.RegisterResourceTypeUseCase{Repo: rtRepo, PermissionRepo: pRepo},
-		CreateResourceUseCase:       &usecase.CreateResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
-		TransitionResourceUseCase:   &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
+		CreateResourceUseCase:       &usecase.CreateResourceUseCase{Pool: pool, ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub},
+		TransitionResourceUseCase:   &usecase.TransitionResourceUseCase{ResourceRepo: rRepo, ResourceTypeRepo: rtRepo, EventRepo: eRepo, PermissionRepo: pRepo, EventPublisher: ePub, Logger: log.Logger},
 		GrantPermissionUseCase:      &usecase.GrantPermissionUseCase{Repo: pRepo},
 		CreateRevisionUseCase:       &usecase.CreateRevisionUseCase{ResourceRepo: rRepo, RevisionRepo: revRepo, FileStore: fStore, DefaultBucket: "kors-files", EventRepo: eRepo, EventPublisher: ePub},
 		ListResourcesUseCase:        &usecase.ListResourcesUseCase{Repo: rRepo},
 		ModuleGovernanceUseCase:     &usecase.ModuleGovernanceUseCase{Provisioner: prov, StorageProvisioner: storageProv, PermissionRepo: pRepo, IdentityRepo: idRepo},
 		UploadFileUseCase:           &usecase.UploadFileUseCase{FileStore: fStore, IdentityRepo: idRepo},
+		GetResourceUseCase:          &usecase.GetResourceUseCase{ResourceRepo: rRepo, PermissionRepo: pRepo},
+		GetResourceTypeUseCase:      &usecase.GetResourceTypeUseCase{Repo: rtRepo},
+		CreateIdentityUseCase:       &usecase.CreateIdentityUseCase{Repo: idRepo, PermissionRepo: pRepo},
+		DeleteResourceUseCase:       &usecase.DeleteResourceUseCase{ResourceRepo: rRepo, PermissionRepo: pRepo},
 	}
 }

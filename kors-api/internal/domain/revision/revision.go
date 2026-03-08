@@ -22,6 +22,7 @@ type Repository interface {
 	Create(ctx context.Context, r *Revision) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Revision, error)
 	ListByResource(ctx context.Context, resourceID uuid.UUID) ([]*Revision, error)
+	ListByResourcePaginated(ctx context.Context, resourceID uuid.UUID, first int, after *uuid.UUID) ([]*Revision, bool, int, error)
 }
 
 // FileStore defines the contract for storing associated files (MinIO).

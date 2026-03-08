@@ -46,3 +46,7 @@ models:
   DateTime:
     model:
       - github.com/99designs/gqlgen/graphql.Time
+  Resource:
+    fields:
+      revisions:
+        resolver: true

@@ -53,7 +53,7 @@ func (r *ResourceRepository) GetByID(ctx context.Context, id uuid.UUID) (*resour
 	query := `
 		SELECT id, type_id, state, metadata, created_at, updated_at, deleted_at
 		FROM kors.resources
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 	var res resource.Resource
 	err := r.Pool.QueryRow(ctx, query, id).Scan(
@@ -78,7 +78,7 @@ func (r *ResourceRepository) Update(ctx context.Context, res *resource.Resource)
 	query := `
 		UPDATE kors.resources
 		SET state = $1, metadata = $2, updated_at = $3
-		WHERE id = $4
+		WHERE id = $4 AND deleted_at IS NULL
 	`
 	_, err := r.Pool.Exec(ctx, query,
 		res.State,
@@ -92,12 +92,20 @@ func (r *ResourceRepository) Update(ctx context.Context, res *resource.Resource)
 	return nil
 }
 
+func (r *ResourceRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
+    _, err := r.Pool.Exec(ctx,
+        "UPDATE kors.resources SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+        id,
+    )
+    return err
+}
+
 func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UUID, typeName *string) ([]*resource.Resource, bool, int, error) {
 	// 1. Get Total Count
 	var totalCount int
-	countQuery := "SELECT count(*) FROM kors.resources r"
+	countQuery := "SELECT count(*) FROM kors.resources r WHERE r.deleted_at IS NULL"
 	if typeName != nil {
-		countQuery += " JOIN kors.resource_types rt ON r.type_id = rt.id WHERE rt.name = $1"
+		countQuery = "SELECT count(*) FROM kors.resources r JOIN kors.resource_types rt ON r.type_id = rt.id WHERE rt.name = $1 AND r.deleted_at IS NULL"
 		err := r.Pool.QueryRow(ctx, countQuery, *typeName).Scan(&totalCount)
 		if err != nil {
 			return nil, false, 0, err
@@ -115,7 +123,7 @@ func (r *ResourceRepository) List(ctx context.Context, first int, after *uuid.UU
 		SELECT r.id, r.type_id, r.state, r.metadata, r.created_at, r.updated_at, r.deleted_at
 		FROM kors.resources r
 		LEFT JOIN kors.resource_types rt ON r.type_id = rt.id
-		WHERE 1=1
+		WHERE r.deleted_at IS NULL
 	`
 	args := []interface{}{}
 	argIdx := 1

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -17,17 +17,13 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/nats-io/nats.go"
 	"github.com/haksolot/kors/kors-api/internal/adapter/postgres"
 	korsauth "github.com/haksolot/kors/kors-api/internal/middleware"
-	"github.com/haksolot/kors/kors-api/internal/domain/identity"
-	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
 	"github.com/haksolot/kors/kors-api/internal/graph/resolvers"
 	_ "github.com/haksolot/kors/kors-api/docs"
@@ -45,31 +41,47 @@ import (
 // @in header
 // @name Authorization
 
-// HealthCheck godoc
-// @Summary Show the status of the server.
-// @Description get the status of the server.
-// @Tags root
-// @Accept */*
-// @Produce json
-// @Success 200 {string} string "OK"
-// @Router /healthz [get]
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+type HealthStatus struct {
+    Status   string            `json:"status"`
+    Checks   map[string]string `json:"checks"`
+    Hostname string            `json:"hostname"`
+}
+
+func makeHealthHandler(pool *pgxpool.Pool, nc *nats.Conn) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        checks := make(map[string]string)
+        overall := "ok"
+
+        // DB check
+        if err := pool.Ping(r.Context()); err != nil {
+            checks["database"] = "error: " + err.Error()
+            overall = "degraded"
+        } else {
+            checks["database"] = "ok"
+        }
+
+        // NATS check
+        if nc == nil || !nc.IsConnected() {
+            checks["nats"] = "disconnected"
+            overall = "degraded"
+        } else {
+            checks["nats"] = "ok"
+        }
+
+        hostname, _ := os.Hostname()
+        status := HealthStatus{Status: overall, Checks: checks, Hostname: hostname}
+
+        w.Header().Set("Content-Type", "application/json")
+        if overall != "ok" {
+            w.WriteHeader(http.StatusServiceUnavailable)
+        }
+        json.NewEncoder(w).Encode(status)
+    }
 }
 
 func main() {
 	_ = godotenv.Load()
-	
-	// --- Configuration (Environment only) ---
-	port := getEnv("PORT", "8080")
-	dbURL := os.Getenv("DATABASE_URL")
-	natsURL := getEnv("NATS_URL", nats.DefaultURL)
-	minioURL := os.Getenv("MINIO_URL")
-	minioAK := os.Getenv("MINIO_ACCESS_KEY")
-	minioSK := os.Getenv("MINIO_SECRET_KEY")
-	minioBucket := getEnv("MINIO_BUCKET", "kors-files")
-	complexityLimit, _ := strconv.Atoi(getEnv("GRAPHQL_COMPLEXITY_LIMIT", "1000"))
+	cfg := loadConfig()
 	
 	// Identify current instance (useful for Load Balancing logs)
 	hostname, _ := os.Hostname()
@@ -79,31 +91,24 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := pgxpool.New(ctx, dbURL)
+	pool, err := connectDB(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Critical: failed to connect to database: %v", err)
 	}
 	defer pool.Close()
 
 	// 2. NATS Connection
-	nc, err := nats.Connect(natsURL)
+	nc, jsCtx, err := connectNATS(cfg.NatsURL)
 	if err == nil {
 		defer nc.Close()
-		js, _ := nc.JetStream()
-		if js != nil {
-			_, _ = js.AddStream(&nats.StreamConfig{Name: "KORS", Subjects: []string{"kors.>"}})
-		}
 	}
 
 	// 3. MinIO Client
-	mClient, err := minio.New(minioURL, &minio.Options{
-		Creds:  credentials.NewStaticV4(minioAK, minioSK, ""),
-		Secure: os.Getenv("MINIO_USE_SSL") == "true",
-	})
+	mClient, err := connectMinio(cfg.MinioURL, cfg.MinioAccessKey, cfg.MinioSecretKey, os.Getenv("MINIO_USE_SSL") == "true")
 	if err == nil {
-		exists, _ := mClient.BucketExists(ctx, minioBucket)
+		exists, _ := mClient.BucketExists(ctx, cfg.MinioBucket)
 		if !exists {
-			_ = mClient.MakeBucket(ctx, minioBucket, minio.MakeBucketOptions{})
+			_ = mClient.MakeBucket(ctx, cfg.MinioBucket, minio.MakeBucketOptions{})
 		}
 	}
 
@@ -112,21 +117,9 @@ func main() {
 	pRepo := &postgres.PermissionRepository{Pool: pool}
 
 	// 5. Bootstrap System Identity
-	sysID, _ := idRepo.GetByExternalID(ctx, "system")
-	if sysID == nil {
-		_ = idRepo.Create(ctx, &identity.Identity{ID: uuid.Nil, ExternalID: "system", Name: "System", Type: "system", CreatedAt: time.Now()})
-	}
-	for _, a := range []string{"write", "transition", "admin"} {
-		allowed, _ := pRepo.Check(ctx, uuid.Nil, a, nil, nil)
-		if !allowed {
-			_ = pRepo.Create(ctx, &permission.Permission{ID: uuid.New(), IdentityID: uuid.Nil, Action: a, CreatedAt: time.Now()})
-		}
-	}
+	_ = bootstrapSystemIdentity(ctx, idRepo, pRepo)
 
 	// 6. GraphQL Setup
-	var jsCtx nats.JetStreamContext
-	if nc != nil { jsCtx, _ = nc.JetStream() }
-	
 	resolver := resolvers.NewResolver(pool, nc, jsCtx, mClient)
 	srv := handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 	
@@ -135,8 +128,8 @@ func main() {
 		KeepAlivePingInterval: 10 * time.Second,
 		Upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
 	})
-	srv.Use(extension.FixedComplexityLimit(complexityLimit))
-	if os.Getenv("GRAPHQL_INTROSPECTION") == "true" {
+	srv.Use(extension.FixedComplexityLimit(cfg.ComplexityLimit))
+	if cfg.GraphQLIntrospection {
 		srv.Use(extension.Introspection{})
 	}
 
@@ -148,27 +141,35 @@ func main() {
 	mux.Use(middleware.Recoverer)
 
 	// Public routes (No Auth)
-	mux.Get("/healthz", HealthCheck)
+	mux.Get("/healthz", makeHealthHandler(pool, nc))
 	mux.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/swagger/index.html", http.StatusMovedPermanently)
 	})
 	mux.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	// Protected routes
+	jwksCache := korsauth.NewJWKSCache(cfg.JWKSEndpoint, time.Hour)
+	
+	identityCacheTTLStr := getEnv("IDENTITY_CACHE_TTL", "5m")
+	identityCacheTTL, _ := time.ParseDuration(identityCacheTTLStr)
+	identityCache := korsauth.NewIdentityCache(identityCacheTTL)
+
+	authMiddleware := &korsauth.AuthMiddleware{IdentityRepo: idRepo, JWKSCache: jwksCache, IdentityCache: identityCache}
+
 	mux.Group(func(r chi.Router) {
-		r.Use((&korsauth.AuthMiddleware{IdentityRepo: idRepo}).Handler)
+		r.Use(authMiddleware.Handler)
 		r.Handle("/query", srv)
 		r.Handle("/", playground.Handler("KORS", "/query"))
 	})
 
 	// 8. GRACEFUL SHUTDOWN Logic
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + cfg.Port,
 		Handler: mux,
 	}
 
 	go func() {
-		log.Printf("[Instance: %s] API running on port %s", hostname, port)
+		log.Printf("[Instance: %s] API running on port %s", hostname, cfg.Port)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Listen error: %v", err)
 		}

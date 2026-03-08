@@ -3,41 +3,49 @@ package jobs
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/haksolot/kors/kors-worker/internal/adapter/postgres"
+	"github.com/rs/zerolog/log"
 )
 
+type PermissionCleaner interface {
+	CleanupExpired(ctx context.Context) (int64, error)
+}
+
 type PermissionCleanupJob struct {
-	Repo     *postgres.PermissionRepository
+	Repo     PermissionCleaner
 	Interval time.Duration
 }
 
-func (j *PermissionCleanupJob) Run(ctx context.Context) {
+func NewPermissionCleanupJob(repo PermissionCleaner) *PermissionCleanupJob {
+	return &PermissionCleanupJob{Repo: repo, Interval: 1 * time.Hour}
+}
+
+func (j *PermissionCleanupJob) Run(ctx context.Context) error {
 	ticker := time.NewTicker(j.Interval)
 	defer ticker.Stop()
 
-	log.Printf("Starting Permission Cleanup Job (Interval: %v)", j.Interval)
+	log.Info().Dur("interval", j.Interval).Msg("Starting Permission Cleanup Job")
 
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
 			count, err := j.Repo.CleanupExpired(ctx)
 			if err != nil {
 				if errors.Is(err, postgres.ErrLocked) {
-					log.Println("Job skipped: another worker is already cleaning up.")
+					log.Info().Msg("Job skipped: another worker is already cleaning up.")
 					continue
 				}
-				log.Printf("Error cleaning up permissions: %v", err)
-				continue
+				log.Error().Err(err).Msg("Error cleaning up permissions")
+				return err
 			}
 			if count > 0 {
-				log.Printf("Successfully removed %d expired permissions", count)
+				log.Info().Int64("count", count).Msg("Successfully removed expired permissions")
 			} else {
-				log.Println("No expired permissions found.")
+				log.Info().Msg("No expired permissions found.")
 			}
 		}
 	}

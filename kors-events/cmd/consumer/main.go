@@ -12,6 +12,8 @@ import (
 	"github.com/nats-io/nats.go"
 	korsnats "github.com/haksolot/kors/kors-events/internal/adapter/nats"
 	"github.com/haksolot/kors/kors-events/internal/adapter/postgres"
+	"github.com/haksolot/kors/kors-events/internal/domain/event"
+	"github.com/haksolot/kors/kors-events/internal/handler"
 )
 
 func main() {
@@ -47,6 +49,7 @@ func main() {
 	consumer := &korsnats.EventConsumer{
 		JS:        js,
 		EventRepo: repo,
+		Handlers:  []event.Handler{&handler.LogHandler{}},
 	}
 
 	// 4. Run consumer in context with signal handling
