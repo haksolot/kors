@@ -37,6 +37,7 @@ Consultez le dossier `/docs` pour approfondir :
 4.  [Intégration de Modules](./docs/04-MODULE-INTEGRATION.md)
 5.  [Modèle de Sécurité](./docs/05-SECURITY-MODEL.md)
 6.  [Intégration Keycloak & OAuth2](./docs/07-KEYCLOAK-INTEGRATION.md)
+7.  [Gestion des Migrations](./docs/08-SCHEMA-MIGRATIONS.md)
 
 ## Licence
 
