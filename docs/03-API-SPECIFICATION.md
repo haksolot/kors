@@ -41,3 +41,19 @@ KORS utilise la spécification Relay pour tous les listings massifs :
 Permet de lier un snapshot de métadonnées à un binaire physique.
 *   Le fichier est stocké dans MinIO.
 *   Le SDK renvoie un `filePath` (chemin interne) et un `downloadUrl` (URL pré-signée temporaire).
+
+## 4. Gouvernance des Modules
+
+### Provisionner (`provisionModule`)
+Crée les accès SQL et le schéma pour un module.
+*   Paramètre : `moduleName` (String).
+*   Retour : `success`, `username`, `password`, `schema`.
+
+### Lister (`provisionedModules`)
+Affiche les noms des modules actifs.
+*   Retour : `[String!]`.
+
+### Supprimer (`deprovisionModule`)
+Détruit les accès et le schéma d'un module.
+*   Paramètre : `moduleName` (String).
+*   Retour : `Boolean`.
