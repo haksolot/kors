@@ -1,59 +1,62 @@
 # KORS Volume 3 : Spécification API et SDK
 
-## 1. Endpoints de Connexion
+Ce document est la référence technique pour interagir avec le noyau KORS.
 
-| Service | Protocole | Endpoint (Dev) |
+## 1. Endpoints et Protocoles
+
+| Service | Protocole | URL (Développement) |
 |---|---|---|
-| API GraphQL | HTTP (POST) | `http://localhost:8080/query` |
-| Subscriptions | WebSocket | `ws://localhost:8080/query` |
-| Playground | HTTP (GET) | `http://localhost:8080/` |
+| GraphQL Core | HTTP POST | `http://localhost/query` |
+| Subscriptions | WebSockets | `ws://localhost/query` |
+| Playground UI | HTTP GET | `http://localhost/` |
 
-**Header requis** : `Authorization: Bearer <JWT_TOKEN>`
+**Authentification** : Toutes les requêtes (sauf introspection en dev) exigent un header `Authorization: Bearer <token>`.
 
-## 2. Guide d'utilisation des SDKs
+## 2. Primitives de Gouvernance (Admin uniquement)
 
-Trois SDKs professionnels sont disponibles et synchronisés avec le schéma KORS.
+### Lister les modules actifs (`provisionedModules`)
+Permet de voir quels services métier sont actuellement branchés sur KORS.
+```graphql
+query {
+  provisionedModules # Renvoie ["tms", "mes", ...]
+}
+```
 
-### SDK Go (genqlient)
-*   **Init** : `sdk.NewClient(endpoint, token)`
-*   **Caractéristique** : Client entièrement typé, asynchrone, supporte les transactions locales.
+### Provisionner un module (`provisionModule`)
+Crée un bac à sable (schéma SQL + utilisateur) pour un nouveau service.
+```graphql
+mutation {
+  provisionModule(moduleName: "nom_du_module") {
+    success
+    username # user_nom_du_module
+    password # Mot de passe généré
+    schema   # nom_du_module
+  }
+}
+```
 
-### SDK TypeScript (graphql-request)
-*   **Init** : `new KorsClient({ endpoint, token })`
-*   **Caractéristique** : Parfait pour les Dashboards React ou les modules Node.js. Exportation de tous les types `kors.graphql`.
+### Supprimer un module (`deprovisionModule`)
+Nettoie intégralement la base de données (données métier et accès).
+```graphql
+mutation {
+  deprovisionModule(moduleName: "nom_du_module")
+}
+```
 
-### SDK Python (ariadne-codegen)
-*   **Init** : `KorsClient(endpoint, token)`
-*   **Caractéristique** : Asyncio-ready, basé sur Pydantic pour une validation stricte des inputs.
+## 3. Primitives de Ressources
 
-## 3. Détails des Primitives GraphQL
+### Enregistrer un type (`registerResourceType`)
+Définit le contrat technique d'une entité.
+*   **jsonSchema** : Schéma de validation pour les métadonnées.
+*   **transitions** : Graphe des états autorisés (ex: `idle` -> `in_use`).
 
-### ResourceType (`registerResourceType`)
-*   **jsonSchema** : Doit être un objet valide JSON Schema Draft 7. Sert à valider le champ `metadata` des ressources.
-*   **transitions** : Map d'états. Clé = État source, Valeur = Liste d'états cibles autorisés.
+### Créer une ressource (`createResource`)
+Génère une enveloppe KORS avec un UUID unique.
+*   L'opération est atomique : si la notification NATS échoue, la ressource n'est pas créée.
 
-### Pagination Relay (`resources`)
-KORS utilise la spécification Relay pour tous les listings massifs :
-*   Arguments : `first` (Int), `after` (Base64 Cursor).
-*   Réponse : `edges { node cursor }`, `pageInfo { hasNextPage endCursor }`, `totalCount`.
+## 4. Utilisation des SDKs
 
-### Révisions (`createRevision`)
-Permet de lier un snapshot de métadonnées à un binaire physique.
-*   Le fichier est stocké dans MinIO.
-*   Le SDK renvoie un `filePath` (chemin interne) et un `downloadUrl` (URL pré-signée temporaire).
-
-## 4. Gouvernance des Modules
-
-### Provisionner (`provisionModule`)
-Crée les accès SQL et le schéma pour un module.
-*   Paramètre : `moduleName` (String).
-*   Retour : `success`, `username`, `password`, `schema`.
-
-### Lister (`provisionedModules`)
-Affiche les noms des modules actifs.
-*   Retour : `[String!]`.
-
-### Supprimer (`deprovisionModule`)
-Détruit les accès et le schéma d'un module.
-*   Paramètre : `moduleName` (String).
-*   Retour : `Boolean`.
+Les SDKs sont générés automatiquement et garantissent le typage des réponses.
+*   **Go** : `github.com/haksolot/kors/sdk/go`
+*   **TS** : `@kors/sdk` (via npm)
+*   **Python** : `kors-sdk` (via pip)

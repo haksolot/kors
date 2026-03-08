@@ -1,58 +1,57 @@
-# KORS Volume 4 : Intégration de Modules et Gouvernance
+# KORS Volume 4 : Guide du Développeur de Module
 
-Ce document explique comment gérer le cycle de vie d'un module métier sur l'écosystème KORS de manière totalement automatisée et sécurisée.
+Ce guide détaille les étapes pour créer et intégrer un nouveau service métier dans l'écosystème KORS.
 
-## 1. Cycle de Vie d'un Module
+## Étape 1 : Obtenir des accès (Provisionnement)
 
-La gouvernance des modules s'effectue via l'API GraphQL de KORS (accès réservé au rôle `admin`).
+Demandez à l'administrateur KORS (ou via votre pipeline de CI/CD) de provisionner votre module.
+```graphql
+mutation { provisionModule(moduleName: "votre_nom") { username password schema } }
+```
+Vous recevez des identifiants PostgreSQL dédiés. Votre utilisateur a tous les droits sur son schéma mais est en **lecture seule** sur le schéma `kors`.
 
-### A. Provisionnement (`provisionModule`)
-Crée un environnement isolé pour un nouveau module.
-*   **Action** : `mutation { provisionModule(moduleName: "tms") { ... } }`
-*   **Opérations système** :
-    *   Création d'un schéma PostgreSQL `tms`.
-    *   Création d'un utilisateur `user_tms` avec mot de passe aléatoire.
-    *   Attribution des droits de lecture seule sur le cœur KORS.
-    *   Transfert de propriété du schéma `tms` à `user_tms`.
+## Étape 2 : Configurer l'Authentification
 
-### B. Inventaire (`provisionedModules`)
-Permet de lister tous les modules actuellement connectés à la plateforme.
-*   **Action** : `query { provisionedModules }`
-*   **Usage** : Audit de l'écosystème et vérification des déploiements.
+1.  Créez un Client dans **Keycloak** (nommé comme votre module).
+2.  Activez les **Service Accounts**.
+3.  Récupérez le **Client Secret**.
+4.  Votre module doit échanger ce secret contre un JWT avant chaque appel à KORS (voir Volume 7).
 
-### C. Déprovisionnement (`deprovisionModule`)
-Supprime proprement un module et ses accès.
-*   **Action** : `mutation { deprovisionModule(moduleName: "tms") }`
-*   **Sécurité** : Cette opération est atomique. Elle réassigne les objets, révoque les privilèges et supprime le rôle et le schéma (`CASCADE`) pour garantir qu'aucune trace résiduelle ne pollue la base de données.
+## Étape 3 : Gestion des données (Le Modèle Symbiotique)
 
-## 2. Étanchéité et Privilèges SQL
+KORS gère la traçabilité, vous gérez le métier.
 
-L'architecture multi-schémas garantit que les erreurs d'un module n'impactent pas le cœur du système.
-
-| Périmètre | Droits de l'utilisateur du module | Usage |
-|---|---|---|
-| **Schéma `kors`** | `SELECT` uniquement | Lecture de l'index universel et des événements. |
-| **Schéma métier** | `ALL PRIVILEGES` (Owner) | Gestion autonome des tables métier. |
-| **Autres schémas** | Aucun accès | Isolation totale entre les modules. |
-
-## 3. Gestion Automatisée des Tables (Auto-Migration)
-
-Le développeur du module est responsable de la structure de son schéma. Le module doit embarquer son propre moteur de migration (ex: `goose`, `migrate`) qui s'exécute au démarrage.
-
-```go
-// Exemple de création de table métier autonome au démarrage du module
-func ensureSchema(db *pgxpool.Pool) {
-    query := `CREATE TABLE IF NOT EXISTS tms.tools (
-        id UUID PRIMARY KEY,
-        serial_number TEXT NOT NULL
-    );`
-    db.Exec(context.Background(), query)
-}
+### Architecture SQL :
+*   Vos tables doivent être dans votre schéma dédié.
+*   Utilisez l'**UUID KORS** comme clé primaire.
+```sql
+CREATE TABLE votre_schema.objets (
+    id UUID PRIMARY KEY, -- Cet ID vient de KORS
+    donnee_metier_1 TEXT,
+    ...
+);
 ```
 
-## 4. Pattern de l'Entité Fédérée
+## Étape 4 : Écoute en temps réel (NATS)
 
-Pour chaque objet métier nécessitant une traçabilité :
-1.  **Création technique** : Le module appelle `createResource` sur KORS API et reçoit un UUID.
-2.  **Stockage métier** : Le module enregistre ses données dans son schéma local en utilisant cet UUID comme clé primaire.
-3.  **Extension GraphQL** : Le module expose un Subgraph qui "étend" le type `Resource` de KORS pour y ajouter ses champs spécifiques.
+Abonnez-vous aux sujets NATS pour réagir aux changements globaux :
+*   `kors.resource.created` : Pour initialiser vos données locales.
+*   `kors.resource.state_changed` : Pour mettre à jour vos statuts métier.
+
+**Exemple Go (Abonnement Durable) :**
+```go
+sub, _ := js.PullSubscribe("kors.resource.state_changed", "votre-durable-name")
+```
+
+## Étape 5 : Fédération GraphQL (Optionnel mais recommandé)
+
+Si vous voulez que vos données métier apparaissent directement dans l'API globale :
+1.  Exposez un serveur GraphQL Subgraph.
+2.  "Étendez" le type `Resource` de KORS.
+```graphql
+type Resource @key(fields: "id") {
+  id: UUID! @external
+  votreChampMetier: String
+}
+```
+Le Gateway Apollo fusionnera automatiquement vos données avec celles du noyau.

@@ -52,5 +52,20 @@ KORS utilise `goose`.
 *   Garantit qu'une seule instance du worker effectue le nettoyage à un instant T.
 *   Les autres instances sautent le cycle si le verrou est déjà tenu.
 
-### Atomicité DB/NATS
-Chaque création/transition de ressource est soumise à une **barrière transactionnelle** : si la publication sur le bus NATS échoue, l'API renvoie une erreur et l'opération est considérée comme avortée.
+## 4. Supervision et Debugging
+
+### Observer les événements NATS
+Pour voir ce qui circule sur le bus en temps réel :
+*   Utilisez l'outil `nats` : `nats sub kors.>`
+*   Ou connectez-vous au port `8222` de `kors-bus` pour les statistiques HTTP.
+
+### Tracer une requête (Jaeger)
+Toutes les requêtes GraphQL génèrent une trace distribuée.
+*   Accédez à [http://localhost:16686](http://localhost:16686).
+*   Cherchez le service `kors-api`.
+*   Vous verrez le temps passé dans chaque UseCase et chaque requête SQL.
+
+### Logs centralisés
+Les services utilisent **Zerolog** pour produire des logs JSON.
+*   En développement : Format "Pretty" lisible.
+*   En production : Format JSON pour extraction par Loki/Elasticsearch.
