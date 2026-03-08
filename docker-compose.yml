@@ -126,6 +126,25 @@ services:
     networks:
       - kors-net
 
+  tms-km:
+    container_name: kors-tms-km
+    build:
+      context: ..
+      dockerfile: tms-km/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - DATABASE_URL=postgres://kors:kors_dev_secret@kors-db:5432/kors?sslmode=disable
+      - MINIO_URL=kors-s3:9000
+      - MINIO_ACCESS_KEY=kors_admin
+      - MINIO_SECRET_KEY=kors_dev_secret
+      - MINIO_BUCKET=kors-files
+    depends_on:
+      - kors-db
+      - kors-s3
+    networks:
+      - kors-net
+
   kors-lb:
     container_name: kors-lb
     image: nginx:alpine

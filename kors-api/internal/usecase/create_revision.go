@@ -22,6 +22,7 @@ type CreateRevisionUseCase struct {
 	ResourceRepo   resource.Repository
 	RevisionRepo   revision.Repository
 	FileStore      revision.FileStore
+	DefaultBucket  string
 	EventRepo      event.Repository
 	EventPublisher event.Publisher
 }
@@ -39,8 +40,12 @@ func (uc *CreateRevisionUseCase) Execute(ctx context.Context, input CreateRevisi
 	// 2. Handle File Upload if provided
 	var filePath *string
 	if len(input.FileContent) > 0 {
+		bucket := uc.DefaultBucket
+		if bucket == "" {
+			bucket = "kors-files"
+		}
 		path := fmt.Sprintf("resources/%s/%d_%s", res.ID, time.Now().Unix(), input.FileName)
-		if err := uc.FileStore.Upload(ctx, path, input.FileContent); err != nil {
+		if err := uc.FileStore.Upload(ctx, bucket, path, input.FileContent); err != nil {
 			return nil, fmt.Errorf("failed to upload file: %w", err)
 		}
 		filePath = &path

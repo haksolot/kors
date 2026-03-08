@@ -30,7 +30,33 @@ import (
 	"github.com/haksolot/kors/kors-api/internal/domain/permission"
 	"github.com/haksolot/kors/kors-api/internal/graph/generated"
 	"github.com/haksolot/kors/kors-api/internal/graph/resolvers"
+	_ "github.com/haksolot/kors/kors-api/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title KORS API
+// @version 1.0
+// @description KORS (Knowledge-Oriented Resource System) Core API.
+// @description This API manages resources, transitions, and module governance.
+// @contact.name KORS Support
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+
+// HealthCheck godoc
+// @Summary Show the status of the server.
+// @Description get the status of the server.
+// @Tags root
+// @Accept */*
+// @Produce json
+// @Success 200 {string} string "OK"
+// @Router /healthz [get]
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
 
 func main() {
 	_ = godotenv.Load()
@@ -120,13 +146,19 @@ func main() {
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
-	mux.Use((&korsauth.AuthMiddleware{IdentityRepo: idRepo}).Handler)
-	
-	mux.Handle("/query", srv)
-	mux.Handle("/", playground.Handler("KORS", "/query"))
-	mux.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+
+	// Public routes (No Auth)
+	mux.Get("/healthz", HealthCheck)
+	mux.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/swagger/index.html", http.StatusMovedPermanently)
+	})
+	mux.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	// Protected routes
+	mux.Group(func(r chi.Router) {
+		r.Use((&korsauth.AuthMiddleware{IdentityRepo: idRepo}).Handler)
+		r.Handle("/query", srv)
+		r.Handle("/", playground.Handler("KORS", "/query"))
 	})
 
 	// 8. GRACEFUL SHUTDOWN Logic

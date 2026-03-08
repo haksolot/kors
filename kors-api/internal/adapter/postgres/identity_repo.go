@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/haksolot/kors/kors-api/internal/domain/identity"
@@ -54,6 +55,31 @@ func (r *IdentityRepository) GetByExternalID(ctx context.Context, externalID str
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get identity by external id: %w", err)
+	}
+	return &id, nil
+}
+
+func (r *IdentityRepository) GetByID(ctx context.Context, internalID uuid.UUID) (*identity.Identity, error) {
+	query := `
+		SELECT id, external_id, name, type, metadata, created_at, updated_at
+		FROM kors.identities
+		WHERE id = $1
+	`
+	var id identity.Identity
+	err := r.Pool.QueryRow(ctx, query, internalID).Scan(
+		&id.ID,
+		&id.ExternalID,
+		&id.Name,
+		&id.Type,
+		&id.Metadata,
+		&id.CreatedAt,
+		&id.UpdatedAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get identity by id: %w", err)
 	}
 	return &id, nil
 }

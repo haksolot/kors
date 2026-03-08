@@ -1,0 +1,32 @@
+basePath: /
+host: localhost:8080
+info:
+  contact:
+    name: KORS Support
+  description: |-
+    KORS (Knowledge-Oriented Resource System) Core API.
+    This API manages resources, transitions, and module governance.
+  title: KORS API
+  version: "1.0"
+paths:
+  /healthz:
+    get:
+      consumes:
+      - '*/*'
+      description: get the status of the server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Show the status of the server.
+      tags:
+      - root
+securityDefinitions:
+  Bearer:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -31,6 +31,15 @@ mutation TransitionResource($input: TransitionResourceInput!) {
   }
 }
 
+mutation UploadFile($input: UploadFileInput!) {
+  uploadFile(input: $input) {
+    success
+    url
+    filePath
+    error { code message }
+  }
+}
+
 query GetResource($id: UUID!) {
   resource(id: $id) {
     id

@@ -26,6 +26,6 @@ type Repository interface {
 
 // FileStore defines the contract for storing associated files (MinIO).
 type FileStore interface {
-	Upload(ctx context.Context, path string, content []byte) error
-	GetDownloadURL(ctx context.Context, path string) (string, error)
+	Upload(ctx context.Context, bucket string, path string, content []byte) error
+	GetDownloadURL(ctx context.Context, bucket string, path string) (string, error)
 }

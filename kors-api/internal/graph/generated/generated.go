@@ -77,6 +77,7 @@ type ComplexityRoot struct {
 		ProvisionModule      func(childComplexity int, moduleName string) int
 		RegisterResourceType func(childComplexity int, input model.RegisterResourceTypeInput) int
 		TransitionResource   func(childComplexity int, input model.TransitionResourceInput) int
+		UploadFile           func(childComplexity int, input model.UploadFileInput) int
 	}
 
 	MutationError struct {
@@ -190,6 +191,13 @@ type ComplexityRoot struct {
 		ResourceEvents    func(childComplexity int, resourceID uuid.UUID) int
 	}
 
+	UploadResult struct {
+		Error    func(childComplexity int) int
+		FilePath func(childComplexity int) int
+		Success  func(childComplexity int) int
+		URL      func(childComplexity int) int
+	}
+
 	_Service struct {
 		SDL func(childComplexity int) int
 	}
@@ -211,6 +219,7 @@ type MutationResolver interface {
 	CreateRevision(ctx context.Context, input model.CreateRevisionInput) (*model.RevisionResult, error)
 	ProvisionModule(ctx context.Context, moduleName string) (*model.ProvisioningResult, error)
 	DeprovisionModule(ctx context.Context, moduleName string) (bool, error)
+	UploadFile(ctx context.Context, input model.UploadFileInput) (*model.UploadResult, error)
 }
 type QueryResolver interface {
 	Resource(ctx context.Context, id uuid.UUID) (*model.Resource, error)
@@ -468,6 +477,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TransitionResource(childComplexity, args["input"].(model.TransitionResourceInput)), true
+	case "Mutation.uploadFile":
+		if e.ComplexityRoot.Mutation.UploadFile == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_uploadFile_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UploadFile(childComplexity, args["input"].(model.UploadFileInput)), true
 
 	case "MutationError.code":
 		if e.ComplexityRoot.MutationError.Code == nil {
@@ -905,6 +925,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Subscription.ResourceEvents(childComplexity, args["resourceId"].(uuid.UUID)), true
 
+	case "UploadResult.error":
+		if e.ComplexityRoot.UploadResult.Error == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UploadResult.Error(childComplexity), true
+	case "UploadResult.filePath":
+		if e.ComplexityRoot.UploadResult.FilePath == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UploadResult.FilePath(childComplexity), true
+	case "UploadResult.success":
+		if e.ComplexityRoot.UploadResult.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UploadResult.Success(childComplexity), true
+	case "UploadResult.url":
+		if e.ComplexityRoot.UploadResult.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UploadResult.URL(childComplexity), true
+
 	case "_Service.sdl":
 		if e.ComplexityRoot._Service.SDL == nil {
 			break
@@ -925,6 +970,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGrantPermissionInput,
 		ec.unmarshalInputRegisterResourceTypeInput,
 		ec.unmarshalInputTransitionResourceInput,
+		ec.unmarshalInputUploadFileInput,
 	)
 	first := true
 
@@ -1127,6 +1173,13 @@ type ProvisioningResult {
   error: MutationError
 }
 
+type UploadResult {
+  success: Boolean!
+  url: String
+  filePath: String
+  error: MutationError
+}
+
 # --- Connections (Pagination) ---
 
 type PageInfo {
@@ -1148,6 +1201,12 @@ type ResourceEdge {
 }
 
 # --- Inputs ---
+
+input UploadFileInput {
+  fileName: String!
+  fileContent: String! 
+  contentType: String
+}
 
 input CreateResourceInput {
   typeName: String!
@@ -1205,6 +1264,7 @@ type Mutation {
   
   provisionModule(moduleName: String!): ProvisioningResult!
   deprovisionModule(moduleName: String!): Boolean!
+  uploadFile(input: UploadFileInput!): UploadResult!
 }
 
 type Subscription {
@@ -1362,7 +1422,7 @@ func (ec *executionContext) field_Entity_findRevisionByID_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_createResource_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateResourceInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateResourceInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1373,7 +1433,7 @@ func (ec *executionContext) field_Mutation_createResource_args(ctx context.Conte
 func (ec *executionContext) field_Mutation_createRevision_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateRevisionInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateRevisionInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1395,7 +1455,7 @@ func (ec *executionContext) field_Mutation_deprovisionModule_args(ctx context.Co
 func (ec *executionContext) field_Mutation_grantPermission_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNGrantPermissionInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNGrantPermissionInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1417,7 +1477,7 @@ func (ec *executionContext) field_Mutation_provisionModule_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_registerResourceType_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterResourceTypeInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRegisterResourceTypeInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1428,7 +1488,18 @@ func (ec *executionContext) field_Mutation_registerResourceType_args(ctx context
 func (ec *executionContext) field_Mutation_transitionResource_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTransitionResourceInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐTransitionResourceInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNTransitionResourceInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐTransitionResourceInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_uploadFile_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUploadFileInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐUploadFileInput)
 	if err != nil {
 		return nil, err
 	}
@@ -1575,7 +1646,7 @@ func (ec *executionContext) _Entity_findEventByID(ctx context.Context, field gra
 			return ec.Resolvers.Entity().FindEventByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNEvent2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
+		ec.marshalNEvent2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
 		true,
 		true,
 	)
@@ -1632,7 +1703,7 @@ func (ec *executionContext) _Entity_findIdentityByID(ctx context.Context, field 
 			return ec.Resolvers.Entity().FindIdentityByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNIdentity2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		ec.marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
 		true,
 		true,
 	)
@@ -1689,7 +1760,7 @@ func (ec *executionContext) _Entity_findPermissionByID(ctx context.Context, fiel
 			return ec.Resolvers.Entity().FindPermissionByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNPermission2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission,
+		ec.marshalNPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission,
 		true,
 		true,
 	)
@@ -1746,7 +1817,7 @@ func (ec *executionContext) _Entity_findResourceByID(ctx context.Context, field 
 			return ec.Resolvers.Entity().FindResourceByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalNResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		true,
 	)
@@ -1803,7 +1874,7 @@ func (ec *executionContext) _Entity_findResourceTypeByID(ctx context.Context, fi
 			return ec.Resolvers.Entity().FindResourceTypeByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
+		ec.marshalNResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
 		true,
 		true,
 	)
@@ -1860,7 +1931,7 @@ func (ec *executionContext) _Entity_findRevisionByID(ctx context.Context, field 
 			return ec.Resolvers.Entity().FindRevisionByID(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNRevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision,
+		ec.marshalNRevision2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision,
 		true,
 		true,
 	)
@@ -1945,7 +2016,7 @@ func (ec *executionContext) _Event_resource(ctx context.Context, field graphql.C
 			return obj.Resource, nil
 		},
 		nil,
-		ec.marshalOResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalOResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		false,
 	)
@@ -1990,7 +2061,7 @@ func (ec *executionContext) _Event_identity(ctx context.Context, field graphql.C
 			return obj.Identity, nil
 		},
 		nil,
-		ec.marshalNIdentity2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		ec.marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
 		true,
 		true,
 	)
@@ -2355,7 +2426,7 @@ func (ec *executionContext) _Mutation_registerResourceType(ctx context.Context, 
 			return ec.Resolvers.Mutation().RegisterResourceType(ctx, fc.Args["input"].(model.RegisterResourceTypeInput))
 		},
 		nil,
-		ec.marshalNResourceTypeResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult,
+		ec.marshalNResourceTypeResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult,
 		true,
 		true,
 	)
@@ -2404,7 +2475,7 @@ func (ec *executionContext) _Mutation_createResource(ctx context.Context, field 
 			return ec.Resolvers.Mutation().CreateResource(ctx, fc.Args["input"].(model.CreateResourceInput))
 		},
 		nil,
-		ec.marshalNResourceResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult,
+		ec.marshalNResourceResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult,
 		true,
 		true,
 	)
@@ -2453,7 +2524,7 @@ func (ec *executionContext) _Mutation_transitionResource(ctx context.Context, fi
 			return ec.Resolvers.Mutation().TransitionResource(ctx, fc.Args["input"].(model.TransitionResourceInput))
 		},
 		nil,
-		ec.marshalNResourceResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult,
+		ec.marshalNResourceResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult,
 		true,
 		true,
 	)
@@ -2502,7 +2573,7 @@ func (ec *executionContext) _Mutation_grantPermission(ctx context.Context, field
 			return ec.Resolvers.Mutation().GrantPermission(ctx, fc.Args["input"].(model.GrantPermissionInput))
 		},
 		nil,
-		ec.marshalNPermissionResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult,
+		ec.marshalNPermissionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult,
 		true,
 		true,
 	)
@@ -2551,7 +2622,7 @@ func (ec *executionContext) _Mutation_createRevision(ctx context.Context, field 
 			return ec.Resolvers.Mutation().CreateRevision(ctx, fc.Args["input"].(model.CreateRevisionInput))
 		},
 		nil,
-		ec.marshalNRevisionResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult,
+		ec.marshalNRevisionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult,
 		true,
 		true,
 	)
@@ -2600,7 +2671,7 @@ func (ec *executionContext) _Mutation_provisionModule(ctx context.Context, field
 			return ec.Resolvers.Mutation().ProvisionModule(ctx, fc.Args["moduleName"].(string))
 		},
 		nil,
-		ec.marshalNProvisioningResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult,
+		ec.marshalNProvisioningResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult,
 		true,
 		true,
 	)
@@ -2679,6 +2750,57 @@ func (ec *executionContext) fieldContext_Mutation_deprovisionModule(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deprovisionModule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_uploadFile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_uploadFile,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UploadFile(ctx, fc.Args["input"].(model.UploadFileInput))
+		},
+		nil,
+		ec.marshalNUploadResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐUploadResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_uploadFile(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_UploadResult_success(ctx, field)
+			case "url":
+				return ec.fieldContext_UploadResult_url(ctx, field)
+			case "filePath":
+				return ec.fieldContext_UploadResult_filePath(ctx, field)
+			case "error":
+				return ec.fieldContext_UploadResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UploadResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_uploadFile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2898,7 +3020,7 @@ func (ec *executionContext) _Permission_identity(ctx context.Context, field grap
 			return obj.Identity, nil
 		},
 		nil,
-		ec.marshalNIdentity2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		ec.marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
 		true,
 		true,
 	)
@@ -2943,7 +3065,7 @@ func (ec *executionContext) _Permission_resource(ctx context.Context, field grap
 			return obj.Resource, nil
 		},
 		nil,
-		ec.marshalOResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalOResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		false,
 	)
@@ -2988,7 +3110,7 @@ func (ec *executionContext) _Permission_resourceType(ctx context.Context, field 
 			return obj.ResourceType, nil
 		},
 		nil,
-		ec.marshalOResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
+		ec.marshalOResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
 		true,
 		false,
 	)
@@ -3149,7 +3271,7 @@ func (ec *executionContext) _PermissionResult_permission(ctx context.Context, fi
 			return obj.Permission, nil
 		},
 		nil,
-		ec.marshalOPermission2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission,
+		ec.marshalOPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission,
 		true,
 		false,
 	)
@@ -3194,7 +3316,7 @@ func (ec *executionContext) _PermissionResult_error(ctx context.Context, field g
 			return obj.Error, nil
 		},
 		nil,
-		ec.marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
 		true,
 		false,
 	)
@@ -3374,7 +3496,7 @@ func (ec *executionContext) _ProvisioningResult_error(ctx context.Context, field
 			return obj.Error, nil
 		},
 		nil,
-		ec.marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
 		true,
 		false,
 	)
@@ -3410,7 +3532,7 @@ func (ec *executionContext) _Query_resource(ctx context.Context, field graphql.C
 			return ec.Resolvers.Query().Resource(ctx, fc.Args["id"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalOResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalOResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		false,
 	)
@@ -3467,7 +3589,7 @@ func (ec *executionContext) _Query_resources(ctx context.Context, field graphql.
 			return ec.Resolvers.Query().Resources(ctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["typeName"].(*string))
 		},
 		nil,
-		ec.marshalNResourceConnection2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection,
+		ec.marshalNResourceConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection,
 		true,
 		true,
 	)
@@ -3516,7 +3638,7 @@ func (ec *executionContext) _Query_resourceType(ctx context.Context, field graph
 			return ec.Resolvers.Query().ResourceType(ctx, fc.Args["name"].(string))
 		},
 		nil,
-		ec.marshalOResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
+		ec.marshalOResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
 		true,
 		false,
 	)
@@ -3572,7 +3694,7 @@ func (ec *executionContext) _Query_resourceTypes(ctx context.Context, field grap
 			return ec.Resolvers.Query().ResourceTypes(ctx)
 		},
 		nil,
-		ec.marshalNResourceType2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeᚄ,
+		ec.marshalNResourceType2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeᚄ,
 		true,
 		true,
 	)
@@ -3857,7 +3979,7 @@ func (ec *executionContext) _Resource_type(ctx context.Context, field graphql.Co
 			return obj.Type, nil
 		},
 		nil,
-		ec.marshalNResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
+		ec.marshalNResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
 		true,
 		true,
 	)
@@ -4018,7 +4140,7 @@ func (ec *executionContext) _Resource_revisions(ctx context.Context, field graph
 			return obj.Revisions, nil
 		},
 		nil,
-		ec.marshalNRevision2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ,
+		ec.marshalNRevision2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ,
 		true,
 		true,
 	)
@@ -4063,7 +4185,7 @@ func (ec *executionContext) _ResourceConnection_edges(ctx context.Context, field
 			return obj.Edges, nil
 		},
 		nil,
-		ec.marshalNResourceEdge2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdgeᚄ,
+		ec.marshalNResourceEdge2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdgeᚄ,
 		true,
 		true,
 	)
@@ -4098,7 +4220,7 @@ func (ec *executionContext) _ResourceConnection_pageInfo(ctx context.Context, fi
 			return obj.PageInfo, nil
 		},
 		nil,
-		ec.marshalNPageInfo2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo,
+		ec.marshalNPageInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo,
 		true,
 		true,
 	)
@@ -4195,7 +4317,7 @@ func (ec *executionContext) _ResourceEdge_node(ctx context.Context, field graphq
 			return obj.Node, nil
 		},
 		nil,
-		ec.marshalNResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalNResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		true,
 	)
@@ -4269,7 +4391,7 @@ func (ec *executionContext) _ResourceResult_resource(ctx context.Context, field 
 			return obj.Resource, nil
 		},
 		nil,
-		ec.marshalOResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalOResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		false,
 	)
@@ -4314,7 +4436,7 @@ func (ec *executionContext) _ResourceResult_error(ctx context.Context, field gra
 			return obj.Error, nil
 		},
 		nil,
-		ec.marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
 		true,
 		false,
 	)
@@ -4581,7 +4703,7 @@ func (ec *executionContext) _ResourceTypeResult_resourceType(ctx context.Context
 			return obj.ResourceType, nil
 		},
 		nil,
-		ec.marshalOResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
+		ec.marshalOResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType,
 		true,
 		false,
 	)
@@ -4626,7 +4748,7 @@ func (ec *executionContext) _ResourceTypeResult_error(ctx context.Context, field
 			return obj.Error, nil
 		},
 		nil,
-		ec.marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
 		true,
 		false,
 	)
@@ -4690,7 +4812,7 @@ func (ec *executionContext) _Revision_resource(ctx context.Context, field graphq
 			return obj.Resource, nil
 		},
 		nil,
-		ec.marshalNResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
+		ec.marshalNResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource,
 		true,
 		true,
 	)
@@ -4735,7 +4857,7 @@ func (ec *executionContext) _Revision_identity(ctx context.Context, field graphq
 			return obj.Identity, nil
 		},
 		nil,
-		ec.marshalNIdentity2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
+		ec.marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity,
 		true,
 		true,
 	)
@@ -4925,7 +5047,7 @@ func (ec *executionContext) _RevisionResult_revision(ctx context.Context, field 
 			return obj.Revision, nil
 		},
 		nil,
-		ec.marshalORevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision,
+		ec.marshalORevision2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision,
 		true,
 		false,
 	)
@@ -4970,7 +5092,7 @@ func (ec *executionContext) _RevisionResult_error(ctx context.Context, field gra
 			return obj.Error, nil
 		},
 		nil,
-		ec.marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
 		true,
 		false,
 	)
@@ -5005,7 +5127,7 @@ func (ec *executionContext) _Subscription_eventWasPublished(ctx context.Context,
 			return ec.Resolvers.Subscription().EventWasPublished(ctx)
 		},
 		nil,
-		ec.marshalNEvent2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
+		ec.marshalNEvent2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
 		true,
 		true,
 	)
@@ -5051,7 +5173,7 @@ func (ec *executionContext) _Subscription_resourceEvents(ctx context.Context, fi
 			return ec.Resolvers.Subscription().ResourceEvents(ctx, fc.Args["resourceId"].(uuid.UUID))
 		},
 		nil,
-		ec.marshalNEvent2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
+		ec.marshalNEvent2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent,
 		true,
 		true,
 	)
@@ -5093,6 +5215,128 @@ func (ec *executionContext) fieldContext_Subscription_resourceEvents(ctx context
 	if fc.Args, err = ec.field_Subscription_resourceEvents_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UploadResult_success(ctx context.Context, field graphql.CollectedField, obj *model.UploadResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UploadResult_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UploadResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UploadResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UploadResult_url(ctx context.Context, field graphql.CollectedField, obj *model.UploadResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UploadResult_url,
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UploadResult_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UploadResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UploadResult_filePath(ctx context.Context, field graphql.CollectedField, obj *model.UploadResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UploadResult_filePath,
+		func(ctx context.Context) (any, error) {
+			return obj.FilePath, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UploadResult_filePath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UploadResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UploadResult_error(ctx context.Context, field graphql.CollectedField, obj *model.UploadResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UploadResult_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_UploadResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UploadResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "code":
+				return ec.fieldContext_MutationError_code(ctx, field)
+			case "message":
+				return ec.fieldContext_MutationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MutationError", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -6793,6 +7037,46 @@ func (ec *executionContext) unmarshalInputTransitionResourceInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUploadFileInput(ctx context.Context, obj any) (model.UploadFileInput, error) {
+	var it model.UploadFileInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"fileName", "fileContent", "contentType"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "fileName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileName = data
+		case "fileContent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fileContent"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FileContent = data
+		case "contentType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("contentType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ContentType = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -7220,6 +7504,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deprovisionModule":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deprovisionModule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "uploadFile":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_uploadFile(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -8131,6 +8422,51 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	}
 }
 
+var uploadResultImplementors = []string{"UploadResult"}
+
+func (ec *executionContext) _UploadResult(ctx context.Context, sel ast.SelectionSet, obj *model.UploadResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, uploadResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UploadResult")
+		case "success":
+			out.Values[i] = ec._UploadResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "url":
+			out.Values[i] = ec._UploadResult_url(ctx, field, obj)
+		case "filePath":
+			out.Values[i] = ec._UploadResult_filePath(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._UploadResult_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var _ServiceImplementors = []string{"_Service"}
 
 func (ec *executionContext) __Service(ctx context.Context, sel ast.SelectionSet, obj *fedruntime.Service) graphql.Marshaler {
@@ -8518,12 +8854,12 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) unmarshalNCreateResourceInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput(ctx context.Context, v any) (model.CreateResourceInput, error) {
+func (ec *executionContext) unmarshalNCreateResourceInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateResourceInput(ctx context.Context, v any) (model.CreateResourceInput, error) {
 	res, err := ec.unmarshalInputCreateResourceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNCreateRevisionInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput(ctx context.Context, v any) (model.CreateRevisionInput, error) {
+func (ec *executionContext) unmarshalNCreateRevisionInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐCreateRevisionInput(ctx context.Context, v any) (model.CreateRevisionInput, error) {
 	res, err := ec.unmarshalInputCreateRevisionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -8544,11 +8880,11 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 	return res
 }
 
-func (ec *executionContext) marshalNEvent2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v model.Event) graphql.Marshaler {
+func (ec *executionContext) marshalNEvent2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v model.Event) graphql.Marshaler {
 	return ec._Event(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v *model.Event) graphql.Marshaler {
+func (ec *executionContext) marshalNEvent2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐEvent(ctx context.Context, sel ast.SelectionSet, v *model.Event) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8574,16 +8910,16 @@ func (ec *executionContext) marshalNFieldSet2string(ctx context.Context, sel ast
 	return res
 }
 
-func (ec *executionContext) unmarshalNGrantPermissionInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput(ctx context.Context, v any) (model.GrantPermissionInput, error) {
+func (ec *executionContext) unmarshalNGrantPermissionInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐGrantPermissionInput(ctx context.Context, v any) (model.GrantPermissionInput, error) {
 	res, err := ec.unmarshalInputGrantPermissionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNIdentity2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity(ctx context.Context, sel ast.SelectionSet, v model.Identity) graphql.Marshaler {
+func (ec *executionContext) marshalNIdentity2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity(ctx context.Context, sel ast.SelectionSet, v model.Identity) graphql.Marshaler {
 	return ec._Identity(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNIdentity2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity(ctx context.Context, sel ast.SelectionSet, v *model.Identity) graphql.Marshaler {
+func (ec *executionContext) marshalNIdentity2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐIdentity(ctx context.Context, sel ast.SelectionSet, v *model.Identity) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8631,7 +8967,7 @@ func (ec *executionContext) marshalNJSON2map(ctx context.Context, sel ast.Select
 	return res
 }
 
-func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *model.PageInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8641,11 +8977,11 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋkorsᚑprojectᚋ
 	return ec._PageInfo(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNPermission2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v model.Permission) graphql.Marshaler {
+func (ec *executionContext) marshalNPermission2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v model.Permission) graphql.Marshaler {
 	return ec._Permission(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNPermission2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
+func (ec *executionContext) marshalNPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8655,11 +8991,11 @@ func (ec *executionContext) marshalNPermission2ᚖgithubᚗcomᚋkorsᚑproject�
 	return ec._Permission(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNPermissionResult2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v model.PermissionResult) graphql.Marshaler {
+func (ec *executionContext) marshalNPermissionResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v model.PermissionResult) graphql.Marshaler {
 	return ec._PermissionResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNPermissionResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v *model.PermissionResult) graphql.Marshaler {
+func (ec *executionContext) marshalNPermissionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermissionResult(ctx context.Context, sel ast.SelectionSet, v *model.PermissionResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8669,11 +9005,11 @@ func (ec *executionContext) marshalNPermissionResult2ᚖgithubᚗcomᚋkorsᚑpr
 	return ec._PermissionResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNProvisioningResult2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v model.ProvisioningResult) graphql.Marshaler {
+func (ec *executionContext) marshalNProvisioningResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v model.ProvisioningResult) graphql.Marshaler {
 	return ec._ProvisioningResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNProvisioningResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v *model.ProvisioningResult) graphql.Marshaler {
+func (ec *executionContext) marshalNProvisioningResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐProvisioningResult(ctx context.Context, sel ast.SelectionSet, v *model.ProvisioningResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8683,16 +9019,16 @@ func (ec *executionContext) marshalNProvisioningResult2ᚖgithubᚗcomᚋkorsᚑ
 	return ec._ProvisioningResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNRegisterResourceTypeInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput(ctx context.Context, v any) (model.RegisterResourceTypeInput, error) {
+func (ec *executionContext) unmarshalNRegisterResourceTypeInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRegisterResourceTypeInput(ctx context.Context, v any) (model.RegisterResourceTypeInput, error) {
 	res, err := ec.unmarshalInputRegisterResourceTypeInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNResource2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v model.Resource) graphql.Marshaler {
+func (ec *executionContext) marshalNResource2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v model.Resource) graphql.Marshaler {
 	return ec._Resource(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v *model.Resource) graphql.Marshaler {
+func (ec *executionContext) marshalNResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v *model.Resource) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8702,11 +9038,11 @@ func (ec *executionContext) marshalNResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋ
 	return ec._Resource(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNResourceConnection2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection(ctx context.Context, sel ast.SelectionSet, v model.ResourceConnection) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceConnection2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection(ctx context.Context, sel ast.SelectionSet, v model.ResourceConnection) graphql.Marshaler {
 	return ec._ResourceConnection(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResourceConnection2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection(ctx context.Context, sel ast.SelectionSet, v *model.ResourceConnection) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceConnection2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceConnection(ctx context.Context, sel ast.SelectionSet, v *model.ResourceConnection) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8716,11 +9052,11 @@ func (ec *executionContext) marshalNResourceConnection2ᚖgithubᚗcomᚋkorsᚑ
 	return ec._ResourceConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNResourceEdge2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ResourceEdge) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceEdge2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ResourceEdge) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
 		fc.Result = &v[i]
-		return ec.marshalNResourceEdge2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdge(ctx, sel, v[i])
+		return ec.marshalNResourceEdge2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdge(ctx, sel, v[i])
 	})
 
 	for _, e := range ret {
@@ -8732,7 +9068,7 @@ func (ec *executionContext) marshalNResourceEdge2ᚕᚖgithubᚗcomᚋkorsᚑpro
 	return ret
 }
 
-func (ec *executionContext) marshalNResourceEdge2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdge(ctx context.Context, sel ast.SelectionSet, v *model.ResourceEdge) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceEdge2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceEdge(ctx context.Context, sel ast.SelectionSet, v *model.ResourceEdge) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8742,11 +9078,11 @@ func (ec *executionContext) marshalNResourceEdge2ᚖgithubᚗcomᚋkorsᚑprojec
 	return ec._ResourceEdge(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNResourceResult2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult(ctx context.Context, sel ast.SelectionSet, v model.ResourceResult) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult(ctx context.Context, sel ast.SelectionSet, v model.ResourceResult) graphql.Marshaler {
 	return ec._ResourceResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResourceResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult(ctx context.Context, sel ast.SelectionSet, v *model.ResourceResult) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceResult(ctx context.Context, sel ast.SelectionSet, v *model.ResourceResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8756,15 +9092,15 @@ func (ec *executionContext) marshalNResourceResult2ᚖgithubᚗcomᚋkorsᚑproj
 	return ec._ResourceResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNResourceType2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v model.ResourceType) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceType2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v model.ResourceType) graphql.Marshaler {
 	return ec._ResourceType(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResourceType2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ResourceType) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceType2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ResourceType) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
 		fc.Result = &v[i]
-		return ec.marshalNResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx, sel, v[i])
+		return ec.marshalNResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx, sel, v[i])
 	})
 
 	for _, e := range ret {
@@ -8776,7 +9112,7 @@ func (ec *executionContext) marshalNResourceType2ᚕᚖgithubᚗcomᚋkorsᚑpro
 	return ret
 }
 
-func (ec *executionContext) marshalNResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v *model.ResourceType) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v *model.ResourceType) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8786,11 +9122,11 @@ func (ec *executionContext) marshalNResourceType2ᚖgithubᚗcomᚋkorsᚑprojec
 	return ec._ResourceType(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNResourceTypeResult2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult(ctx context.Context, sel ast.SelectionSet, v model.ResourceTypeResult) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceTypeResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult(ctx context.Context, sel ast.SelectionSet, v model.ResourceTypeResult) graphql.Marshaler {
 	return ec._ResourceTypeResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNResourceTypeResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult(ctx context.Context, sel ast.SelectionSet, v *model.ResourceTypeResult) graphql.Marshaler {
+func (ec *executionContext) marshalNResourceTypeResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceTypeResult(ctx context.Context, sel ast.SelectionSet, v *model.ResourceTypeResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8800,15 +9136,15 @@ func (ec *executionContext) marshalNResourceTypeResult2ᚖgithubᚗcomᚋkorsᚑ
 	return ec._ResourceTypeResult(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRevision2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v model.Revision) graphql.Marshaler {
+func (ec *executionContext) marshalNRevision2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v model.Revision) graphql.Marshaler {
 	return ec._Revision(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRevision2ᚕᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Revision) graphql.Marshaler {
+func (ec *executionContext) marshalNRevision2ᚕᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Revision) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
 		fc.Result = &v[i]
-		return ec.marshalNRevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx, sel, v[i])
+		return ec.marshalNRevision2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx, sel, v[i])
 	})
 
 	for _, e := range ret {
@@ -8820,7 +9156,7 @@ func (ec *executionContext) marshalNRevision2ᚕᚖgithubᚗcomᚋkorsᚑproject
 	return ret
 }
 
-func (ec *executionContext) marshalNRevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
+func (ec *executionContext) marshalNRevision2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8830,11 +9166,11 @@ func (ec *executionContext) marshalNRevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋ
 	return ec._Revision(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRevisionResult2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v model.RevisionResult) graphql.Marshaler {
+func (ec *executionContext) marshalNRevisionResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v model.RevisionResult) graphql.Marshaler {
 	return ec._RevisionResult(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNRevisionResult2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v *model.RevisionResult) graphql.Marshaler {
+func (ec *executionContext) marshalNRevisionResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevisionResult(ctx context.Context, sel ast.SelectionSet, v *model.RevisionResult) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
@@ -8890,7 +9226,7 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
-func (ec *executionContext) unmarshalNTransitionResourceInput2githubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐTransitionResourceInput(ctx context.Context, v any) (model.TransitionResourceInput, error) {
+func (ec *executionContext) unmarshalNTransitionResourceInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐTransitionResourceInput(ctx context.Context, v any) (model.TransitionResourceInput, error) {
 	res, err := ec.unmarshalInputTransitionResourceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -8909,6 +9245,25 @@ func (ec *executionContext) marshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNUploadFileInput2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐUploadFileInput(ctx context.Context, v any) (model.UploadFileInput, error) {
+	res, err := ec.unmarshalInputUploadFileInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUploadResult2githubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐUploadResult(ctx context.Context, sel ast.SelectionSet, v model.UploadResult) graphql.Marshaler {
+	return ec._UploadResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUploadResult2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐUploadResult(ctx context.Context, sel ast.SelectionSet, v *model.UploadResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UploadResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalN_Any2map(ctx context.Context, v any) (map[string]any, error) {
@@ -9354,35 +9709,35 @@ func (ec *executionContext) marshalOJSON2map(ctx context.Context, sel ast.Select
 	return res
 }
 
-func (ec *executionContext) marshalOMutationError2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError(ctx context.Context, sel ast.SelectionSet, v *model.MutationError) graphql.Marshaler {
+func (ec *executionContext) marshalOMutationError2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐMutationError(ctx context.Context, sel ast.SelectionSet, v *model.MutationError) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._MutationError(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOPermission2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
+func (ec *executionContext) marshalOPermission2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐPermission(ctx context.Context, sel ast.SelectionSet, v *model.Permission) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Permission(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOResource2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v *model.Resource) graphql.Marshaler {
+func (ec *executionContext) marshalOResource2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResource(ctx context.Context, sel ast.SelectionSet, v *model.Resource) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Resource(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOResourceType2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v *model.ResourceType) graphql.Marshaler {
+func (ec *executionContext) marshalOResourceType2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐResourceType(ctx context.Context, sel ast.SelectionSet, v *model.ResourceType) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._ResourceType(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalORevision2ᚖgithubᚗcomᚋkorsᚑprojectᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
+func (ec *executionContext) marshalORevision2ᚖgithubᚗcomᚋhaksolotᚋkorsᚋkorsᚑapiᚋinternalᚋgraphᚋmodelᚐRevision(ctx context.Context, sel ast.SelectionSet, v *model.Revision) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

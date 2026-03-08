@@ -177,3 +177,16 @@ type TransitionResourceInput struct {
 	ToState    string         `json:"toState"`
 	Metadata   map[string]any `json:"metadata,omitempty"`
 }
+
+type UploadFileInput struct {
+	FileName    string  `json:"fileName"`
+	FileContent string  `json:"fileContent"`
+	ContentType *string `json:"contentType,omitempty"`
+}
+
+type UploadResult struct {
+	Success  bool           `json:"success"`
+	URL      *string        `json:"url,omitempty"`
+	FilePath *string        `json:"filePath,omitempty"`
+	Error    *MutationError `json:"error,omitempty"`
+}

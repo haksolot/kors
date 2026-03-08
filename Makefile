@@ -9,6 +9,9 @@ migrate:
 generate:
 	cd kors-api && go run github.com/99designs/gqlgen generate
 
+swagger:
+	cd kors-api && go run github.com/swaggo/swag/cmd/swag init -g cmd/server/main.go
+
 test:
 	go test ./...
 

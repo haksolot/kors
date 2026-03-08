@@ -1,6 +1,9 @@
 package sdk
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
 	"net/http"
 
 	"github.com/Khan/genqlient/graphql"
@@ -40,5 +43,54 @@ func (c *Client) GQL() graphql.Client {
 	return c.gql
 }
 
-// Helper methods can be added here to simplify calls further.
-// For now, developers can use the generated functions directly using c.gql.
+// SaveFile uploads a file to KORS MinIO storage.
+func (c *Client) SaveFile(ctx context.Context, fileName string, content []byte) (string, error) {
+	encoded := base64.StdEncoding.EncodeToString(content)
+	
+	// We use a raw request here to avoid dependency on regenerated code in this turn
+	var resp struct {
+		UploadFile struct {
+			Success bool   `json:"success"`
+			Url     string `json:"url"`
+			Error   *struct {
+				Message string `json:"message"`
+			} `json:"error"`
+		} `json:"uploadFile"`
+	}
+
+	query := `
+		mutation UploadFile($input: UploadFileInput!) {
+			uploadFile(input: $input) {
+				success
+				url
+				error { message }
+			}
+		}
+	`
+	
+	vars := map[string]interface{}{
+		"input": map[string]interface{}{
+			"fileName":    fileName,
+			"fileContent": encoded,
+			"contentType": "application/octet-stream",
+		},
+	}
+
+	err := c.gql.MakeRequest(ctx, &graphql.Request{
+		Query:     query,
+		Variables: vars,
+	}, &graphql.Response{Data: &resp})
+
+	if err != nil {
+		return "", err
+	}
+
+	if !resp.UploadFile.Success {
+		if resp.UploadFile.Error != nil {
+			return "", fmt.Errorf("KORS upload error: %s", resp.UploadFile.Error.Message)
+		}
+		return "", fmt.Errorf("KORS upload failed without specific error message")
+	}
+
+	return resp.UploadFile.Url, nil
+}

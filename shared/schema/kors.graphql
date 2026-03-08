@@ -130,7 +130,20 @@ type ProvisioningResult {
   error: MutationError
 }
 
+type UploadResult {
+  success: Boolean!
+  url: String
+  filePath: String
+  error: MutationError
+}
+
 # --- Inputs ---
+
+input UploadFileInput {
+  fileName: String!
+  fileContent: String! # Base64 encoded file
+  contentType: String
+}
 
 input CreateResourceInput {
   typeName: String!
@@ -185,6 +198,7 @@ type Mutation {
   createRevision(input: CreateRevisionInput!): RevisionResult!
   
   provisionModule(moduleName: String!): ProvisioningResult!
+  uploadFile(input: UploadFileInput!): UploadResult!
 }
 
 type Subscription {

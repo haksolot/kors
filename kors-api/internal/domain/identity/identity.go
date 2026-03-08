@@ -19,5 +19,6 @@ type Identity struct {
 
 type Repository interface {
 	Create(ctx context.Context, id *Identity) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Identity, error)
 	GetByExternalID(ctx context.Context, externalID string) (*Identity, error)
 }
