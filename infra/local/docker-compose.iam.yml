@@ -31,14 +31,14 @@ services:
       - "8888:8080"   # Admin console : http://localhost:8888
     volumes:
       - ./config/keycloak/realm-kors.json:/opt/keycloak/data/import/realm-kors.json:ro
-    command: ["start-dev", "--import-realm"]
+    command: ["start-dev", "--import-realm", "--health-enabled=true"]
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - kors-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3"]
       interval: 15s
       timeout: 10s
       retries: 10
