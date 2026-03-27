@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// All events published by the MES service to NATS JetStream.
+// NATS subjects follow the convention: kors.mes.{entity}.{past_tense_verb}
+// Payloads are serialized with proto.Marshal (never JSON).
+
+// OFCreatedEvent is published on kors.mes.of.created.
+message OFCreatedEvent {
+  string event_id   = 1; // UUID — used for consumer idempotency checks
+  string of_id      = 2;
+  string reference  = 3;
+  string product_id = 4;
+  int32  quantity   = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// OFStartedEvent is published on kors.mes.of.started
+// when the first operation of an OF begins.
+message OFStartedEvent {
+  string event_id  = 1;
+  string of_id     = 2;
+  google.protobuf.Timestamp started_at = 3;
+}
+
+// OFCompletedEvent is published on kors.mes.of.completed
+// when all operations of an OF are completed.
+message OFCompletedEvent {
+  string event_id  = 1;
+  string of_id     = 2;
+  google.protobuf.Timestamp completed_at = 3;
+}
+
+// OFSuspendedEvent is published on kors.mes.of.suspended.
+message OFSuspendedEvent {
+  string event_id = 1;
+  string of_id    = 2;
+  string reason   = 3;
+  google.protobuf.Timestamp suspended_at = 4;
+}
+
+// OFCancelledEvent is published on kors.mes.of.cancelled.
+message OFCancelledEvent {
+  string event_id = 1;
+  string of_id    = 2;
+  string reason   = 3;
+  google.protobuf.Timestamp cancelled_at = 4;
+}
+
+// OperationStartedEvent is published on kors.mes.operation.started.
+message OperationStartedEvent {
+  string event_id      = 1;
+  string operation_id  = 2;
+  string of_id         = 3;
+  string operator_id   = 4;
+  int32  step_number   = 5;
+  google.protobuf.Timestamp started_at = 6;
+}
+
+// OperationCompletedEvent is published on kors.mes.operation.completed.
+message OperationCompletedEvent {
+  string event_id      = 1;
+  string operation_id  = 2;
+  string of_id         = 3;
+  string operator_id   = 4;
+  int32  step_number   = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}

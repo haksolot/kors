@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// OperationStatus represents the lifecycle state of a production operation.
+enum OperationStatus {
+  OPERATION_STATUS_UNSPECIFIED = 0;
+  OPERATION_STATUS_PENDING     = 1; // waiting for the previous step to complete
+  OPERATION_STATUS_IN_PROGRESS = 2;
+  OPERATION_STATUS_COMPLETED   = 3;
+  OPERATION_STATUS_SKIPPED     = 4; // explicitly skipped with justification
+}
+
+// Operation is a single production step within a ManufacturingOrder.
+// Steps are ordered by step_number (1-based).
+message Operation {
+  string id             = 1; // UUID
+  string of_id          = 2; // Parent ManufacturingOrder UUID
+  int32  step_number    = 3; // Execution order within the OF
+  string name           = 4; // e.g. "Découpe", "Soudure", "Contrôle visuel"
+  string operator_id    = 5; // UUID of the operator assigned (from JWT claims)
+  OperationStatus status = 6;
+
+  google.protobuf.Timestamp created_at   = 7;
+  google.protobuf.Timestamp started_at   = 8;
+  google.protobuf.Timestamp completed_at = 9;
+
+  string skip_reason = 10; // mandatory if status = SKIPPED
+}
+
+// --- Request / Reply messages ---
+
+// StartOperationRequest is sent on kors.mes.operation.start.
+message StartOperationRequest {
+  string operation_id = 1;
+  string operator_id  = 2; // extracted from JWT claims at the BFF, never trusted from client
+}
+
+// StartOperationResponse contains the updated operation.
+message StartOperationResponse {
+  Operation operation = 1;
+}
+
+// CompleteOperationRequest is sent on kors.mes.operation.complete.
+message CompleteOperationRequest {
+  string operation_id = 1;
+  string operator_id  = 2;
+}
+
+// CompleteOperationResponse contains the updated operation.
+message CompleteOperationResponse {
+  Operation operation = 1;
+}

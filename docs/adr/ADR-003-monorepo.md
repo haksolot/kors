@@ -156,7 +156,7 @@ kors/
 
 ```
 // go.work
-go 1.23
+go 1.26.1
 
 use (
     ./libs/core
