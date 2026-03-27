@@ -1,0 +1,210 @@
+{
+  "realm": "kors",
+  "displayName": "KORS — Industrie 4.0",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "defaultSignatureAlgorithm": "RS256",
+  "accessTokenLifespan": 3600,
+  "refreshTokenMaxReuse": 0,
+  "revokeRefreshToken": true,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "kors-admin",
+        "description": "Administrateur KORS — acces complet a tous les modules et a la configuration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "kors-responsable-qualite",
+        "description": "Responsable Qualite — acces QMS complet, plans de controle, NC, dossiers de conformite",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "kors-directeur-industriel",
+        "description": "Directeur Industriel — acces MES complet, dashboard TRS, pilotage des OF",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "kors-operateur",
+        "description": "Operateur en bord de ligne — interface guidage, saisie temps et controles qualite uniquement",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "kors-bff",
+      "name": "KORS Backend For Frontend",
+      "description": "Client OIDC utilise par le BFF Go pour valider les tokens et obtenir les claims utilisateur",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "kors_bff_client_secret_dev",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:8090/*",
+        "http://kors.local/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:8090",
+        "http://kors.local"
+      ],
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "use.refresh.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "full-name-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin.kors",
+      "email": "admin@kors.local",
+      "firstName": "Admin",
+      "lastName": "KORS",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["kors-admin"],
+      "attributes": {
+        "persona": ["admin"]
+      }
+    },
+    {
+      "username": "thomas.rq",
+      "email": "thomas@kors.local",
+      "firstName": "Thomas",
+      "lastName": "Responsable Qualite",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Thomas1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["kors-responsable-qualite"],
+      "attributes": {
+        "persona": ["thomas"],
+        "site": ["occitanie"]
+      }
+    },
+    {
+      "username": "karim.di",
+      "email": "karim@kors.local",
+      "firstName": "Karim",
+      "lastName": "Directeur Industriel",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Karim1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["kors-directeur-industriel"],
+      "attributes": {
+        "persona": ["karim"],
+        "site": ["idf"]
+      }
+    },
+    {
+      "username": "isabelle.op",
+      "email": "isabelle@kors.local",
+      "firstName": "Isabelle",
+      "lastName": "Operatrice",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Isabelle1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["kors-operateur"],
+      "attributes": {
+        "persona": ["isabelle"],
+        "site": ["nouvelle-aquitaine"],
+        "poste": ["fraiseuse-cn"]
+      }
+    },
+    {
+      "username": "marc.dsi",
+      "email": "marc@kors.local",
+      "firstName": "Marc",
+      "lastName": "DSI",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Marc1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["kors-admin"],
+      "attributes": {
+        "persona": ["marc"],
+        "site": ["pays-de-la-loire"]
+      }
+    }
+  ],
+
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self' http://localhost:*; object-src 'none';"
+  }
+}

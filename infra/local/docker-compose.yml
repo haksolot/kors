@@ -1,0 +1,27 @@
+# =============================================================================
+# KORS — Orchestrateur principal Docker Compose
+# Definit le reseau partage et les volumes nommes.
+# Ne contient aucun service directement — utilise les includes.
+# =============================================================================
+
+include:
+  - docker-compose.nats.yml
+  - docker-compose.db.yml
+  - docker-compose.storage.yml
+  - docker-compose.iam.yml
+  - docker-compose.gateway.yml
+
+networks:
+  kors-net:
+    name: kors-net
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: kors-postgres-data
+  minio-data:
+    name: kors-minio-data
+  keycloak-data:
+    name: kors-keycloak-data
+  nats-data:
+    name: kors-nats-data

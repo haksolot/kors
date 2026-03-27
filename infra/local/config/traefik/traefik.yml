@@ -1,0 +1,35 @@
+# =============================================================================
+# KORS — Configuration statique Traefik (dev local)
+# =============================================================================
+
+# API et dashboard
+api:
+  dashboard: true
+  insecure: true   # OK en dev, desactiver en prod
+
+# Points d'entree
+entryPoints:
+  web:
+    address: ":80"
+  dashboard:
+    address: ":8090"
+
+# Decouverte dynamique via Docker
+providers:
+  docker:
+    exposedByDefault: false
+    network: kors-net
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# Ping pour le healthcheck
+ping:
+  entryPoint: dashboard
+
+# Logging
+log:
+  level: INFO
+
+accessLog:
+  format: json

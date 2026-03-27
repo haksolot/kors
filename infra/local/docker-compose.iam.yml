@@ -1,0 +1,45 @@
+# =============================================================================
+# KORS — Keycloak (IAM / SSO)
+# Fournisseur d'identite OIDC/OAuth2 avec RBAC 4 niveaux.
+# Le realm kors est importe automatiquement au premier demarrage
+# depuis config/keycloak/realm-kors.json.
+# En dev, on utilise le mode start-dev (pas de TLS, H2 en memoire pour KC lui-meme).
+# Les donnees du realm sont persistees dans le volume keycloak-data via PostgreSQL.
+# =============================================================================
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: kors-keycloak
+    restart: unless-stopped
+    environment:
+      # Admin console
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Base de donnees Keycloak (partage le PostgreSQL KORS, schema keycloak)
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/kors?currentSchema=public
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Desactiver le TLS en dev (Traefik le gere en prod)
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      # Import du realm au demarrage
+      KC_IMPORT: /opt/keycloak/data/import/realm-kors.json
+    ports:
+      - "8888:8080"   # Admin console : http://localhost:8888
+    volumes:
+      - ./config/keycloak/realm-kors.json:/opt/keycloak/data/import/realm-kors.json:ro
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kors-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s

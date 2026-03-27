@@ -1,0 +1,29 @@
+# =============================================================================
+# KORS — NATS + JetStream
+# Bus de communication unifie (asynchrone pub/sub + synchrone request-reply).
+# JetStream active pour la persistance et le rejeu des evenements metier.
+# Le port WebSocket (8080) est expose pour les connexions navigateur via BFF.
+# Le port Monitor (8222) expose le dashboard HTTP de sante NATS.
+# =============================================================================
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    container_name: kors-nats
+    restart: unless-stopped
+    ports:
+      - "4222:4222"   # Client TCP (services Go)
+      - "8222:8222"   # Monitoring HTTP (dashboard sante)
+      - "8080:8080"   # WebSocket (connexions navigateur via BFF)
+    volumes:
+      - nats-data:/data/jetstream
+      - ./config/nats/nats.conf:/etc/nats/nats.conf:ro
+    command: ["--config", "/etc/nats/nats.conf"]
+    networks:
+      - kors-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

@@ -1,0 +1,32 @@
+# =============================================================================
+# KORS — Traefik (reverse proxy / API gateway local)
+# Expose un dashboard de monitoring sur le port 8090.
+# En dev, on utilise le provider Docker pour la decouverte automatique des services.
+# Les services Go declarent leurs routes via des labels Docker.
+# En production (K3s), Traefik utilisera le provider Kubernetes Ingress.
+# =============================================================================
+
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: kors-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"       # HTTP — point d'entree principal
+      - "8090:8090"   # Dashboard Traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - kors-net
+    labels:
+      - "traefik.enable=true"
+      # Dashboard
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.kors.local`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=dashboard"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

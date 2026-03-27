@@ -1,0 +1,49 @@
+# =============================================================================
+# KORS — MinIO (stockage objet S3-compatible)
+# Stocke les fichiers lourds : instructions de travail (PDF/images),
+# photos associees aux non-conformites, fichiers CAO.
+# Port 9000 : API S3 (utilisee par les services Go)
+# Port 9001 : Console web MinIO (administration locale)
+# Le bucket par defaut est cree au demarrage via le script d'init.
+# =============================================================================
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: kors-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Console web
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - kors-net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Service one-shot qui cree le bucket par defaut apres demarrage de MinIO
+  minio-init:
+    image: minio/mc:latest
+    container_name: kors-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+        mc mb --ignore-existing local/${MINIO_DEFAULT_BUCKET} &&
+        mc anonymous set download local/${MINIO_DEFAULT_BUCKET}/public &&
+        echo 'MinIO init done — bucket ${MINIO_DEFAULT_BUCKET} created.'
+      "
+    networks:
+      - kors-net
+    restart: "no"
