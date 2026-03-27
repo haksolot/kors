@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// OrderStatus represents the lifecycle state of a manufacturing order.
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PLANNED     = 1;
+  ORDER_STATUS_IN_PROGRESS = 2;
+  ORDER_STATUS_COMPLETED   = 3;
+  ORDER_STATUS_SUSPENDED   = 4;
+  ORDER_STATUS_CANCELLED   = 5;
+}
+
+// ManufacturingOrder is the central aggregate of the MES.
+// An OF (Ordre de Fabrication) tracks production of a product lot.
+message ManufacturingOrder {
+  string id         = 1; // UUID
+  string reference  = 2; // Human-readable reference, e.g. "OF-2026-001"
+  string product_id = 3; // UUID of the product to manufacture
+  int32  quantity   = 4; // Number of units to produce
+  OrderStatus status = 5;
+
+  google.protobuf.Timestamp created_at  = 6;
+  google.protobuf.Timestamp updated_at  = 7;
+  google.protobuf.Timestamp started_at  = 8;  // set when status → IN_PROGRESS
+  google.protobuf.Timestamp completed_at = 9; // set when status → COMPLETED
+}
+
+// --- Request / Reply messages (NATS Request-Reply) ---
+
+// CreateOrderRequest is sent on kors.mes.of.create to create a new OF.
+message CreateOrderRequest {
+  string reference  = 1;
+  string product_id = 2;
+  int32  quantity   = 3;
+}
+
+// CreateOrderResponse contains the created order.
+message CreateOrderResponse {
+  ManufacturingOrder order = 1;
+}
+
+// GetOrderRequest is sent on kors.mes.of.get.
+message GetOrderRequest {
+  string id = 1;
+}
+
+// GetOrderResponse contains the requested order.
+message GetOrderResponse {
+  ManufacturingOrder order = 1;
+}
+
+// ListOrdersRequest is sent on kors.mes.of.list.
+message ListOrdersRequest {
+  OrderStatus status_filter = 1; // optional; UNSPECIFIED means all
+  int32  page_size  = 2; // max 100
+  string page_token = 3; // opaque cursor from previous response
+}
+
+// ListOrdersResponse contains a page of manufacturing orders.
+message ListOrdersResponse {
+  repeated ManufacturingOrder orders = 1;
+  string next_page_token = 2; // empty if last page
+}

@@ -1,0 +1,50 @@
+# Go binaries
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build artifacts
+*.test
+*.out
+/dist/
+
+# Go workspace
+go.work.sum
+
+# Environment files — NEVER commit
+.env
+.env.*
+!.env.example
+
+# TASK.md — temporary per-task file, deleted before merge
+TASK.md
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated protobuf bindings — regenerate with buf generate
+# (tracked in git as reference, but do not edit manually)
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Air (hot reload)
+tmp/
+
+# Claude Code agent memory (local, not project state)
+.claude/
