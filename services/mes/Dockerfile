@@ -4,13 +4,13 @@
 # Usage: docker build -f services/mes/Dockerfile -t kors-mes .
 # =============================================================================
 
-FROM golang:1.24-alpine AS builder
+FROM golang:latest AS builder
 WORKDIR /workspace
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mes ./services/mes/cmd
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
 COPY --from=builder /bin/mes .
 # Migrations must be in WORKDIR/migrations so goose.Up(sqlDB, "migrations") resolves correctly
