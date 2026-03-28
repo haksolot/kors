@@ -106,6 +106,22 @@ func (h *Handler) CreateOrder(ctx context.Context, payload []byte) ([]byte, erro
 		return h.fail(domain.SubjectOFCreate, start, fmt.Errorf("CreateOrder: %w", err))
 	}
 
+	order.IsFAI = req.IsFai
+	if req.Priority > 0 || req.DueDate != nil {
+		priority := int(req.Priority)
+		if priority == 0 {
+			priority = 50
+		}
+		var dueDate *time.Time
+		if req.DueDate != nil {
+			t := req.DueDate.AsTime()
+			dueDate = &t
+		}
+		if err := order.SetPlanning(dueDate, priority); err != nil {
+			return h.fail(domain.SubjectOFCreate, start, fmt.Errorf("CreateOrder: planning: %w", err))
+		}
+	}
+
 	evt, err := proto.Marshal(&pbmes.OFCreatedEvent{
 		EventId:   uuid.NewString(),
 		OfId:      order.ID,
@@ -475,12 +491,14 @@ func (h *Handler) CompleteOperation(ctx context.Context, payload []byte) ([]byte
 	}
 
 	evt, err := proto.Marshal(&pbmes.OperationCompletedEvent{
-		EventId:     uuid.NewString(),
-		OperationId: op.ID,
-		OfId:        op.OFID,
-		OperatorId:  op.OperatorID,
-		StepNumber:  int32(op.StepNumber),
-		CompletedAt: timestamppb.New(*op.CompletedAt),
+		EventId:                uuid.NewString(),
+		OperationId:            op.ID,
+		OfId:                   op.OFID,
+		OperatorId:             op.OperatorID,
+		StepNumber:             int32(op.StepNumber),
+		CompletedAt:            timestamppb.New(*op.CompletedAt),
+		PlannedDurationSeconds: int32(op.PlannedDurationSeconds),
+		ActualDurationSeconds:  int32(op.ActualDurationSeconds),
 	})
 	if err != nil {
 		return h.fail(domain.SubjectOperationComplete, start, fmt.Errorf("CompleteOperation: marshal event: %w", err))
