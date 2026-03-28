@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**", "test/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - name: golangci-lint (libs/core)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m ./...
+          working-directory: libs/core
+
+      - name: golangci-lint (services/mes)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m ./...
+          working-directory: services/mes
+
+      - name: golangci-lint (services/qms)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m ./...
+          working-directory: services/qms
+
+      - name: golangci-lint (services/bff)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.8
+          args: --timeout=5m ./...
+          working-directory: services/bff
+
+  # ── Build ───────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      # go.work root is not a module — use -C per workspace module
+      - name: go build (all modules)
+        run: |
+          go build -C libs/core ./...
+          go build -C proto/gen ./...
+          go build -C services/mes ./...
+          go build -C services/qms ./...
+          go build -C services/bff ./...
+
+  # ── Test ────────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    # testcontainers needs Docker — ubuntu-latest ships with it
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - name: go test (libs/core)
+        run: go test -C libs/core -race -timeout 60s ./...
+
+      - name: go test (services/mes)
+        run: go test -C services/mes -race -timeout 120s ./...
+
+      - name: go test (services/qms)
+        run: go test -C services/qms -race -timeout 120s ./...
+
+      - name: go test (services/bff)
+        run: go test -C services/bff -race -timeout 120s ./...
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"

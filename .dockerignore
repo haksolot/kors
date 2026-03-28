@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI / docs
+.github
+docs
+*.md
+CONTRIBUTING.md
+README.md
+TASK.md
+AGENT.md
+
+# Infra (not needed for Go build)
+infra
+
+# Test artifacts
+coverage.out
+*.test
+
+# IDE
+.idea
+.vscode
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binaries at root (accidental)
+cmd.exe

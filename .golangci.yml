@@ -1,0 +1,27 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck       # unchecked errors
+    - gosimple       # simplifications
+    - govet          # go vet checks
+    - ineffassign    # ineffectual assignments
+    - staticcheck    # staticcheck SA/S/ST rules
+    - unused         # unused code
+    - goimports      # import formatting
+    - misspell       # spelling mistakes
+    - noctx          # http calls without context
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/haksolot/kors
+
+issues:
+  exclude-rules:
+    # Test files: allow unused params, unchecked errors on cleanup helpers
+    - path: "_test\\.go"
+      linters:
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0
