@@ -4,13 +4,13 @@
 # Usage: docker build -f services/bff/Dockerfile -t kors-bff .
 # =============================================================================
 
-FROM golang:1.24-alpine AS builder
+FROM golang:latest AS builder
 WORKDIR /workspace
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/bff ./services/bff/cmd
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
 COPY --from=builder /bin/bff .
 EXPOSE 8080 9092

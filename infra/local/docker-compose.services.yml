@@ -18,7 +18,8 @@ services:
     environment:
       SERVICE_NAME: kors-bff
       NATS_URL: nats://nats:4222
-      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
+      # JWKS_ENDPOINT not set → noop JWT validator (dev mode, all tokens accepted)
+      # Set to ${KEYCLOAK_JWKS_URL} to enable real validation
       LISTEN_ADDR: :8080
       METRICS_ADDR: :9092
     networks:
@@ -28,14 +29,12 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=kors-net"
       - "traefik.http.routers.bff.rule=Host(`kors.local`)"
       - "traefik.http.routers.bff.entrypoints=web"
       - "traefik.http.services.bff.loadbalancer.server.port=8080"
-      # WebSocket upgrade support
-      - "traefik.http.middlewares.bff-ws.headers.customrequestheaders.Connection=Upgrade"
-      - "traefik.http.middlewares.bff-ws.headers.customrequestheaders.Upgrade=websocket"
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "--tries=1", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,7 +52,6 @@ services:
       SERVICE_NAME: kors-mes
       DATABASE_URL: ${MES_DATABASE_URL}
       NATS_URL: nats://nats:4222
-      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
     networks:
       - kors-net
     depends_on:
@@ -80,7 +78,6 @@ services:
       SERVICE_NAME: kors-qms
       DATABASE_URL: ${QMS_DATABASE_URL}
       NATS_URL: nats://nats:4222
-      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
     networks:
       - kors-net
     depends_on:

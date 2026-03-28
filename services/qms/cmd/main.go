@@ -28,7 +28,7 @@ type Config struct {
 	DatabaseURL  string `env:"DATABASE_URL,required"`
 	NATSUrl      string `env:"NATS_URL,required"`
 	NATSCreds    string `env:"NATS_CREDS_PATH"`
-	JWKSEndpoint string `env:"JWKS_ENDPOINT,required"`
+	JWKSEndpoint string `env:"JWKS_ENDPOINT"` // unused by QMS — JWT validated in BFF
 	OTLPEndpoint string `env:"OTLP_ENDPOINT"`
 	ServiceName  string `env:"SERVICE_NAME,required"`
 }
