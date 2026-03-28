@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
 
+	"github.com/haksolot/kors/libs/core"
 	"github.com/haksolot/kors/services/mes/domain"
 )
 
@@ -26,14 +28,21 @@ type Repository interface {
 // It runs as a background goroutine started in cmd/main.go.
 // Adaptive polling: 100ms when events are pending, 1s when the table is empty.
 type Worker struct {
-	repo Repository
-	nc   *nats.Conn
-	log  zerolog.Logger
+	repo        Repository
+	nc          *nats.Conn
+	log         zerolog.Logger
+	pendingGauge prometheus.Gauge
 }
 
 // New returns a Worker ready to run.
-func New(repo Repository, nc *nats.Conn, log zerolog.Logger) *Worker {
-	return &Worker{repo: repo, nc: nc, log: log}
+// reg is used to register the kors_outbox_pending_events gauge (ADR-008).
+func New(repo Repository, nc *nats.Conn, log zerolog.Logger, reg prometheus.Registerer) *Worker {
+	return &Worker{
+		repo:         repo,
+		nc:           nc,
+		log:          log,
+		pendingGauge: core.NewGauge(reg, "mes", "outbox_pending_events", "Number of outbox events not yet published to NATS"),
+	}
 }
 
 // Run starts the polling loop and blocks until ctx is cancelled.
@@ -71,6 +80,7 @@ func (w *Worker) processOnce(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	w.pendingGauge.Set(float64(len(entries)))
 	if len(entries) == 0 {
 		return 0, nil
 	}

@@ -392,6 +392,390 @@ func (x *CompleteOperationResponse) GetOperation() *Operation {
 	return nil
 }
 
+// CreateOperationRequest is sent on kors.mes.operation.create.
+type CreateOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OfId          string                 `protobuf:"bytes,1,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	StepNumber    int32                  `protobuf:"varint,2,opt,name=step_number,json=stepNumber,proto3" json:"step_number,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateOperationRequest) Reset() {
+	*x = CreateOperationRequest{}
+	mi := &file_mes_operation_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateOperationRequest) ProtoMessage() {}
+
+func (x *CreateOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateOperationRequest.ProtoReflect.Descriptor instead.
+func (*CreateOperationRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CreateOperationRequest) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *CreateOperationRequest) GetStepNumber() int32 {
+	if x != nil {
+		return x.StepNumber
+	}
+	return 0
+}
+
+func (x *CreateOperationRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// CreateOperationResponse contains the created operation.
+type CreateOperationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateOperationResponse) Reset() {
+	*x = CreateOperationResponse{}
+	mi := &file_mes_operation_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateOperationResponse) ProtoMessage() {}
+
+func (x *CreateOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateOperationResponse.ProtoReflect.Descriptor instead.
+func (*CreateOperationResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CreateOperationResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+// SkipOperationRequest is sent on kors.mes.operation.skip.
+type SkipOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkipOperationRequest) Reset() {
+	*x = SkipOperationRequest{}
+	mi := &file_mes_operation_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkipOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkipOperationRequest) ProtoMessage() {}
+
+func (x *SkipOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkipOperationRequest.ProtoReflect.Descriptor instead.
+func (*SkipOperationRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SkipOperationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *SkipOperationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SkipOperationResponse contains the updated operation.
+type SkipOperationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SkipOperationResponse) Reset() {
+	*x = SkipOperationResponse{}
+	mi := &file_mes_operation_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SkipOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SkipOperationResponse) ProtoMessage() {}
+
+func (x *SkipOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SkipOperationResponse.ProtoReflect.Descriptor instead.
+func (*SkipOperationResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SkipOperationResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+// GetOperationRequest is sent on kors.mes.operation.get.
+type GetOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOperationRequest) Reset() {
+	*x = GetOperationRequest{}
+	mi := &file_mes_operation_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOperationRequest) ProtoMessage() {}
+
+func (x *GetOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOperationRequest.ProtoReflect.Descriptor instead.
+func (*GetOperationRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetOperationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// GetOperationResponse contains the requested operation.
+type GetOperationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOperationResponse) Reset() {
+	*x = GetOperationResponse{}
+	mi := &file_mes_operation_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOperationResponse) ProtoMessage() {}
+
+func (x *GetOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOperationResponse.ProtoReflect.Descriptor instead.
+func (*GetOperationResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetOperationResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+// ListOperationsRequest is sent on kors.mes.operation.list.
+type ListOperationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OfId          string                 `protobuf:"bytes,1,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOperationsRequest) Reset() {
+	*x = ListOperationsRequest{}
+	mi := &file_mes_operation_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOperationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOperationsRequest) ProtoMessage() {}
+
+func (x *ListOperationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOperationsRequest.ProtoReflect.Descriptor instead.
+func (*ListOperationsRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListOperationsRequest) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+// ListOperationsResponse contains all operations for a manufacturing order.
+type ListOperationsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operations    []*Operation           `protobuf:"bytes,1,rep,name=operations,proto3" json:"operations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListOperationsResponse) Reset() {
+	*x = ListOperationsResponse{}
+	mi := &file_mes_operation_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOperationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOperationsResponse) ProtoMessage() {}
+
+func (x *ListOperationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOperationsResponse.ProtoReflect.Descriptor instead.
+func (*ListOperationsResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListOperationsResponse) GetOperations() []*Operation {
+	if x != nil {
+		return x.Operations
+	}
+	return nil
+}
+
 var File_mes_operation_proto protoreflect.FileDescriptor
 
 const file_mes_operation_proto_rawDesc = "" +
@@ -425,7 +809,29 @@ const file_mes_operation_proto_rawDesc = "" +
 	"\voperator_id\x18\x02 \x01(\tR\n" +
 	"operatorId\"I\n" +
 	"\x19CompleteOperationResponse\x12,\n" +
-	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation*\xb1\x01\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\"b\n" +
+	"\x16CreateOperationRequest\x12\x13\n" +
+	"\x05of_id\x18\x01 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vstep_number\x18\x02 \x01(\x05R\n" +
+	"stepNumber\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"G\n" +
+	"\x17CreateOperationResponse\x12,\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\"Q\n" +
+	"\x14SkipOperationRequest\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"E\n" +
+	"\x15SkipOperationResponse\x12,\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\"%\n" +
+	"\x13GetOperationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"D\n" +
+	"\x14GetOperationResponse\x12,\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\",\n" +
+	"\x15ListOperationsRequest\x12\x13\n" +
+	"\x05of_id\x18\x01 \x01(\tR\x04ofId\"H\n" +
+	"\x16ListOperationsResponse\x12.\n" +
+	"\n" +
+	"operations\x18\x01 \x03(\v2\x0e.mes.OperationR\n" +
+	"operations*\xb1\x01\n" +
 	"\x0fOperationStatus\x12 \n" +
 	"\x1cOPERATION_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18OPERATION_STATUS_PENDING\x10\x01\x12 \n" +
@@ -446,7 +852,7 @@ func file_mes_operation_proto_rawDescGZIP() []byte {
 }
 
 var file_mes_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mes_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_mes_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_mes_operation_proto_goTypes = []any{
 	(OperationStatus)(0),              // 0: mes.OperationStatus
 	(*Operation)(nil),                 // 1: mes.Operation
@@ -454,20 +860,32 @@ var file_mes_operation_proto_goTypes = []any{
 	(*StartOperationResponse)(nil),    // 3: mes.StartOperationResponse
 	(*CompleteOperationRequest)(nil),  // 4: mes.CompleteOperationRequest
 	(*CompleteOperationResponse)(nil), // 5: mes.CompleteOperationResponse
-	(*timestamppb.Timestamp)(nil),     // 6: google.protobuf.Timestamp
+	(*CreateOperationRequest)(nil),    // 6: mes.CreateOperationRequest
+	(*CreateOperationResponse)(nil),   // 7: mes.CreateOperationResponse
+	(*SkipOperationRequest)(nil),      // 8: mes.SkipOperationRequest
+	(*SkipOperationResponse)(nil),     // 9: mes.SkipOperationResponse
+	(*GetOperationRequest)(nil),       // 10: mes.GetOperationRequest
+	(*GetOperationResponse)(nil),      // 11: mes.GetOperationResponse
+	(*ListOperationsRequest)(nil),     // 12: mes.ListOperationsRequest
+	(*ListOperationsResponse)(nil),    // 13: mes.ListOperationsResponse
+	(*timestamppb.Timestamp)(nil),     // 14: google.protobuf.Timestamp
 }
 var file_mes_operation_proto_depIdxs = []int32{
-	0, // 0: mes.Operation.status:type_name -> mes.OperationStatus
-	6, // 1: mes.Operation.created_at:type_name -> google.protobuf.Timestamp
-	6, // 2: mes.Operation.started_at:type_name -> google.protobuf.Timestamp
-	6, // 3: mes.Operation.completed_at:type_name -> google.protobuf.Timestamp
-	1, // 4: mes.StartOperationResponse.operation:type_name -> mes.Operation
-	1, // 5: mes.CompleteOperationResponse.operation:type_name -> mes.Operation
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0,  // 0: mes.Operation.status:type_name -> mes.OperationStatus
+	14, // 1: mes.Operation.created_at:type_name -> google.protobuf.Timestamp
+	14, // 2: mes.Operation.started_at:type_name -> google.protobuf.Timestamp
+	14, // 3: mes.Operation.completed_at:type_name -> google.protobuf.Timestamp
+	1,  // 4: mes.StartOperationResponse.operation:type_name -> mes.Operation
+	1,  // 5: mes.CompleteOperationResponse.operation:type_name -> mes.Operation
+	1,  // 6: mes.CreateOperationResponse.operation:type_name -> mes.Operation
+	1,  // 7: mes.SkipOperationResponse.operation:type_name -> mes.Operation
+	1,  // 8: mes.GetOperationResponse.operation:type_name -> mes.Operation
+	1,  // 9: mes.ListOperationsResponse.operations:type_name -> mes.Operation
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_mes_operation_proto_init() }
@@ -481,7 +899,7 @@ func file_mes_operation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_operation_proto_rawDesc), len(file_mes_operation_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

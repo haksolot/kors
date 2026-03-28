@@ -539,6 +539,152 @@ func (x *OperationCompletedEvent) GetCompletedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// OFResumedEvent is published on kors.mes.of.resumed.
+type OFResumedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	OfId          string                 `protobuf:"bytes,2,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	ResumedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=resumed_at,json=resumedAt,proto3" json:"resumed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OFResumedEvent) Reset() {
+	*x = OFResumedEvent{}
+	mi := &file_mes_events_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OFResumedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OFResumedEvent) ProtoMessage() {}
+
+func (x *OFResumedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OFResumedEvent.ProtoReflect.Descriptor instead.
+func (*OFResumedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *OFResumedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OFResumedEvent) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *OFResumedEvent) GetResumedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ResumedAt
+	}
+	return nil
+}
+
+// OperationSkippedEvent is published on kors.mes.operation.skipped.
+type OperationSkippedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	OfId          string                 `protobuf:"bytes,3,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	StepNumber    int32                  `protobuf:"varint,4,opt,name=step_number,json=stepNumber,proto3" json:"step_number,omitempty"`
+	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	SkippedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=skipped_at,json=skippedAt,proto3" json:"skipped_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OperationSkippedEvent) Reset() {
+	*x = OperationSkippedEvent{}
+	mi := &file_mes_events_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OperationSkippedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OperationSkippedEvent) ProtoMessage() {}
+
+func (x *OperationSkippedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OperationSkippedEvent.ProtoReflect.Descriptor instead.
+func (*OperationSkippedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *OperationSkippedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OperationSkippedEvent) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *OperationSkippedEvent) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *OperationSkippedEvent) GetStepNumber() int32 {
+	if x != nil {
+		return x.StepNumber
+	}
+	return 0
+}
+
+func (x *OperationSkippedEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *OperationSkippedEvent) GetSkippedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SkippedAt
+	}
+	return nil
+}
+
 var File_mes_events_proto protoreflect.FileDescriptor
 
 const file_mes_events_proto_rawDesc = "" +
@@ -590,7 +736,21 @@ const file_mes_events_proto_rawDesc = "" +
 	"operatorId\x12\x1f\n" +
 	"\vstep_number\x18\x05 \x01(\x05R\n" +
 	"stepNumber\x12=\n" +
-	"\fcompleted_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAtB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"\fcompleted_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"{\n" +
+	"\x0eOFResumedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x13\n" +
+	"\x05of_id\x18\x02 \x01(\tR\x04ofId\x129\n" +
+	"\n" +
+	"resumed_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tresumedAt\"\xde\x01\n" +
+	"\x15OperationSkippedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12!\n" +
+	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12\x13\n" +
+	"\x05of_id\x18\x03 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vstep_number\x18\x04 \x01(\x05R\n" +
+	"stepNumber\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x129\n" +
+	"\n" +
+	"skipped_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tskippedAtB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_events_proto_rawDescOnce sync.Once
@@ -604,7 +764,7 @@ func file_mes_events_proto_rawDescGZIP() []byte {
 	return file_mes_events_proto_rawDescData
 }
 
-var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_mes_events_proto_goTypes = []any{
 	(*OFCreatedEvent)(nil),          // 0: mes.OFCreatedEvent
 	(*OFStartedEvent)(nil),          // 1: mes.OFStartedEvent
@@ -613,21 +773,25 @@ var file_mes_events_proto_goTypes = []any{
 	(*OFCancelledEvent)(nil),        // 4: mes.OFCancelledEvent
 	(*OperationStartedEvent)(nil),   // 5: mes.OperationStartedEvent
 	(*OperationCompletedEvent)(nil), // 6: mes.OperationCompletedEvent
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
+	(*OFResumedEvent)(nil),          // 7: mes.OFResumedEvent
+	(*OperationSkippedEvent)(nil),   // 8: mes.OperationSkippedEvent
+	(*timestamppb.Timestamp)(nil),   // 9: google.protobuf.Timestamp
 }
 var file_mes_events_proto_depIdxs = []int32{
-	7, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	7, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	7, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	7, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
-	7, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
-	7, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	7, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	9, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	9, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	9, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	9, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
+	9, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
+	9, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	9, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	9, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
+	9, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_mes_events_proto_init() }
@@ -641,7 +805,7 @@ func file_mes_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_events_proto_rawDesc), len(file_mes_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

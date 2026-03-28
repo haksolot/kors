@@ -55,3 +55,46 @@ message CompleteOperationRequest {
 message CompleteOperationResponse {
   Operation operation = 1;
 }
+
+// CreateOperationRequest is sent on kors.mes.operation.create.
+message CreateOperationRequest {
+  string of_id       = 1;
+  int32  step_number = 2;
+  string name        = 3;
+}
+
+// CreateOperationResponse contains the created operation.
+message CreateOperationResponse {
+  Operation operation = 1;
+}
+
+// SkipOperationRequest is sent on kors.mes.operation.skip.
+message SkipOperationRequest {
+  string operation_id = 1;
+  string reason       = 2;
+}
+
+// SkipOperationResponse contains the updated operation.
+message SkipOperationResponse {
+  Operation operation = 1;
+}
+
+// GetOperationRequest is sent on kors.mes.operation.get.
+message GetOperationRequest {
+  string id = 1;
+}
+
+// GetOperationResponse contains the requested operation.
+message GetOperationResponse {
+  Operation operation = 1;
+}
+
+// ListOperationsRequest is sent on kors.mes.operation.list.
+message ListOperationsRequest {
+  string of_id = 1;
+}
+
+// ListOperationsResponse contains all operations for a manufacturing order.
+message ListOperationsResponse {
+  repeated Operation operations = 1;
+}

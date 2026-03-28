@@ -501,6 +501,292 @@ func (x *ListOrdersResponse) GetNextPageToken() string {
 	return ""
 }
 
+// SuspendOrderRequest is sent on kors.mes.of.suspend.
+type SuspendOrderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SuspendOrderRequest) Reset() {
+	*x = SuspendOrderRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SuspendOrderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SuspendOrderRequest) ProtoMessage() {}
+
+func (x *SuspendOrderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SuspendOrderRequest.ProtoReflect.Descriptor instead.
+func (*SuspendOrderRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SuspendOrderRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SuspendOrderRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SuspendOrderResponse contains the updated order.
+type SuspendOrderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SuspendOrderResponse) Reset() {
+	*x = SuspendOrderResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SuspendOrderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SuspendOrderResponse) ProtoMessage() {}
+
+func (x *SuspendOrderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SuspendOrderResponse.ProtoReflect.Descriptor instead.
+func (*SuspendOrderResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SuspendOrderResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
+// ResumeOrderRequest is sent on kors.mes.of.resume.
+type ResumeOrderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResumeOrderRequest) Reset() {
+	*x = ResumeOrderRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResumeOrderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResumeOrderRequest) ProtoMessage() {}
+
+func (x *ResumeOrderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResumeOrderRequest.ProtoReflect.Descriptor instead.
+func (*ResumeOrderRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ResumeOrderRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// ResumeOrderResponse contains the updated order.
+type ResumeOrderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResumeOrderResponse) Reset() {
+	*x = ResumeOrderResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResumeOrderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResumeOrderResponse) ProtoMessage() {}
+
+func (x *ResumeOrderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResumeOrderResponse.ProtoReflect.Descriptor instead.
+func (*ResumeOrderResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ResumeOrderResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
+// CancelOrderRequest is sent on kors.mes.of.cancel.
+type CancelOrderRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelOrderRequest) Reset() {
+	*x = CancelOrderRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelOrderRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelOrderRequest) ProtoMessage() {}
+
+func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelOrderRequest.ProtoReflect.Descriptor instead.
+func (*CancelOrderRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CancelOrderRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CancelOrderRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// CancelOrderResponse contains the updated order.
+type CancelOrderResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelOrderResponse) Reset() {
+	*x = CancelOrderResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelOrderResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelOrderResponse) ProtoMessage() {}
+
+func (x *CancelOrderResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelOrderResponse.ProtoReflect.Descriptor instead.
+func (*CancelOrderResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CancelOrderResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
 var File_mes_manufacturing_order_proto protoreflect.FileDescriptor
 
 const file_mes_manufacturing_order_proto_rawDesc = "" +
@@ -538,7 +824,21 @@ const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"m\n" +
 	"\x12ListOrdersResponse\x12/\n" +
 	"\x06orders\x18\x01 \x03(\v2\x17.mes.ManufacturingOrderR\x06orders\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\xb7\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"=\n" +
+	"\x13SuspendOrderRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"E\n" +
+	"\x14SuspendOrderResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\"$\n" +
+	"\x12ResumeOrderRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"D\n" +
+	"\x13ResumeOrderResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\"<\n" +
+	"\x12CancelOrderRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"D\n" +
+	"\x13CancelOrderResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order*\xb7\x01\n" +
 	"\vOrderStatus\x12\x1c\n" +
 	"\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14ORDER_STATUS_PLANNED\x10\x01\x12\x1c\n" +
@@ -560,7 +860,7 @@ func file_mes_manufacturing_order_proto_rawDescGZIP() []byte {
 }
 
 var file_mes_manufacturing_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_mes_manufacturing_order_proto_goTypes = []any{
 	(OrderStatus)(0),              // 0: mes.OrderStatus
 	(*ManufacturingOrder)(nil),    // 1: mes.ManufacturingOrder
@@ -570,23 +870,32 @@ var file_mes_manufacturing_order_proto_goTypes = []any{
 	(*GetOrderResponse)(nil),      // 5: mes.GetOrderResponse
 	(*ListOrdersRequest)(nil),     // 6: mes.ListOrdersRequest
 	(*ListOrdersResponse)(nil),    // 7: mes.ListOrdersResponse
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*SuspendOrderRequest)(nil),   // 8: mes.SuspendOrderRequest
+	(*SuspendOrderResponse)(nil),  // 9: mes.SuspendOrderResponse
+	(*ResumeOrderRequest)(nil),    // 10: mes.ResumeOrderRequest
+	(*ResumeOrderResponse)(nil),   // 11: mes.ResumeOrderResponse
+	(*CancelOrderRequest)(nil),    // 12: mes.CancelOrderRequest
+	(*CancelOrderResponse)(nil),   // 13: mes.CancelOrderResponse
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_mes_manufacturing_order_proto_depIdxs = []int32{
-	0, // 0: mes.ManufacturingOrder.status:type_name -> mes.OrderStatus
-	8, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
-	8, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
-	8, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
-	8, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
-	1, // 5: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1, // 6: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
-	0, // 7: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
-	1, // 8: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	0,  // 0: mes.ManufacturingOrder.status:type_name -> mes.OrderStatus
+	14, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
+	14, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
+	14, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
+	1,  // 5: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 6: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
+	0,  // 7: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
+	1,  // 8: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
+	1,  // 9: mes.SuspendOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 10: mes.ResumeOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 11: mes.CancelOrderResponse.order:type_name -> mes.ManufacturingOrder
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_mes_manufacturing_order_proto_init() }
@@ -600,7 +909,7 @@ func file_mes_manufacturing_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_manufacturing_order_proto_rawDesc), len(file_mes_manufacturing_order_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -2,39 +2,36 @@ package domain
 
 import "context"
 
-// OrderRepository defines the persistence contract for ManufacturingOrders.
-// Defined here (consumed by handler), implemented in repo/.
+// OrderRepository defines the read-only persistence contract for ManufacturingOrders.
+// Write operations (create/update) must go through Transactor to ensure atomicity with outbox.
 type OrderRepository interface {
-	Save(ctx context.Context, order *Order) error
 	FindByID(ctx context.Context, id string) (*Order, error)
 	FindByReference(ctx context.Context, reference string) (*Order, error)
-	Update(ctx context.Context, order *Order) error
 	List(ctx context.Context, filter ListOrdersFilter) ([]*Order, error)
 }
 
-// OperationRepository defines the persistence contract for Operations.
+// OperationRepository defines the read-only persistence contract for Operations.
+// Write operations must go through Transactor to ensure atomicity with outbox.
 type OperationRepository interface {
-	Save(ctx context.Context, op *Operation) error
-	FindByID(ctx context.Context, id string) (*Operation, error)
-	FindByOFID(ctx context.Context, ofID string) ([]*Operation, error)
-	Update(ctx context.Context, op *Operation) error
+	FindOperationByID(ctx context.Context, id string) (*Operation, error)
+	FindOperationsByOFID(ctx context.Context, ofID string) ([]*Operation, error)
 }
 
-// OutboxRepository defines the persistence contract for the transactional outbox.
-// Implementations must write within the caller's transaction (pgx.Tx).
-type OutboxRepository interface {
-	// InsertTx writes an outbox entry within an existing transaction.
-	InsertTx(ctx context.Context, tx TX, entry OutboxEntry) error
-	// ListUnpublished returns up to limit unpublished entries ordered by id.
-	ListUnpublished(ctx context.Context, limit int) ([]OutboxEntry, error)
-	// MarkPublished sets published_at = NOW() for the given entry IDs.
-	MarkPublished(ctx context.Context, ids []int64) error
+// TxOps defines all write operations available within a database transaction.
+// Every mutation that triggers a domain event must use TxOps so the outbox entry
+// is written in the same transaction as the business data (ADR-004).
+type TxOps interface {
+	SaveOrder(ctx context.Context, o *Order) error
+	UpdateOrder(ctx context.Context, o *Order) error
+	SaveOperation(ctx context.Context, op *Operation) error
+	UpdateOperation(ctx context.Context, op *Operation) error
+	InsertOutbox(ctx context.Context, entry OutboxEntry) error
 }
 
-// TX is the minimal transaction interface used by OutboxRepository.InsertTx.
-// pgx.Tx satisfies this interface.
-type TX interface {
-	Exec(ctx context.Context, sql string, args ...any) (interface{ RowsAffected() int64 }, error)
+// Transactor manages database transactions and exposes TxOps within them.
+// Implementations must begin a transaction, call fn, then commit or rollback.
+type Transactor interface {
+	WithTx(ctx context.Context, fn func(TxOps) error) error
 }
 
 // OutboxEntry holds a single unpublished event from the outbox table.

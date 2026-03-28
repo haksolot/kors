@@ -67,3 +67,35 @@ message ListOrdersResponse {
   repeated ManufacturingOrder orders = 1;
   string next_page_token = 2; // empty if last page
 }
+
+// SuspendOrderRequest is sent on kors.mes.of.suspend.
+message SuspendOrderRequest {
+  string id     = 1;
+  string reason = 2;
+}
+
+// SuspendOrderResponse contains the updated order.
+message SuspendOrderResponse {
+  ManufacturingOrder order = 1;
+}
+
+// ResumeOrderRequest is sent on kors.mes.of.resume.
+message ResumeOrderRequest {
+  string id = 1;
+}
+
+// ResumeOrderResponse contains the updated order.
+message ResumeOrderResponse {
+  ManufacturingOrder order = 1;
+}
+
+// CancelOrderRequest is sent on kors.mes.of.cancel.
+message CancelOrderRequest {
+  string id     = 1;
+  string reason = 2;
+}
+
+// CancelOrderResponse contains the updated order.
+message CancelOrderResponse {
+  ManufacturingOrder order = 1;
+}

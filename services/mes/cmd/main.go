@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/nats-io/nats.go"
 	"github.com/pressly/goose/v3"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 
 	"github.com/haksolot/kors/libs/core"
@@ -84,10 +87,22 @@ func main() {
 	defer func() { _ = nc.Drain() }()
 	log.Info().Str("nats_url", cfg.NATSUrl).Msg("connected to NATS")
 
+	// ── Metrics ───────────────────────────────────────────────────────────────
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(prometheus.NewGoCollector())
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+		srv := &http.Server{Addr: ":9090", Handler: mux}
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("metrics server error")
+		}
+	}()
+
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, &log)
-	worker := outbox.New(r, nc, log)
+	h := handler.New(r, r, r, reg, &log)
+	worker := outbox.New(r, nc, log, reg)
 
 	// ── Subscriptions ─────────────────────────────────────────────────────────
 	subs := subscribeAll(ctx, h, nc, log)
@@ -109,11 +124,20 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 	}
 
 	routes := []entry{
+		// Orders
 		{domain.SubjectOFCreate, h.CreateOrder},
 		{domain.SubjectOFGet, h.GetOrder},
 		{domain.SubjectOFList, h.ListOrders},
+		{domain.SubjectOFSuspend, h.SuspendOrder},
+		{domain.SubjectOFResume, h.ResumeOrder},
+		{domain.SubjectOFCancel, h.CancelOrder},
+		// Operations
+		{domain.SubjectOperationCreate, h.CreateOperation},
+		{domain.SubjectOperationGet, h.GetOperation},
+		{domain.SubjectOperationList, h.ListOperations},
 		{domain.SubjectOperationStart, h.StartOperation},
 		{domain.SubjectOperationComplete, h.CompleteOperation},
+		{domain.SubjectOperationSkip, h.SkipOperation},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -150,5 +174,6 @@ func drainAll(subs []*nats.Subscription) {
 var (
 	_ handler.OrderRepository     = (*repo.PostgresRepo)(nil)
 	_ handler.OperationRepository = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor           = (*repo.PostgresRepo)(nil)
 	_ outbox.Repository           = (*repo.PostgresRepo)(nil)
 )
