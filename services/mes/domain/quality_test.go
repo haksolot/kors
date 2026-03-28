@@ -15,7 +15,7 @@ func TestOperation_Complete_WithSignOff_MovesPendingSignOff(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Weld joint")
 	require.NoError(t, err)
 	op.RequiresSignOff = true
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 
 	err = op.Complete("00000000-0000-0000-0000-000000000010")
 	require.NoError(t, err)
@@ -26,7 +26,7 @@ func TestOperation_Complete_WithSignOff_MovesPendingSignOff(t *testing.T) {
 func TestOperation_Complete_WithoutSignOff_MovesCompleted(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Deburr")
 	require.NoError(t, err)
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 
 	err = op.Complete("00000000-0000-0000-0000-000000000010")
 	require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestOperation_SignOff_Success(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Weld joint")
 	require.NoError(t, err)
 	op.RequiresSignOff = true
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 	require.NoError(t, op.Complete("00000000-0000-0000-0000-000000000010"))
 
 	inspectorID := "00000000-0000-0000-0000-000000000020"
@@ -52,7 +52,7 @@ func TestOperation_SignOff_EmptyInspector_ReturnsUnauthorized(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Weld joint")
 	require.NoError(t, err)
 	op.RequiresSignOff = true
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 	require.NoError(t, op.Complete("00000000-0000-0000-0000-000000000010"))
 
 	err = op.SignOff("")
@@ -62,7 +62,7 @@ func TestOperation_SignOff_EmptyInspector_ReturnsUnauthorized(t *testing.T) {
 func TestOperation_SignOff_NotPendingSignOff_ReturnsError(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Deburr")
 	require.NoError(t, err)
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 	require.NoError(t, op.Complete("00000000-0000-0000-0000-000000000010"))
 	// op is Completed, not PendingSignOff
 

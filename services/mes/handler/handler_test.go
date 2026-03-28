@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -11,6 +13,7 @@ import (
 
 	pbmes "github.com/haksolot/kors/proto/gen/mes"
 	"github.com/haksolot/kors/services/mes/domain"
+	"github.com/haksolot/kors/services/mes/handler"
 )
 
 // ── CreateOrder ───────────────────────────────────────────────────────────────
@@ -339,7 +342,7 @@ func TestHandler_CompleteOperation(t *testing.T) {
 	t.Run("in-progress operation can be completed", func(t *testing.T) {
 		ops := &mockOperationRepo{}
 		op, _ := domain.NewOperation("of-1", 1, "Découpe")
-		_ = op.Start("op-1")
+		_ = op.Start("op-1", nil)
 		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
 
 		store := newMockTransactor()
@@ -726,5 +729,128 @@ func TestHandler_AttachInstructions(t *testing.T) {
 		require.NoError(t, proto.Unmarshal(resp, &response))
 		assert.Equal(t, "minio://instructions/sop-weld-v3.pdf", response.Operation.InstructionsUrl)
 		store.AssertExpectations(t)
+	})
+}
+
+// ── BLOC 5 — Routing & Planning ───────────────────────────────────────────────
+
+func TestHandler_CreateRouting(t *testing.T) {
+	t.Run("routing created and persisted with outbox", func(t *testing.T) {
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("SaveRouting", mock.Anything, mock.AnythingOfType("*domain.Routing")).Return(nil)
+		store.Ops.On("SaveRoutingStep", mock.Anything, mock.AnythingOfType("*domain.RoutingStep")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "RoutingCreated").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.CreateRoutingRequest{
+			ProductId: "00000000-0000-0000-0000-000000000001",
+			Name:      "Frame Assembly v1",
+			Version:   1,
+			Steps: []*pbmes.CreateRoutingStepInput{
+				{StepNumber: 1, Name: "Cut", PlannedDurationSeconds: 120},
+			},
+			Activate: true,
+		})
+
+		resp, err := h.CreateRouting(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.CreateRoutingResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, "Frame Assembly v1", response.Routing.Name)
+		assert.True(t, response.Routing.IsActive)
+		assert.Len(t, response.Routing.Steps, 1)
+		store.AssertExpectations(t)
+		store.Ops.AssertExpectations(t)
+	})
+
+	t.Run("no steps with activate returns error before tx", func(t *testing.T) {
+		store := newMockTransactor()
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.CreateRoutingRequest{
+			ProductId: "00000000-0000-0000-0000-000000000001",
+			Name:      "Empty Routing",
+			Version:   1,
+			Activate:  true,
+		})
+
+		_, err := h.CreateRouting(context.Background(), payload)
+		require.Error(t, err)
+	})
+}
+
+func TestHandler_GetRouting(t *testing.T) {
+	t.Run("returns routing by id", func(t *testing.T) {
+		rt := &domain.Routing{
+			ID:        "00000000-0000-0000-0000-000000000001",
+			ProductID: "00000000-0000-0000-0000-000000000002",
+			Version:   1,
+			Name:      "Airframe Assembly",
+			IsActive:  true,
+		}
+
+		routingRepo := &mockRoutingRepo{}
+		routingRepo.On("FindRoutingByID", mock.Anything, rt.ID).Return(rt, nil)
+
+		log := zerolog.Nop()
+		reg := prometheus.NewRegistry()
+		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, newMockTransactor(), reg, &log)
+
+		payload, _ := proto.Marshal(&pbmes.GetRoutingRequest{Id: rt.ID})
+		resp, err := h.GetRouting(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.GetRoutingResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, rt.Name, response.Routing.Name)
+		routingRepo.AssertExpectations(t)
+	})
+}
+
+func TestHandler_GetDispatchList(t *testing.T) {
+	t.Run("returns dispatch list ordered by priority", func(t *testing.T) {
+		o1, _ := domain.NewOrder("OF-001", "prod-1", 5)
+		_ = o1.SetPlanning(nil, 90)
+		o2, _ := domain.NewOrder("OF-002", "prod-1", 3)
+		_ = o2.SetPlanning(nil, 50)
+
+		ordersRepo := &mockOrderRepo{}
+		ordersRepo.On("DispatchList", mock.Anything, 50).Return([]*domain.Order{o1, o2}, nil)
+
+		h := newTestHandler(ordersRepo, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.DispatchListRequest{Limit: 50})
+		resp, err := h.GetDispatchList(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.DispatchListResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		require.Len(t, response.Orders, 2)
+		assert.Equal(t, int32(90), response.Orders[0].Priority)
+		ordersRepo.AssertExpectations(t)
+	})
+}
+
+func TestHandler_SetPlanning(t *testing.T) {
+	t.Run("updates planning fields on order", func(t *testing.T) {
+		o, _ := domain.NewOrder("OF-P-001", "prod-1", 1)
+
+		ordersRepo := &mockOrderRepo{}
+		ordersRepo.On("FindByID", mock.Anything, o.ID).Return(o, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+
+		h := newTestHandler(ordersRepo, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.SetPlanningRequest{OfId: o.ID, Priority: 80})
+		resp, err := h.SetPlanning(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.SetPlanningResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, int32(80), response.Order.Priority)
+		store.AssertExpectations(t)
+		store.Ops.AssertExpectations(t)
 	})
 }

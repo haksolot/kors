@@ -69,7 +69,10 @@ message OperationCompletedEvent {
   string of_id         = 3;
   string operator_id   = 4;
   int32  step_number   = 5;
-  google.protobuf.Timestamp completed_at = 6;
+  google.protobuf.Timestamp completed_at    = 6;
+  // Cycle-time fields (BLOC 5 — TRS)
+  int32 planned_duration_seconds = 7;
+  int32 actual_duration_seconds  = 8;
 }
 
 // OFResumedEvent is published on kors.mes.of.resumed.
@@ -119,4 +122,14 @@ message OFFAIApprovedEvent {
   string of_id        = 2;
   string approver_id  = 3; // UUID of the quality_manager
   google.protobuf.Timestamp approved_at = 4;
+}
+
+// RoutingCreatedEvent is published on kors.mes.routing.created (BLOC 5).
+message RoutingCreatedEvent {
+  string event_id   = 1;
+  string routing_id = 2;
+  string product_id = 3;
+  int32  version    = 4;
+  string name       = 5;
+  google.protobuf.Timestamp created_at = 6;
 }

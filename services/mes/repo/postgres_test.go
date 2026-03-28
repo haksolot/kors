@@ -181,7 +181,7 @@ func TestPostgresRepo_UpdateOperation(t *testing.T) {
 	op, _ := domain.NewOperation(order.ID, 1, "Soudure")
 	require.NoError(t, r.SaveOperation(ctx, op))
 
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 	require.NoError(t, r.UpdateOperation(ctx, op))
 
 	got, err := r.FindOperationByID(ctx, op.ID)
@@ -316,7 +316,7 @@ func TestPostgresRepo_WithTx_UpdateOperationAndOutbox(t *testing.T) {
 	require.NoError(t, r.SaveOperation(ctx, op))
 
 	// Start the operation inside a transaction.
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
 	err := r.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.UpdateOperation(ctx, op); err != nil {
 			return err
@@ -480,12 +480,103 @@ func TestPostgresRepo_GenealogyEntry_SaveAndQuery(t *testing.T) {
 	assert.Equal(t, parent.ID, byChild[0].ParentSNID)
 }
 
+// ── Routing tests (BLOC 5) ────────────────────────────────────────────────────
+
+func TestPostgresRepo_SaveAndFindRouting(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	rt, err := domain.NewRouting("00000000-0000-0000-0000-000000000001", "Airframe Assembly v1", 1)
+	require.NoError(t, err)
+	step, err := rt.AddStep(1, "Cut", 120)
+	require.NoError(t, err)
+	step.RequiredSkill = "laser_operator"
+	require.NoError(t, rt.Activate())
+
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveRouting(ctx, rt); err != nil {
+			return err
+		}
+		for _, s := range rt.Steps {
+			if err := tx.SaveRoutingStep(ctx, s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	found, err := r.FindRoutingByID(ctx, rt.ID)
+	require.NoError(t, err)
+	assert.Equal(t, rt.Name, found.Name)
+	assert.Equal(t, rt.Version, found.Version)
+	assert.True(t, found.IsActive)
+	require.Len(t, found.Steps, 1)
+	assert.Equal(t, "Cut", found.Steps[0].Name)
+	assert.Equal(t, 120, found.Steps[0].PlannedDurationSeconds)
+	assert.Equal(t, "laser_operator", found.Steps[0].RequiredSkill)
+}
+
+func TestPostgresRepo_FindRoutingsByProductID(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	productID := "00000000-0000-0000-0000-000000000010"
+
+	for _, v := range []int{1, 2} {
+		rt, err := domain.NewRouting(productID, "Assembly v"+string(rune('0'+v)), v)
+		require.NoError(t, err)
+		_, err = rt.AddStep(1, "Step A", 60)
+		require.NoError(t, err)
+		require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+			if err := tx.SaveRouting(ctx, rt); err != nil {
+				return err
+			}
+			return tx.SaveRoutingStep(ctx, rt.Steps[0])
+		}))
+	}
+
+	list, err := r.FindRoutingsByProductID(ctx, productID)
+	require.NoError(t, err)
+	assert.Len(t, list, 2)
+}
+
+func TestPostgresRepo_DispatchList(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	// Create two PLANNED orders with different priorities
+	for _, tc := range []struct {
+		ref      string
+		priority int
+	}{
+		{"OF-DL-001", 90},
+		{"OF-DL-002", 30},
+	} {
+		o, err := domain.NewOrder(tc.ref, "00000000-0000-0000-0000-000000000001", 1)
+		require.NoError(t, err)
+		require.NoError(t, o.SetPlanning(nil, tc.priority))
+		require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+			return tx.SaveOrder(ctx, o)
+		}))
+	}
+
+	list, err := r.DispatchList(ctx, 10)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(list), 2)
+	// First result must have the highest priority
+	assert.Equal(t, 90, list[0].Priority)
+}
+
 // compile-time checks: PostgresRepo satisfies the required domain interfaces.
 var (
 	_ domain.OrderRepository        = (*repo.PostgresRepo)(nil)
 	_ domain.OperationRepository    = (*repo.PostgresRepo)(nil)
 	_ domain.LotRepository          = (*repo.PostgresRepo)(nil)
 	_ domain.TraceabilityRepository = (*repo.PostgresRepo)(nil)
+	_ domain.RoutingRepository      = (*repo.PostgresRepo)(nil)
 	_ domain.Transactor             = (*repo.PostgresRepo)(nil)
 	_ = errors.New                  // keep import
 )

@@ -34,6 +34,20 @@ var (
 	ErrFAIAlreadyApproved = errors.New("first article inspection already approved")
 	ErrNotFAIOrder        = errors.New("manufacturing order is not flagged as a FAI order")
 
+	// Planning errors
+	ErrInvalidPriority = errors.New("priority must be between 1 and 100")
+
+	// Operator qualification errors (AS9100D §7.2)
+	ErrOperatorNotQualified = errors.New("operator does not hold the required skill for this operation")
+
+	// Routing errors
+	ErrInvalidRoutingName     = errors.New("routing name must not be empty")
+	ErrInvalidRoutingVersion  = errors.New("routing version must be greater than zero")
+	ErrInvalidPlannedDuration = errors.New("planned duration must be >= 0")
+	ErrRoutingHasNoSteps      = errors.New("routing must have at least one step")
+	ErrRoutingNotActive       = errors.New("routing must be active to instantiate operations")
+	ErrRoutingNotFound        = errors.New("routing not found")
+
 	// Lot errors
 	ErrLotNotFound      = errors.New("lot not found")
 	ErrLotAlreadyExists = errors.New("lot reference already exists")
