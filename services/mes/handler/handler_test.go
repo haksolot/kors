@@ -397,3 +397,146 @@ func TestHandler_SkipOperation(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// ── CreateLot ─────────────────────────────────────────────────────────────────
+
+func TestHandler_CreateLot(t *testing.T) {
+	t.Run("valid lot is saved with outbox entry", func(t *testing.T) {
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("SaveLot", mock.Anything, mock.AnythingOfType("*domain.Lot")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "LotCreated").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.CreateLotRequest{
+			Reference: "LOT-001", ProductId: "prod-1", Quantity: 50,
+		})
+
+		resp, err := h.CreateLot(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.CreateLotResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, "LOT-001", response.Lot.Reference)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("empty reference returns error", func(t *testing.T) {
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.CreateLotRequest{Reference: "", ProductId: "prod-1", Quantity: 10})
+		_, err := h.CreateLot(context.Background(), payload)
+		require.Error(t, err)
+	})
+}
+
+// ── RegisterSN ────────────────────────────────────────────────────────────────
+
+func TestHandler_RegisterSN(t *testing.T) {
+	t.Run("registers a serial number", func(t *testing.T) {
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("SaveSerialNumber", mock.Anything, mock.AnythingOfType("*domain.SerialNumber")).Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.RegisterSNRequest{
+			Sn: "SN-0042", ProductId: "prod-1", OfId: "of-1",
+		})
+
+		resp, err := h.RegisterSN(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.RegisterSNResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, "SN-0042", response.SerialNumber.Sn)
+		assert.Equal(t, pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_PRODUCED, response.SerialNumber.Status)
+		store.AssertExpectations(t)
+	})
+}
+
+// ── ReleaseSN ─────────────────────────────────────────────────────────────────
+
+func TestHandler_ReleaseSN(t *testing.T) {
+	t.Run("produced SN is released with outbox entry", func(t *testing.T) {
+		sn, _ := domain.NewSerialNumber("SN-1", "", "prod-1", "of-1")
+
+		trace := &mockTraceabilityRepo{}
+		trace.On("FindSNByID", mock.Anything, sn.ID).Return(sn, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateSerialNumber", mock.Anything, mock.AnythingOfType("*domain.SerialNumber")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "SNReleased").Return(nil)
+
+		h := newTestHandlerWithTrace(&mockOrderRepo{}, &mockOperationRepo{}, trace, store)
+		payload, _ := proto.Marshal(&pbmes.ReleaseSNRequest{Id: sn.ID})
+
+		resp, err := h.ReleaseSN(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.ReleaseSNResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_RELEASED, response.SerialNumber.Status)
+		store.AssertExpectations(t)
+	})
+}
+
+// ── ScrapSN ───────────────────────────────────────────────────────────────────
+
+func TestHandler_ScrapSN(t *testing.T) {
+	t.Run("produced SN can be scrapped", func(t *testing.T) {
+		sn, _ := domain.NewSerialNumber("SN-2", "", "prod-1", "of-1")
+
+		trace := &mockTraceabilityRepo{}
+		trace.On("FindSNByID", mock.Anything, sn.ID).Return(sn, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateSerialNumber", mock.Anything, mock.AnythingOfType("*domain.SerialNumber")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "SNScrapped").Return(nil)
+
+		h := newTestHandlerWithTrace(&mockOrderRepo{}, &mockOperationRepo{}, trace, store)
+		payload, _ := proto.Marshal(&pbmes.ScrapSNRequest{Id: sn.ID})
+
+		resp, err := h.ScrapSN(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.ScrapSNResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_SCRAPPED, response.SerialNumber.Status)
+	})
+}
+
+// ── AddGenealogyEntry ─────────────────────────────────────────────────────────
+
+func TestHandler_AddGenealogyEntry(t *testing.T) {
+	t.Run("genealogy entry is saved with outbox", func(t *testing.T) {
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("SaveGenealogyEntry", mock.Anything, mock.AnythingOfType("*domain.GenealogyEntry")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "GenealogyEntryAdded").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.AddGenealogyEntryRequest{
+			ParentSnId: "parent-sn-id",
+			ChildSnId:  "child-sn-id",
+			OfId:       "of-id",
+		})
+
+		resp, err := h.AddGenealogyEntry(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.AddGenealogyEntryResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, "parent-sn-id", response.Entry.ParentSnId)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("same parent and child returns error", func(t *testing.T) {
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.AddGenealogyEntryRequest{
+			ParentSnId: "same-id", ChildSnId: "same-id", OfId: "of-id",
+		})
+		_, err := h.AddGenealogyEntry(context.Background(), payload)
+		require.Error(t, err)
+	})
+}

@@ -26,4 +26,18 @@ var (
 	ErrInvalidStepNumber      = errors.New("step number must be greater than zero")
 	ErrInvalidOperationName   = errors.New("operation name must not be empty")
 	ErrSkipReasonRequired     = errors.New("skip reason is required when skipping an operation")
+
+	// Lot errors
+	ErrLotNotFound      = errors.New("lot not found")
+	ErrLotAlreadyExists = errors.New("lot reference already exists")
+	ErrInvalidLotReference = errors.New("lot reference must not be empty")
+	ErrInvalidLotQuantity  = errors.New("lot quantity must be greater than zero")
+
+	// SerialNumber errors
+	ErrSerialNumberNotFound      = errors.New("serial number not found")
+	ErrSerialNumberAlreadyExists = errors.New("serial number already exists")
+	ErrInvalidSerialNumber       = errors.New("serial number must not be empty")
+	ErrSNAlreadyReleased         = errors.New("serial number is already released")
+	ErrSNAlreadyScrapped         = errors.New("serial number is already scrapped")
+	ErrSNInvalidTransition       = errors.New("invalid serial number status transition")
 )

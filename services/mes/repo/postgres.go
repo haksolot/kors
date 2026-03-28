@@ -291,6 +291,76 @@ func (t *txOps) UpdateOperation(ctx context.Context, op *domain.Operation) error
 	return nil
 }
 
+func (t *txOps) SaveLot(ctx context.Context, l *domain.Lot) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO lots (id, reference, product_id, quantity, material_cert_url, received_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		l.ID, l.Reference, l.ProductID, l.Quantity,
+		nullableString(l.MaterialCertURL), l.ReceivedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("SaveLot %s: %w", l.Reference, domain.ErrLotAlreadyExists)
+		}
+		return fmt.Errorf("SaveLot %s: %w", l.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) UpdateLot(ctx context.Context, l *domain.Lot) error {
+	_, err := t.tx.Exec(ctx,
+		`UPDATE lots SET material_cert_url=$1 WHERE id=$2`,
+		nullableString(l.MaterialCertURL), l.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateLot %s: %w", l.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) SaveSerialNumber(ctx context.Context, sn *domain.SerialNumber) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO serial_numbers (id, sn, lot_id, product_id, of_id, status, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		sn.ID, sn.SN, nullableString(sn.LotID), sn.ProductID, sn.OFID,
+		string(sn.Status), sn.CreatedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("SaveSerialNumber %s: %w", sn.SN, domain.ErrSerialNumberAlreadyExists)
+		}
+		return fmt.Errorf("SaveSerialNumber %s: %w", sn.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) UpdateSerialNumber(ctx context.Context, sn *domain.SerialNumber) error {
+	_, err := t.tx.Exec(ctx,
+		`UPDATE serial_numbers SET status=$1 WHERE id=$2`,
+		string(sn.Status), sn.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateSerialNumber %s: %w", sn.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) SaveGenealogyEntry(ctx context.Context, e *domain.GenealogyEntry) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO genealogy (id, parent_sn_id, child_sn_id, of_id, operation_id, recorded_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		e.ID, e.ParentSNID, e.ChildSNID, e.OFID,
+		nullableString(e.OperationID), e.RecordedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("SaveGenealogyEntry: parent-child pair already exists: %w", domain.ErrSNInvalidTransition)
+		}
+		return fmt.Errorf("SaveGenealogyEntry %s: %w", e.ID, err)
+	}
+	return nil
+}
+
 func (t *txOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) error {
 	_, err := t.tx.Exec(ctx,
 		`INSERT INTO outbox (event_type, subject, payload) VALUES ($1, $2, $3)`,
@@ -300,6 +370,87 @@ func (t *txOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) erro
 		return fmt.Errorf("InsertOutbox %s: %w", entry.EventType, err)
 	}
 	return nil
+}
+
+// ── Traceability — read-only ──────────────────────────────────────────────────
+
+// FindLotByID retrieves a Lot by UUID.
+func (r *PostgresRepo) FindLotByID(ctx context.Context, id string) (*domain.Lot, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT id, reference, product_id, quantity, material_cert_url, received_at
+		 FROM lots WHERE id = $1`, id,
+	)
+	lot, err := scanLot(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("FindLotByID %s: %w", id, domain.ErrLotNotFound)
+		}
+		return nil, fmt.Errorf("FindLotByID %s: %w", id, err)
+	}
+	return lot, nil
+}
+
+// FindSNByID retrieves a SerialNumber by UUID.
+func (r *PostgresRepo) FindSNByID(ctx context.Context, id string) (*domain.SerialNumber, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT id, sn, lot_id, product_id, of_id, status, created_at
+		 FROM serial_numbers WHERE id = $1`, id,
+	)
+	sn, err := scanSN(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("FindSNByID %s: %w", id, domain.ErrSerialNumberNotFound)
+		}
+		return nil, fmt.Errorf("FindSNByID %s: %w", id, err)
+	}
+	return sn, nil
+}
+
+// FindSNBySN retrieves a SerialNumber by its human-readable serial string.
+func (r *PostgresRepo) FindSNBySN(ctx context.Context, sn string) (*domain.SerialNumber, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT id, sn, lot_id, product_id, of_id, status, created_at
+		 FROM serial_numbers WHERE sn = $1`, sn,
+	)
+	s, err := scanSN(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("FindSNBySN %s: %w", sn, domain.ErrSerialNumberNotFound)
+		}
+		return nil, fmt.Errorf("FindSNBySN %s: %w", sn, err)
+	}
+	return s, nil
+}
+
+// GetGenealogyByParentSN returns all genealogy entries where the given SN is the parent.
+func (r *PostgresRepo) GetGenealogyByParentSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error) {
+	return r.queryGenealogy(ctx, "parent_sn_id", snID)
+}
+
+// GetGenealogyByChildSN returns all genealogy entries where the given SN is the child.
+func (r *PostgresRepo) GetGenealogyByChildSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error) {
+	return r.queryGenealogy(ctx, "child_sn_id", snID)
+}
+
+func (r *PostgresRepo) queryGenealogy(ctx context.Context, col, snID string) ([]*domain.GenealogyEntry, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, parent_sn_id, child_sn_id, of_id, operation_id, recorded_at
+		 FROM genealogy WHERE `+col+` = $1 ORDER BY recorded_at`, snID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("queryGenealogy %s=%s: %w", col, snID, err)
+	}
+	defer rows.Close()
+
+	var entries []*domain.GenealogyEntry
+	for rows.Next() {
+		e, err := scanGenealogyEntry(rows)
+		if err != nil {
+			return nil, fmt.Errorf("queryGenealogy scan: %w", err)
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }
 
 // ── Outbox ────────────────────────────────────────────────────────────────────
@@ -413,4 +564,42 @@ func nullableString(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func scanLot(s scanner) (*domain.Lot, error) {
+	var l domain.Lot
+	var certURL *string
+	if err := s.Scan(&l.ID, &l.Reference, &l.ProductID, &l.Quantity, &certURL, &l.ReceivedAt); err != nil {
+		return nil, err
+	}
+	if certURL != nil {
+		l.MaterialCertURL = *certURL
+	}
+	return &l, nil
+}
+
+func scanSN(s scanner) (*domain.SerialNumber, error) {
+	var sn domain.SerialNumber
+	var lotID *string
+	var status string
+	if err := s.Scan(&sn.ID, &sn.SN, &lotID, &sn.ProductID, &sn.OFID, &status, &sn.CreatedAt); err != nil {
+		return nil, err
+	}
+	if lotID != nil {
+		sn.LotID = *lotID
+	}
+	sn.Status = domain.SerialNumberStatus(status)
+	return &sn, nil
+}
+
+func scanGenealogyEntry(s scanner) (*domain.GenealogyEntry, error) {
+	var e domain.GenealogyEntry
+	var opID *string
+	if err := s.Scan(&e.ID, &e.ParentSNID, &e.ChildSNID, &e.OFID, &opID, &e.RecordedAt); err != nil {
+		return nil, err
+	}
+	if opID != nil {
+		e.OperationID = *opID
+	}
+	return &e, nil
 }

@@ -17,6 +17,19 @@ type OperationRepository interface {
 	FindOperationsByOFID(ctx context.Context, ofID string) ([]*Operation, error)
 }
 
+// LotRepository defines read-only persistence for Lots.
+type LotRepository interface {
+	FindLotByID(ctx context.Context, id string) (*Lot, error)
+}
+
+// TraceabilityRepository defines read-only persistence for serial numbers and genealogy.
+type TraceabilityRepository interface {
+	FindSNByID(ctx context.Context, id string) (*SerialNumber, error)
+	FindSNBySN(ctx context.Context, sn string) (*SerialNumber, error)
+	GetGenealogyByParentSN(ctx context.Context, snID string) ([]*GenealogyEntry, error)
+	GetGenealogyByChildSN(ctx context.Context, snID string) ([]*GenealogyEntry, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -25,6 +38,12 @@ type TxOps interface {
 	UpdateOrder(ctx context.Context, o *Order) error
 	SaveOperation(ctx context.Context, op *Operation) error
 	UpdateOperation(ctx context.Context, op *Operation) error
+	// Traceability writes
+	SaveLot(ctx context.Context, l *Lot) error
+	UpdateLot(ctx context.Context, l *Lot) error
+	SaveSerialNumber(ctx context.Context, sn *SerialNumber) error
+	UpdateSerialNumber(ctx context.Context, sn *SerialNumber) error
+	SaveGenealogyEntry(ctx context.Context, e *GenealogyEntry) error
 	InsertOutbox(ctx context.Context, entry OutboxEntry) error
 }
 

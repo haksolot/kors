@@ -340,10 +340,152 @@ func TestPostgresRepo_WithTx_UpdateOperationAndOutbox(t *testing.T) {
 	assert.Equal(t, "OperationStarted", entries[0].EventType)
 }
 
+// ── Traceability tests ────────────────────────────────────────────────────────
+
+func TestPostgresRepo_Lot_SaveAndFind(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	lot, err := domain.NewLot("LOT-2026-001", "00000000-0000-0000-0000-000000000001", 100)
+	require.NoError(t, err)
+
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.SaveLot(ctx, lot)
+	}))
+
+	got, err := r.FindLotByID(ctx, lot.ID)
+	require.NoError(t, err)
+	assert.Equal(t, lot.ID, got.ID)
+	assert.Equal(t, "LOT-2026-001", got.Reference)
+	assert.Equal(t, 100, got.Quantity)
+	assert.Empty(t, got.MaterialCertURL)
+}
+
+func TestPostgresRepo_Lot_AttachCertificate(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	lot, _ := domain.NewLot("LOT-CERT-001", "00000000-0000-0000-0000-000000000001", 50)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveLot(ctx, lot) }))
+
+	lot.AttachCertificate("s3://certs/lot-cert-001.pdf")
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.UpdateLot(ctx, lot) }))
+
+	got, err := r.FindLotByID(ctx, lot.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "s3://certs/lot-cert-001.pdf", got.MaterialCertURL)
+}
+
+func TestPostgresRepo_Lot_DuplicateReference(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	lot1, _ := domain.NewLot("LOT-DUP-001", "00000000-0000-0000-0000-000000000001", 10)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveLot(ctx, lot1) }))
+
+	lot2, _ := domain.NewLot("LOT-DUP-001", "00000000-0000-0000-0000-000000000001", 20)
+	err := r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveLot(ctx, lot2) })
+	require.ErrorIs(t, err, domain.ErrLotAlreadyExists)
+}
+
+func TestPostgresRepo_Lot_NotFound(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	_, err := r.FindLotByID(context.Background(), "00000000-0000-0000-0000-000000000000")
+	require.ErrorIs(t, err, domain.ErrLotNotFound)
+}
+
+func TestPostgresRepo_SerialNumber_SaveAndFind(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	order, _ := domain.NewOrder("OF-SN-001", "00000000-0000-0000-0000-000000000001", 10)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveOrder(ctx, order) }))
+
+	sn, err := domain.NewSerialNumber("SN-0001", "", "00000000-0000-0000-0000-000000000001", order.ID)
+	require.NoError(t, err)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveSerialNumber(ctx, sn) }))
+
+	got, err := r.FindSNBySN(ctx, "SN-0001")
+	require.NoError(t, err)
+	assert.Equal(t, sn.ID, got.ID)
+	assert.Equal(t, domain.SNStatusProduced, got.Status)
+
+	gotByID, err := r.FindSNByID(ctx, sn.ID)
+	require.NoError(t, err)
+	assert.Equal(t, sn.SN, gotByID.SN)
+}
+
+func TestPostgresRepo_SerialNumber_Release(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	order, _ := domain.NewOrder("OF-SN-REL-001", "00000000-0000-0000-0000-000000000001", 10)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveOrder(ctx, order) }))
+
+	sn, _ := domain.NewSerialNumber("SN-REL-001", "", "00000000-0000-0000-0000-000000000001", order.ID)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveSerialNumber(ctx, sn) }))
+
+	require.NoError(t, sn.Release())
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.UpdateSerialNumber(ctx, sn) }))
+
+	got, err := r.FindSNBySN(ctx, sn.SN)
+	require.NoError(t, err)
+	assert.Equal(t, domain.SNStatusReleased, got.Status)
+}
+
+func TestPostgresRepo_SerialNumber_NotFound(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	_, err := r.FindSNBySN(context.Background(), "SN-NONEXISTENT")
+	require.ErrorIs(t, err, domain.ErrSerialNumberNotFound)
+}
+
+func TestPostgresRepo_GenealogyEntry_SaveAndQuery(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	order, _ := domain.NewOrder("OF-GEN-001", "00000000-0000-0000-0000-000000000001", 10)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error { return tx.SaveOrder(ctx, order) }))
+
+	parent, _ := domain.NewSerialNumber("SN-PARENT", "", "00000000-0000-0000-0000-000000000001", order.ID)
+	child, _ := domain.NewSerialNumber("SN-CHILD", "", "00000000-0000-0000-0000-000000000001", order.ID)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveSerialNumber(ctx, parent); err != nil {
+			return err
+		}
+		return tx.SaveSerialNumber(ctx, child)
+	}))
+
+	entry, err := domain.NewGenealogyEntry(parent.ID, child.ID, order.ID, "")
+	require.NoError(t, err)
+	require.NoError(t, r.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.SaveGenealogyEntry(ctx, entry)
+	}))
+
+	byParent, err := r.GetGenealogyByParentSN(ctx, parent.ID)
+	require.NoError(t, err)
+	require.Len(t, byParent, 1)
+	assert.Equal(t, child.ID, byParent[0].ChildSNID)
+
+	byChild, err := r.GetGenealogyByChildSN(ctx, child.ID)
+	require.NoError(t, err)
+	require.Len(t, byChild, 1)
+	assert.Equal(t, parent.ID, byChild[0].ParentSNID)
+}
+
 // compile-time checks: PostgresRepo satisfies the required domain interfaces.
 var (
-	_ domain.OrderRepository     = (*repo.PostgresRepo)(nil)
-	_ domain.OperationRepository = (*repo.PostgresRepo)(nil)
-	_ domain.Transactor          = (*repo.PostgresRepo)(nil)
-	_ = errors.New               // keep import
+	_ domain.OrderRepository        = (*repo.PostgresRepo)(nil)
+	_ domain.OperationRepository    = (*repo.PostgresRepo)(nil)
+	_ domain.LotRepository          = (*repo.PostgresRepo)(nil)
+	_ domain.TraceabilityRepository = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor             = (*repo.PostgresRepo)(nil)
+	_ = errors.New                  // keep import
 )

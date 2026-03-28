@@ -101,7 +101,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Subscriptions ─────────────────────────────────────────────────────────
@@ -138,6 +138,17 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectOperationStart, h.StartOperation},
 		{domain.SubjectOperationComplete, h.CompleteOperation},
 		{domain.SubjectOperationSkip, h.SkipOperation},
+		// Traceability — lots
+		{domain.SubjectLotCreate, h.CreateLot},
+		{domain.SubjectLotGet, h.GetLot},
+		// Traceability — serial numbers
+		{domain.SubjectSNRegister, h.RegisterSN},
+		{domain.SubjectSNGet, h.GetSN},
+		{domain.SubjectSNRelease, h.ReleaseSN},
+		{domain.SubjectSNScrap, h.ScrapSN},
+		// Traceability — genealogy
+		{domain.SubjectGenealogyAdd, h.AddGenealogyEntry},
+		{domain.SubjectGenealogyGet, h.GetGenealogy},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -172,8 +183,9 @@ func drainAll(subs []*nats.Subscription) {
 
 // compile-time interface compliance checks.
 var (
-	_ handler.OrderRepository     = (*repo.PostgresRepo)(nil)
-	_ handler.OperationRepository = (*repo.PostgresRepo)(nil)
-	_ domain.Transactor           = (*repo.PostgresRepo)(nil)
-	_ outbox.Repository           = (*repo.PostgresRepo)(nil)
+	_ handler.OrderRepository        = (*repo.PostgresRepo)(nil)
+	_ handler.OperationRepository    = (*repo.PostgresRepo)(nil)
+	_ handler.TraceabilityRepository = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor              = (*repo.PostgresRepo)(nil)
+	_ outbox.Repository              = (*repo.PostgresRepo)(nil)
 )

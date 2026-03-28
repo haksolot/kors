@@ -16,7 +16,14 @@ import (
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, store, reg, &log)
+}
+
+// newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
+func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
+	log := zerolog.Nop()
+	reg := prometheus.NewRegistry()
+	return handler.New(orders, ops, trace, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -67,6 +74,50 @@ func (m *mockOperationRepo) FindOperationsByOFID(ctx context.Context, ofID strin
 	return args.Get(0).([]*domain.Operation), args.Error(1)
 }
 
+// ── Traceability repo mock ────────────────────────────────────────────────────
+
+type mockTraceabilityRepo struct{ mock.Mock }
+
+func (m *mockTraceabilityRepo) FindLotByID(ctx context.Context, id string) (*domain.Lot, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Lot), args.Error(1)
+}
+
+func (m *mockTraceabilityRepo) FindSNByID(ctx context.Context, id string) (*domain.SerialNumber, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SerialNumber), args.Error(1)
+}
+
+func (m *mockTraceabilityRepo) FindSNBySN(ctx context.Context, sn string) (*domain.SerialNumber, error) {
+	args := m.Called(ctx, sn)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SerialNumber), args.Error(1)
+}
+
+func (m *mockTraceabilityRepo) GetGenealogyByParentSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error) {
+	args := m.Called(ctx, snID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.GenealogyEntry), args.Error(1)
+}
+
+func (m *mockTraceabilityRepo) GetGenealogyByChildSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error) {
+	args := m.Called(ctx, snID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.GenealogyEntry), args.Error(1)
+}
+
 // ── Transactor mock ───────────────────────────────────────────────────────────
 
 // mockTransactor executes fn immediately with a mockTxOps.
@@ -106,6 +157,26 @@ func (m *mockTxOps) SaveOperation(ctx context.Context, op *domain.Operation) err
 
 func (m *mockTxOps) UpdateOperation(ctx context.Context, op *domain.Operation) error {
 	return m.Called(ctx, op).Error(0)
+}
+
+func (m *mockTxOps) SaveLot(ctx context.Context, l *domain.Lot) error {
+	return m.Called(ctx, l).Error(0)
+}
+
+func (m *mockTxOps) UpdateLot(ctx context.Context, l *domain.Lot) error {
+	return m.Called(ctx, l).Error(0)
+}
+
+func (m *mockTxOps) SaveSerialNumber(ctx context.Context, sn *domain.SerialNumber) error {
+	return m.Called(ctx, sn).Error(0)
+}
+
+func (m *mockTxOps) UpdateSerialNumber(ctx context.Context, sn *domain.SerialNumber) error {
+	return m.Called(ctx, sn).Error(0)
+}
+
+func (m *mockTxOps) SaveGenealogyEntry(ctx context.Context, e *domain.GenealogyEntry) error {
+	return m.Called(ctx, e).Error(0)
 }
 
 func (m *mockTxOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) error {
