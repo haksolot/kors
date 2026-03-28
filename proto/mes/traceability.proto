@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// ── Lot ───────────────────────────────────────────────────────────────────────
+
+message Lot {
+  string id                = 1;
+  string reference         = 2;
+  string product_id        = 3;
+  int32  quantity          = 4;
+  string material_cert_url = 5;
+  google.protobuf.Timestamp received_at = 6;
+}
+
+message CreateLotRequest {
+  string reference  = 1;
+  string product_id = 2;
+  int32  quantity   = 3;
+}
+
+message CreateLotResponse {
+  Lot lot = 1;
+}
+
+message GetLotRequest {
+  string id = 1;
+}
+
+message GetLotResponse {
+  Lot lot = 1;
+}
+
+// ── SerialNumber ──────────────────────────────────────────────────────────────
+
+enum SerialNumberStatus {
+  SERIAL_NUMBER_STATUS_UNSPECIFIED = 0;
+  SERIAL_NUMBER_STATUS_PRODUCED    = 1;
+  SERIAL_NUMBER_STATUS_RELEASED    = 2;
+  SERIAL_NUMBER_STATUS_SCRAPPED    = 3;
+}
+
+message SerialNumber {
+  string               id         = 1;
+  string               sn         = 2;
+  string               lot_id     = 3;
+  string               product_id = 4;
+  string               of_id      = 5;
+  SerialNumberStatus   status     = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message RegisterSNRequest {
+  string sn         = 1;
+  string lot_id     = 2; // optional
+  string product_id = 3;
+  string of_id      = 4;
+}
+
+message RegisterSNResponse {
+  SerialNumber serial_number = 1;
+}
+
+message ReleaseSNRequest {
+  string id = 1;
+}
+
+message ReleaseSNResponse {
+  SerialNumber serial_number = 1;
+}
+
+message ScrapSNRequest {
+  string id = 1;
+}
+
+message ScrapSNResponse {
+  SerialNumber serial_number = 1;
+}
+
+message GetSNRequest {
+  string sn = 1; // human-readable serial number string
+}
+
+message GetSNResponse {
+  SerialNumber serial_number = 1;
+}
+
+// ── GenealogyEntry ────────────────────────────────────────────────────────────
+
+message GenealogyEntry {
+  string id           = 1;
+  string parent_sn_id = 2;
+  string child_sn_id  = 3;
+  string of_id        = 4;
+  string operation_id = 5;
+  google.protobuf.Timestamp recorded_at = 6;
+}
+
+message AddGenealogyEntryRequest {
+  string parent_sn_id = 1;
+  string child_sn_id  = 2;
+  string of_id        = 3;
+  string operation_id = 4; // optional
+}
+
+message AddGenealogyEntryResponse {
+  GenealogyEntry entry = 1;
+}
+
+message GetGenealogyRequest {
+  string sn_id = 1; // query by SN UUID (parent or child)
+}
+
+message GetGenealogyResponse {
+  repeated GenealogyEntry entries = 1;
+}

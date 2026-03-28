@@ -31,6 +31,24 @@ const (
 	SubjectOperationGet      = "kors.mes.operation.get"
 	SubjectOperationList     = "kors.mes.operation.list"
 
+	// Synchronous request-reply subjects — traceability (lots & serial numbers)
+	SubjectLotCreate  = "kors.mes.lot.create"
+	SubjectLotGet     = "kors.mes.lot.get"
+	SubjectSNRegister = "kors.mes.sn.register"
+	SubjectSNRelease  = "kors.mes.sn.release"
+	SubjectSNScrap    = "kors.mes.sn.scrap"
+	SubjectSNGet      = "kors.mes.sn.get"
+
+	// Synchronous request-reply subjects — genealogy
+	SubjectGenealogyAdd = "kors.mes.genealogy.add"
+	SubjectGenealogyGet = "kors.mes.genealogy.get"
+
+	// Async events — traceability
+	SubjectLotCreated          = "kors.mes.lot.created"
+	SubjectSNReleased          = "kors.mes.sn.released"
+	SubjectSNScrapped          = "kors.mes.sn.scrapped"
+	SubjectGenealogyEntryAdded = "kors.mes.genealogy.entry_added"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

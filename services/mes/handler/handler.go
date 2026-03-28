@@ -30,12 +30,22 @@ type OperationRepository interface {
 	FindOperationsByOFID(ctx context.Context, ofID string) ([]*domain.Operation, error)
 }
 
+// TraceabilityRepository is the read-only persistence interface for lots, serial numbers and genealogy.
+type TraceabilityRepository interface {
+	FindLotByID(ctx context.Context, id string) (*domain.Lot, error)
+	FindSNByID(ctx context.Context, id string) (*domain.SerialNumber, error)
+	FindSNBySN(ctx context.Context, sn string) (*domain.SerialNumber, error)
+	GetGenealogyByParentSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error)
+	GetGenealogyByChildSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
 type Handler struct {
 	orders  OrderRepository
 	ops     OperationRepository
+	trace   TraceabilityRepository
 	store   domain.Transactor
 	log     *zerolog.Logger
 	reqTotal *prometheus.CounterVec
@@ -47,6 +57,7 @@ type Handler struct {
 func New(
 	orders OrderRepository,
 	ops OperationRepository,
+	trace TraceabilityRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -54,6 +65,7 @@ func New(
 	return &Handler{
 		orders:      orders,
 		ops:         ops,
+		trace:       trace,
 		store:       store,
 		log:         log,
 		reqTotal:    core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -528,6 +540,275 @@ func (h *Handler) SkipOperation(ctx context.Context, payload []byte) ([]byte, er
 	return proto.Marshal(&pbmes.SkipOperationResponse{Operation: operationToProto(op)})
 }
 
+// ── Traceability ──────────────────────────────────────────────────────────────
+
+// CreateLot handles kors.mes.lot.create.
+func (h *Handler) CreateLot(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.CreateLot")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.CreateLotRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectLotCreate, start, fmt.Errorf("CreateLot: unmarshal: %w", err))
+	}
+
+	lot, err := domain.NewLot(req.Reference, req.ProductId, int(req.Quantity))
+	if err != nil {
+		return h.fail(domain.SubjectLotCreate, start, fmt.Errorf("CreateLot: %w", err))
+	}
+
+	evt, err := proto.Marshal(&pbmes.Lot{
+		Id:        lot.ID,
+		Reference: lot.Reference,
+		ProductId: lot.ProductID,
+		Quantity:  int32(lot.Quantity),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectLotCreate, start, fmt.Errorf("CreateLot: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveLot(ctx, lot); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "LotCreated",
+			Subject:   domain.SubjectLotCreated,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectLotCreate, start, fmt.Errorf("CreateLot: tx: %w", err))
+	}
+
+	h.log.Info().Str("lot_id", lot.ID).Str("reference", lot.Reference).Msg("lot created")
+	h.succeed(domain.SubjectLotCreate, start)
+	return proto.Marshal(&pbmes.CreateLotResponse{Lot: lotToProto(lot)})
+}
+
+// GetLot handles kors.mes.lot.get.
+func (h *Handler) GetLot(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetLot")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.GetLotRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectLotGet, start, fmt.Errorf("GetLot: unmarshal: %w", err))
+	}
+
+	lot, err := h.trace.FindLotByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectLotGet, start, fmt.Errorf("GetLot: %w", err))
+	}
+
+	h.succeed(domain.SubjectLotGet, start)
+	return proto.Marshal(&pbmes.GetLotResponse{Lot: lotToProto(lot)})
+}
+
+// RegisterSN handles kors.mes.sn.register — creates a new serial number for a produced part.
+func (h *Handler) RegisterSN(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.RegisterSN")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.RegisterSNRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectSNRegister, start, fmt.Errorf("RegisterSN: unmarshal: %w", err))
+	}
+
+	sn, err := domain.NewSerialNumber(req.Sn, req.LotId, req.ProductId, req.OfId)
+	if err != nil {
+		return h.fail(domain.SubjectSNRegister, start, fmt.Errorf("RegisterSN: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.SaveSerialNumber(ctx, sn)
+	}); err != nil {
+		return h.fail(domain.SubjectSNRegister, start, fmt.Errorf("RegisterSN: tx: %w", err))
+	}
+
+	h.log.Info().Str("sn_id", sn.ID).Str("sn", sn.SN).Msg("serial number registered")
+	h.succeed(domain.SubjectSNRegister, start)
+	return proto.Marshal(&pbmes.RegisterSNResponse{SerialNumber: snToProto(sn)})
+}
+
+// GetSN handles kors.mes.sn.get — fetch by human-readable SN string.
+func (h *Handler) GetSN(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetSN")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.GetSNRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectSNGet, start, fmt.Errorf("GetSN: unmarshal: %w", err))
+	}
+
+	sn, err := h.trace.FindSNBySN(ctx, req.Sn)
+	if err != nil {
+		return h.fail(domain.SubjectSNGet, start, fmt.Errorf("GetSN: %w", err))
+	}
+
+	h.succeed(domain.SubjectSNGet, start)
+	return proto.Marshal(&pbmes.GetSNResponse{SerialNumber: snToProto(sn)})
+}
+
+// ReleaseSN handles kors.mes.sn.release — quality check passed, SN is released.
+func (h *Handler) ReleaseSN(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ReleaseSN")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ReleaseSNRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectSNRelease, start, fmt.Errorf("ReleaseSN: unmarshal: %w", err))
+	}
+
+	sn, err := h.trace.FindSNByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectSNRelease, start, fmt.Errorf("ReleaseSN: find: %w", err))
+	}
+
+	if err := sn.Release(); err != nil {
+		return h.fail(domain.SubjectSNRelease, start, fmt.Errorf("ReleaseSN: %w", err))
+	}
+
+	evt, err := proto.Marshal(snToProto(sn))
+	if err != nil {
+		return h.fail(domain.SubjectSNRelease, start, fmt.Errorf("ReleaseSN: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateSerialNumber(ctx, sn); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "SNReleased",
+			Subject:   domain.SubjectSNReleased,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectSNRelease, start, fmt.Errorf("ReleaseSN: tx: %w", err))
+	}
+
+	h.log.Info().Str("sn_id", sn.ID).Str("sn", sn.SN).Msg("serial number released")
+	h.succeed(domain.SubjectSNRelease, start)
+	return proto.Marshal(&pbmes.ReleaseSNResponse{SerialNumber: snToProto(sn)})
+}
+
+// ScrapSN handles kors.mes.sn.scrap — marks a serial number as scrapped.
+func (h *Handler) ScrapSN(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ScrapSN")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ScrapSNRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectSNScrap, start, fmt.Errorf("ScrapSN: unmarshal: %w", err))
+	}
+
+	sn, err := h.trace.FindSNByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectSNScrap, start, fmt.Errorf("ScrapSN: find: %w", err))
+	}
+
+	if err := sn.Scrap(); err != nil {
+		return h.fail(domain.SubjectSNScrap, start, fmt.Errorf("ScrapSN: %w", err))
+	}
+
+	evt, err := proto.Marshal(snToProto(sn))
+	if err != nil {
+		return h.fail(domain.SubjectSNScrap, start, fmt.Errorf("ScrapSN: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateSerialNumber(ctx, sn); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "SNScrapped",
+			Subject:   domain.SubjectSNScrapped,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectSNScrap, start, fmt.Errorf("ScrapSN: tx: %w", err))
+	}
+
+	h.log.Info().Str("sn_id", sn.ID).Str("sn", sn.SN).Msg("serial number scrapped")
+	h.succeed(domain.SubjectSNScrap, start)
+	return proto.Marshal(&pbmes.ScrapSNResponse{SerialNumber: snToProto(sn)})
+}
+
+// AddGenealogyEntry handles kors.mes.genealogy.add.
+func (h *Handler) AddGenealogyEntry(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.AddGenealogyEntry")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.AddGenealogyEntryRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectGenealogyAdd, start, fmt.Errorf("AddGenealogyEntry: unmarshal: %w", err))
+	}
+
+	entry, err := domain.NewGenealogyEntry(req.ParentSnId, req.ChildSnId, req.OfId, req.OperationId)
+	if err != nil {
+		return h.fail(domain.SubjectGenealogyAdd, start, fmt.Errorf("AddGenealogyEntry: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveGenealogyEntry(ctx, entry); err != nil {
+			return err
+		}
+		evt, err := proto.Marshal(genealogyEntryToProto(entry))
+		if err != nil {
+			return fmt.Errorf("AddGenealogyEntry: marshal event: %w", err)
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "GenealogyEntryAdded",
+			Subject:   domain.SubjectGenealogyEntryAdded,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectGenealogyAdd, start, fmt.Errorf("AddGenealogyEntry: tx: %w", err))
+	}
+
+	h.log.Info().Str("entry_id", entry.ID).Str("parent", entry.ParentSNID).Str("child", entry.ChildSNID).Msg("genealogy entry added")
+	h.succeed(domain.SubjectGenealogyAdd, start)
+	return proto.Marshal(&pbmes.AddGenealogyEntryResponse{Entry: genealogyEntryToProto(entry)})
+}
+
+// GetGenealogy handles kors.mes.genealogy.get — returns all genealogy entries for an SN (parent + child).
+func (h *Handler) GetGenealogy(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetGenealogy")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.GetGenealogyRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectGenealogyGet, start, fmt.Errorf("GetGenealogy: unmarshal: %w", err))
+	}
+
+	parents, err := h.trace.GetGenealogyByParentSN(ctx, req.SnId)
+	if err != nil {
+		return h.fail(domain.SubjectGenealogyGet, start, fmt.Errorf("GetGenealogy: parent query: %w", err))
+	}
+	children, err := h.trace.GetGenealogyByChildSN(ctx, req.SnId)
+	if err != nil {
+		return h.fail(domain.SubjectGenealogyGet, start, fmt.Errorf("GetGenealogy: child query: %w", err))
+	}
+
+	all := make([]*pbmes.GenealogyEntry, 0, len(parents)+len(children))
+	for _, e := range parents {
+		all = append(all, genealogyEntryToProto(e))
+	}
+	for _, e := range children {
+		all = append(all, genealogyEntryToProto(e))
+	}
+
+	h.succeed(domain.SubjectGenealogyGet, start)
+	return proto.Marshal(&pbmes.GetGenealogyResponse{Entries: all})
+}
+
 // ── Metrics helpers ───────────────────────────────────────────────────────────
 
 func (h *Handler) succeed(subject string, start time.Time) {
@@ -631,8 +912,59 @@ func domainOpStatusToProto(s domain.OperationStatus) pbmes.OperationStatus {
 	}
 }
 
+func lotToProto(l *domain.Lot) *pbmes.Lot {
+	pb := &pbmes.Lot{
+		Id:              l.ID,
+		Reference:       l.Reference,
+		ProductId:       l.ProductID,
+		Quantity:        int32(l.Quantity),
+		MaterialCertUrl: l.MaterialCertURL,
+		ReceivedAt:      timestamppb.New(l.ReceivedAt),
+	}
+	return pb
+}
+
+func snToProto(sn *domain.SerialNumber) *pbmes.SerialNumber {
+	pb := &pbmes.SerialNumber{
+		Id:        sn.ID,
+		Sn:        sn.SN,
+		LotId:     sn.LotID,
+		ProductId: sn.ProductID,
+		OfId:      sn.OFID,
+		Status:    domainSNStatusToProto(sn.Status),
+		CreatedAt: timestamppb.New(sn.CreatedAt),
+	}
+	return pb
+}
+
+func genealogyEntryToProto(e *domain.GenealogyEntry) *pbmes.GenealogyEntry {
+	return &pbmes.GenealogyEntry{
+		Id:          e.ID,
+		ParentSnId:  e.ParentSNID,
+		ChildSnId:   e.ChildSNID,
+		OfId:        e.OFID,
+		OperationId: e.OperationID,
+		RecordedAt:  timestamppb.New(e.RecordedAt),
+	}
+}
+
+func domainSNStatusToProto(s domain.SerialNumberStatus) pbmes.SerialNumberStatus {
+	switch s {
+	case domain.SNStatusProduced:
+		return pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_PRODUCED
+	case domain.SNStatusReleased:
+		return pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_RELEASED
+	case domain.SNStatusScrapped:
+		return pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_SCRAPPED
+	default:
+		return pbmes.SerialNumberStatus_SERIAL_NUMBER_STATUS_UNSPECIFIED
+	}
+}
+
 // IsNotFound returns true if the error wraps a domain "not found" sentinel.
 func IsNotFound(err error) bool {
 	return errors.Is(err, domain.ErrOrderNotFound) ||
-		errors.Is(err, domain.ErrOperationNotFound)
+		errors.Is(err, domain.ErrOperationNotFound) ||
+		errors.Is(err, domain.ErrLotNotFound) ||
+		errors.Is(err, domain.ErrSerialNumberNotFound)
 }
