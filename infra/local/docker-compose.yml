@@ -10,6 +10,7 @@ include:
   - docker-compose.storage.yml
   - docker-compose.iam.yml
   - docker-compose.gateway.yml
+  - docker-compose.services.yml
 
 networks:
   kors-net:

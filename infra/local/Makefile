@@ -7,6 +7,8 @@ COMPOSE_FILES = -f docker-compose.yml
 
 .PHONY: help up down restart logs ps clean nuke \
         up-nats up-db up-storage up-iam up-gateway \
+        up-services build-services \
+        logs-bff logs-mes logs-qms \
         psql nats-cli minio-cli
 
 # --- Aide ---
@@ -22,6 +24,8 @@ help: ## Affiche cette aide
 	@echo "    MinIO console      http://localhost:9001  (kors_minio / kors_minio_secret)"
 	@echo "    NATS monitor       http://localhost:8222"
 	@echo "    PostgreSQL         localhost:5432  (kors / kors_dev_secret)"
+	@echo "    BFF API            http://kors.local/api/v1  (via Traefik)"
+	@echo "    BFF health         http://kors.local/health"
 
 # --- Stack complete ---
 
@@ -61,6 +65,12 @@ up-iam: ## Demarre Keycloak (necessite postgres)
 up-gateway: ## Demarre Traefik
 	$(COMPOSE) $(COMPOSE_FILES) up -d traefik
 
+up-services: ## Demarre les services Go (BFF + MES + QMS)
+	$(COMPOSE) $(COMPOSE_FILES) up -d bff mes qms
+
+build-services: ## Rebuild les images des services Go sans cache
+	$(COMPOSE) $(COMPOSE_FILES) build --no-cache bff mes qms
+
 # --- Logs par service ---
 
 logs-nats: ## Logs NATS
@@ -77,6 +87,15 @@ logs-minio: ## Logs MinIO
 
 logs-traefik: ## Logs Traefik
 	$(COMPOSE) $(COMPOSE_FILES) logs -f traefik
+
+logs-bff: ## Logs BFF
+	$(COMPOSE) $(COMPOSE_FILES) logs -f bff
+
+logs-mes: ## Logs MES
+	$(COMPOSE) $(COMPOSE_FILES) logs -f mes
+
+logs-qms: ## Logs QMS
+	$(COMPOSE) $(COMPOSE_FILES) logs -f qms
 
 # --- Outils de connexion ---
 
@@ -120,3 +139,5 @@ health: ## Verifie l'etat de sante de chaque service
 	@curl -sf http://localhost:9000/minio/health/live && echo " OK" || echo " KO"
 	@echo "--- Traefik ---"
 	@curl -sf http://localhost:8090/ping && echo " OK" || echo " KO"
+	@echo "--- BFF ---"
+	@curl -sf -H "Host: kors.local" http://localhost:80/health && echo " OK" || echo " KO"

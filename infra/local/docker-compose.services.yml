@@ -1,0 +1,96 @@
+# =============================================================================
+# KORS — Services Go (BFF + MES + QMS)
+# Build context: repo root (../../ relative to this file)
+# Traefik routes kors.local/* → BFF
+# MES/QMS run goose migrations at startup against their respective schemas
+# =============================================================================
+
+services:
+
+  # ── BFF (Backend For Frontend) ─────────────────────────────────────────────
+  bff:
+    build:
+      context: ../..
+      dockerfile: services/bff/Dockerfile
+    image: kors-bff:local
+    container_name: kors-bff
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: kors-bff
+      NATS_URL: nats://nats:4222
+      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
+      LISTEN_ADDR: :8080
+      METRICS_ADDR: :9092
+    networks:
+      - kors-net
+    depends_on:
+      nats:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bff.rule=Host(`kors.local`)"
+      - "traefik.http.routers.bff.entrypoints=web"
+      - "traefik.http.services.bff.loadbalancer.server.port=8080"
+      # WebSocket upgrade support
+      - "traefik.http.middlewares.bff-ws.headers.customrequestheaders.Connection=Upgrade"
+      - "traefik.http.middlewares.bff-ws.headers.customrequestheaders.Upgrade=websocket"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── MES (Manufacturing Execution System) ───────────────────────────────────
+  mes:
+    build:
+      context: ../..
+      dockerfile: services/mes/Dockerfile
+    image: kors-mes:local
+    container_name: kors-mes
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: kors-mes
+      DATABASE_URL: ${MES_DATABASE_URL}
+      NATS_URL: nats://nats:4222
+      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
+    networks:
+      - kors-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── QMS (Quality Management System) ────────────────────────────────────────
+  qms:
+    build:
+      context: ../..
+      dockerfile: services/qms/Dockerfile
+    image: kors-qms:local
+    container_name: kors-qms
+    restart: unless-stopped
+    environment:
+      SERVICE_NAME: kors-qms
+      DATABASE_URL: ${QMS_DATABASE_URL}
+      NATS_URL: nats://nats:4222
+      JWKS_ENDPOINT: ${KEYCLOAK_JWKS_URL}
+    networks:
+      - kors-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9091/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
