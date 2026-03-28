@@ -19,8 +19,9 @@ type Claims struct {
 // JWTValidator validates JWTs against a JWKS endpoint.
 // Create one at startup and reuse it — it caches the JWKS internally.
 type JWTValidator struct {
-	cache *jwk.Cache
+	cache   *jwk.Cache
 	jwksURL string
+	noop    bool // dev mode: skip real validation
 }
 
 // NewJWTValidator creates a validator that fetches and caches the JWKS from jwksURL.
@@ -40,10 +41,23 @@ func NewJWTValidator(ctx context.Context, jwksURL string) (*JWTValidator, error)
 	return &JWTValidator{cache: cache, jwksURL: jwksURL}, nil
 }
 
+// NewNoopJWTValidator returns a JWTValidator that accepts any token and returns
+// a fixed dev-mode Claims. For local development only — never use in production.
+func NewNoopJWTValidator() *JWTValidator {
+	return &JWTValidator{noop: true}
+}
+
 // ValidateJWT parses and validates the token string, returning the extracted claims.
 // Returns an error if the token is invalid, expired, or cannot be verified.
 // Never trust the user ID from the request — always use Claims.Subject from this function.
 func (v *JWTValidator) ValidateJWT(ctx context.Context, tokenStr string) (*Claims, error) {
+	if v.noop {
+		return &Claims{
+			Subject: "00000000-0000-0000-0000-000000000001",
+			Email:   "dev@kors.local",
+			Roles:   []string{"kors-admin", "kors-quality", "kors-operateur"},
+		}, nil
+	}
 	keySet, err := v.cache.Get(ctx, v.jwksURL)
 	if err != nil {
 		return nil, fmt.Errorf("ValidateJWT: get JWKS: %w", err)

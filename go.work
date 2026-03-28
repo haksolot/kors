@@ -4,6 +4,7 @@ use (
 	./e2e
 	./libs/core
 	./proto/gen
+	./services/bff
 	./services/mes
 	./services/qms
 )
