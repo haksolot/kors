@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package qms;
+
+import "google/protobuf/timestamp.proto";
+import "qms/non_conformity.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/qms;qms";
+
+// NCOpenedEvent is published on kors.qms.nc.opened when a NC is created from a MES event.
+message NCOpenedEvent {
+  string event_id      = 1;
+  string nc_id         = 2;
+  string operation_id  = 3;
+  string of_id         = 4;
+  string defect_code   = 5;
+  string declared_by   = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// NCClosedEvent is published on kors.qms.nc.closed.
+message NCClosedEvent {
+  string event_id  = 1;
+  string nc_id     = 2;
+  string closed_by = 3;
+  NCDisposition disposition = 4;
+  google.protobuf.Timestamp closed_at = 5;
+}
+
+// CAPACreatedEvent is published on kors.qms.capa.created.
+message CAPACreatedEvent {
+  string event_id    = 1;
+  string capa_id     = 2;
+  string nc_id       = 3;
+  CAPAActionType action_type = 4;
+  string owner_id    = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
