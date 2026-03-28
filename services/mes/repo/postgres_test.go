@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib" // also registers the "pgx" database/sql driver via init()
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +28,7 @@ func setupDB(t *testing.T) *pgxpool.Pool {
 		tcpostgres.WithDatabase("kors_test"),
 		tcpostgres.WithUsername("kors"),
 		tcpostgres.WithPassword("kors_test"),
-		tcpostgres.WithSQLDriver("pgx"),
+		tcpostgres.WithSQLDriver("pgx"), // uses registered pgx driver for SQL-level health check
 	)
 	require.NoError(t, err, "start postgres container")
 	t.Cleanup(func() { _ = ctr.Terminate(ctx) })
@@ -36,14 +38,16 @@ func setupDB(t *testing.T) *pgxpool.Pool {
 
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return pool.Ping(ctx) == nil
+	}, 30*time.Second, 500*time.Millisecond, "postgres not ready to accept connections")
 	t.Cleanup(pool.Close)
 
-	// Run goose migrations from the migrations directory.
-	db, err := goose.OpenDBWithDriver("pgx", connStr)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = db.Close() })
-
-	require.NoError(t, goose.Up(db, "../migrations"), "run migrations")
+	// Run goose migrations using the same stdlib adapter as cmd/main.go.
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	require.NoError(t, goose.SetDialect("postgres"))
+	require.NoError(t, goose.Up(sqlDB, "../migrations"), "run migrations")
 
 	return pool
 }
@@ -55,7 +59,7 @@ func TestPostgresRepo_SaveAndFindOrder(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	order, err := domain.NewOrder("OF-TEST-001", "prod-uuid-1", 50)
+	order, err := domain.NewOrder("OF-TEST-001", "00000000-0000-0000-0000-000000000001", 50)
 	require.NoError(t, err)
 
 	require.NoError(t, r.Save(ctx, order))
@@ -73,7 +77,7 @@ func TestPostgresRepo_FindByID_NotFound(t *testing.T) {
 	pool := setupDB(t)
 	r := repo.New(pool)
 
-	_, err := r.FindByID(context.Background(), "non-existent-id")
+	_, err := r.FindByID(context.Background(), "00000000-0000-0000-0000-000000000000")
 	require.ErrorIs(t, err, domain.ErrOrderNotFound)
 }
 
@@ -82,10 +86,10 @@ func TestPostgresRepo_Save_DuplicateReference(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	o1, _ := domain.NewOrder("OF-DUP-001", "prod-1", 10)
+	o1, _ := domain.NewOrder("OF-DUP-001", "00000000-0000-0000-0000-000000000001", 10)
 	require.NoError(t, r.Save(ctx, o1))
 
-	o2, _ := domain.NewOrder("OF-DUP-001", "prod-2", 20)
+	o2, _ := domain.NewOrder("OF-DUP-001", "00000000-0000-0000-0000-000000000002", 20)
 	err := r.Save(ctx, o2)
 	require.ErrorIs(t, err, domain.ErrOrderAlreadyExists)
 }
@@ -95,7 +99,7 @@ func TestPostgresRepo_UpdateOrder(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	order, _ := domain.NewOrder("OF-UPDATE-001", "prod-1", 10)
+	order, _ := domain.NewOrder("OF-UPDATE-001", "00000000-0000-0000-0000-000000000001", 10)
 	require.NoError(t, r.Save(ctx, order))
 
 	require.NoError(t, order.Start())
@@ -112,9 +116,9 @@ func TestPostgresRepo_ListOrders(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	o1, _ := domain.NewOrder("OF-LIST-001", "prod-1", 10)
-	o2, _ := domain.NewOrder("OF-LIST-002", "prod-1", 20)
-	o3, _ := domain.NewOrder("OF-LIST-003", "prod-1", 30)
+	o1, _ := domain.NewOrder("OF-LIST-001", "00000000-0000-0000-0000-000000000001", 10)
+	o2, _ := domain.NewOrder("OF-LIST-002", "00000000-0000-0000-0000-000000000001", 20)
+	o3, _ := domain.NewOrder("OF-LIST-003", "00000000-0000-0000-0000-000000000001", 30)
 	require.NoError(t, r.Save(ctx, o1))
 	require.NoError(t, r.Save(ctx, o2))
 	require.NoError(t, r.Save(ctx, o3))
@@ -144,7 +148,7 @@ func TestPostgresRepo_SaveAndFindOperation(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	order, _ := domain.NewOrder("OF-OP-001", "prod-1", 10)
+	order, _ := domain.NewOrder("OF-OP-001", "00000000-0000-0000-0000-000000000001", 10)
 	require.NoError(t, r.Save(ctx, order))
 
 	op, err := domain.NewOperation(order.ID, 1, "Découpe laser")
@@ -163,7 +167,7 @@ func TestPostgresRepo_FindOperationByID_NotFound(t *testing.T) {
 	pool := setupDB(t)
 	r := repo.New(pool)
 
-	_, err := r.FindOperationByID(context.Background(), "non-existent")
+	_, err := r.FindOperationByID(context.Background(), "00000000-0000-0000-0000-000000000000")
 	require.ErrorIs(t, err, domain.ErrOperationNotFound)
 }
 
@@ -172,18 +176,18 @@ func TestPostgresRepo_UpdateOperation(t *testing.T) {
 	r := repo.New(pool)
 	ctx := context.Background()
 
-	order, _ := domain.NewOrder("OF-UOP-001", "prod-1", 10)
+	order, _ := domain.NewOrder("OF-UOP-001", "00000000-0000-0000-0000-000000000001", 10)
 	require.NoError(t, r.Save(ctx, order))
 	op, _ := domain.NewOperation(order.ID, 1, "Soudure")
 	require.NoError(t, r.SaveOperation(ctx, op))
 
-	require.NoError(t, op.Start("operator-uuid-1"))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
 	require.NoError(t, r.UpdateOperation(ctx, op))
 
 	got, err := r.FindOperationByID(ctx, op.ID)
 	require.NoError(t, err)
 	assert.Equal(t, domain.OperationStatusInProgress, got.Status)
-	assert.Equal(t, "operator-uuid-1", got.OperatorID)
+	assert.Equal(t, "00000000-0000-0000-0000-000000000010", got.OperatorID)
 }
 
 // ── Outbox tests ──────────────────────────────────────────────────────────────
@@ -241,14 +245,105 @@ func TestPostgresRepo_OutboxRollback(t *testing.T) {
 	assert.Empty(t, entries, "rolled-back entry must not appear")
 }
 
-// compile-time check: PostgresRepo satisfies the domain interfaces.
+// ── WithTx (Transactor) tests ─────────────────────────────────────────────────
+
+func TestPostgresRepo_WithTx_CommitsOrderAndOutbox(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	order, _ := domain.NewOrder("OF-TX-001", "00000000-0000-0000-0000-000000000001", 10)
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveOrder(ctx, order); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "OFCreated",
+			Subject:   "kors.mes.of.created",
+			Payload:   []byte("payload"),
+		})
+	})
+	require.NoError(t, err)
+
+	// Order must be persisted.
+	got, err := r.FindByID(ctx, order.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "OF-TX-001", got.Reference)
+
+	// Outbox entry must be persisted and unpublished.
+	entries, err := r.ListUnpublishedOutbox(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "OFCreated", entries[0].EventType)
+}
+
+func TestPostgresRepo_WithTx_RollbackOnError(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	order, _ := domain.NewOrder("OF-TX-ROLLBACK-001", "00000000-0000-0000-0000-000000000001", 10)
+	wantErr := errors.New("forced error")
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveOrder(ctx, order); err != nil {
+			return err
+		}
+		return wantErr // trigger rollback
+	})
+	require.ErrorIs(t, err, wantErr)
+
+	// Order must NOT have been persisted.
+	_, err = r.FindByID(ctx, order.ID)
+	require.ErrorIs(t, err, domain.ErrOrderNotFound)
+
+	// Outbox must be empty.
+	entries, err := r.ListUnpublishedOutbox(ctx, 10)
+	require.NoError(t, err)
+	assert.Empty(t, entries)
+}
+
+func TestPostgresRepo_WithTx_UpdateOperationAndOutbox(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	// Setup: persist order and operation outside of the tx being tested.
+	order, _ := domain.NewOrder("OF-TX-OP-001", "00000000-0000-0000-0000-000000000001", 10)
+	require.NoError(t, r.Save(ctx, order))
+	op, _ := domain.NewOperation(order.ID, 1, "Découpe")
+	require.NoError(t, r.SaveOperation(ctx, op))
+
+	// Start the operation inside a transaction.
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010"))
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateOperation(ctx, op); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "OperationStarted",
+			Subject:   "kors.mes.operation.started",
+			Payload:   []byte("payload"),
+		})
+	})
+	require.NoError(t, err)
+
+	got, err := r.FindOperationByID(ctx, op.ID)
+	require.NoError(t, err)
+	assert.Equal(t, domain.OperationStatusInProgress, got.Status)
+	assert.Equal(t, "00000000-0000-0000-0000-000000000010", got.OperatorID)
+
+	entries, err := r.ListUnpublishedOutbox(ctx, 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, "OperationStarted", entries[0].EventType)
+}
+
+// compile-time checks: PostgresRepo satisfies the required domain interfaces.
 var (
-	_ interface {
-		Save(context.Context, *domain.Order) error
-		FindByID(context.Context, string) (*domain.Order, error)
-		FindByReference(context.Context, string) (*domain.Order, error)
-		Update(context.Context, *domain.Order) error
-		List(context.Context, domain.ListOrdersFilter) ([]*domain.Order, error)
-	} = (*repo.PostgresRepo)(nil)
-	_ = errors.New // suppress unused import if needed
+	_ domain.OrderRepository     = (*repo.PostgresRepo)(nil)
+	_ domain.OperationRepository = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor          = (*repo.PostgresRepo)(nil)
+	_ = errors.New               // keep import
 )
