@@ -106,8 +106,13 @@ type Operation struct {
 	SignedOffAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=signed_off_at,json=signedOffAt,proto3" json:"signed_off_at,omitempty"`
 	// instructions_url: reference to a work instruction document in MinIO.
 	InstructionsUrl string `protobuf:"bytes,14,opt,name=instructions_url,json=instructionsUrl,proto3" json:"instructions_url,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Cycle-time fields (BLOC 5 — TRS)
+	PlannedDurationSeconds int32 `protobuf:"varint,15,opt,name=planned_duration_seconds,json=plannedDurationSeconds,proto3" json:"planned_duration_seconds,omitempty"` // from RoutingStep
+	ActualDurationSeconds  int32 `protobuf:"varint,16,opt,name=actual_duration_seconds,json=actualDurationSeconds,proto3" json:"actual_duration_seconds,omitempty"`    // computed at completion (completed_at - started_at)
+	// required_skill: JWT role the operator must hold to start this operation (AS9100D §7.2).
+	RequiredSkill string `protobuf:"bytes,17,opt,name=required_skill,json=requiredSkill,proto3" json:"required_skill,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Operation) Reset() {
@@ -238,11 +243,33 @@ func (x *Operation) GetInstructionsUrl() string {
 	return ""
 }
 
+func (x *Operation) GetPlannedDurationSeconds() int32 {
+	if x != nil {
+		return x.PlannedDurationSeconds
+	}
+	return 0
+}
+
+func (x *Operation) GetActualDurationSeconds() int32 {
+	if x != nil {
+		return x.ActualDurationSeconds
+	}
+	return 0
+}
+
+func (x *Operation) GetRequiredSkill() string {
+	if x != nil {
+		return x.RequiredSkill
+	}
+	return ""
+}
+
 // StartOperationRequest is sent on kors.mes.operation.start.
 type StartOperationRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
-	OperatorId    string                 `protobuf:"bytes,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"` // extracted from JWT claims at the BFF, never trusted from client
+	OperatorId    string                 `protobuf:"bytes,2,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`          // extracted from JWT claims at the BFF, never trusted from client
+	OperatorRoles []string               `protobuf:"bytes,3,rep,name=operator_roles,json=operatorRoles,proto3" json:"operator_roles,omitempty"` // JWT roles of the operator — used for skill qualification (AS9100D §7.2)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,6 +316,13 @@ func (x *StartOperationRequest) GetOperatorId() string {
 		return x.OperatorId
 	}
 	return ""
+}
+
+func (x *StartOperationRequest) GetOperatorRoles() []string {
+	if x != nil {
+		return x.OperatorRoles
+	}
+	return nil
 }
 
 // StartOperationResponse contains the updated operation.
@@ -1158,7 +1192,7 @@ var File_mes_operation_proto protoreflect.FileDescriptor
 
 const file_mes_operation_proto_rawDesc = "" +
 	"\n" +
-	"\x13mes/operation.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x04\n" +
+	"\x13mes/operation.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\xde\x05\n" +
 	"\tOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x13\n" +
 	"\x05of_id\x18\x02 \x01(\tR\x04ofId\x12\x1f\n" +
@@ -1179,11 +1213,15 @@ const file_mes_operation_proto_rawDesc = "" +
 	"\x11requires_sign_off\x18\v \x01(\bR\x0frequiresSignOff\x12\"\n" +
 	"\rsigned_off_by\x18\f \x01(\tR\vsignedOffBy\x12>\n" +
 	"\rsigned_off_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vsignedOffAt\x12)\n" +
-	"\x10instructions_url\x18\x0e \x01(\tR\x0finstructionsUrl\"[\n" +
+	"\x10instructions_url\x18\x0e \x01(\tR\x0finstructionsUrl\x128\n" +
+	"\x18planned_duration_seconds\x18\x0f \x01(\x05R\x16plannedDurationSeconds\x126\n" +
+	"\x17actual_duration_seconds\x18\x10 \x01(\x05R\x15actualDurationSeconds\x12%\n" +
+	"\x0erequired_skill\x18\x11 \x01(\tR\rrequiredSkill\"\x82\x01\n" +
 	"\x15StartOperationRequest\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x1f\n" +
 	"\voperator_id\x18\x02 \x01(\tR\n" +
-	"operatorId\"F\n" +
+	"operatorId\x12%\n" +
+	"\x0eoperator_roles\x18\x03 \x03(\tR\roperatorRoles\"F\n" +
 	"\x16StartOperationResponse\x12,\n" +
 	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\"^\n" +
 	"\x18CompleteOperationRequest\x12!\n" +

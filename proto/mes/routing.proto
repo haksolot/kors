@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// Routing is a manufacturing route template for a product.
+// When applied to an OF, each RoutingStep becomes an Operation.
+message Routing {
+  string id         = 1; // UUID
+  string product_id = 2; // UUID of the product
+  int32  version    = 3;
+  string name       = 4;
+  bool   is_active  = 5;
+  repeated RoutingStep steps = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// RoutingStep is a single step in a Routing template.
+message RoutingStep {
+  string id                      = 1; // UUID
+  string routing_id              = 2;
+  int32  step_number             = 3;
+  string name                    = 4;
+  int32  planned_duration_seconds = 5; // expected duration for TRS computation
+  string required_skill          = 6;  // JWT role required (AS9100D §7.2); empty = no check
+  string instructions_url        = 7;  // MinIO reference, optional
+  bool   requires_sign_off       = 8;  // if true, instantiated operation requires sign-off
+}
+
+// --- Request / Reply messages ---
+
+// CreateRoutingRequest is sent on kors.mes.routing.create.
+message CreateRoutingRequest {
+  string product_id = 1;
+  string name       = 2;
+  int32  version    = 3;
+  repeated CreateRoutingStepInput steps = 4;
+  bool   activate   = 5; // if true, activate the routing immediately after creation
+}
+
+message CreateRoutingStepInput {
+  int32  step_number             = 1;
+  string name                    = 2;
+  int32  planned_duration_seconds = 3;
+  string required_skill          = 4;
+  string instructions_url        = 5;
+  bool   requires_sign_off       = 6;
+}
+
+// CreateRoutingResponse contains the created routing with all steps.
+message CreateRoutingResponse {
+  Routing routing = 1;
+}
+
+// GetRoutingRequest is sent on kors.mes.routing.get.
+message GetRoutingRequest {
+  string id = 1;
+}
+
+// GetRoutingResponse contains the requested routing.
+message GetRoutingResponse {
+  Routing routing = 1;
+}
+
+// ListRoutingsRequest is sent on kors.mes.routing.list.
+message ListRoutingsRequest {
+  string product_id = 1; // filter by product; empty returns all active routings
+}
+
+// ListRoutingsResponse contains matching routings.
+message ListRoutingsResponse {
+  repeated Routing routings = 1;
+}

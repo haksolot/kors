@@ -98,6 +98,9 @@ type ManufacturingOrder struct {
 	IsFai         bool                   `protobuf:"varint,10,opt,name=is_fai,json=isFai,proto3" json:"is_fai,omitempty"`                          // true if this order requires FAI approval
 	FaiApprovedBy string                 `protobuf:"bytes,11,opt,name=fai_approved_by,json=faiApprovedBy,proto3" json:"fai_approved_by,omitempty"` // UUID of the quality_manager who approved
 	FaiApprovedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=fai_approved_at,json=faiApprovedAt,proto3" json:"fai_approved_at,omitempty"`
+	// Planning fields (BLOC 5)
+	DueDate       *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=due_date,json=dueDate,proto3" json:"due_date,omitempty"` // target completion date
+	Priority      int32                  `protobuf:"varint,14,opt,name=priority,proto3" json:"priority,omitempty"`             // 1 (lowest) – 100 (highest)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -216,12 +219,30 @@ func (x *ManufacturingOrder) GetFaiApprovedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ManufacturingOrder) GetDueDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueDate
+	}
+	return nil
+}
+
+func (x *ManufacturingOrder) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
 // CreateOrderRequest is sent on kors.mes.of.create to create a new OF.
 type CreateOrderRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Reference     string                 `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
-	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Reference string                 `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
+	ProductId string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Quantity  int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	// Optional planning fields
+	DueDate       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=due_date,json=dueDate,proto3" json:"due_date,omitempty"`
+	Priority      int32                  `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"` // 0 means use default (50)
+	IsFai         bool                   `protobuf:"varint,6,opt,name=is_fai,json=isFai,proto3" json:"is_fai,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -275,6 +296,27 @@ func (x *CreateOrderRequest) GetQuantity() int32 {
 		return x.Quantity
 	}
 	return 0
+}
+
+func (x *CreateOrderRequest) GetDueDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueDate
+	}
+	return nil
+}
+
+func (x *CreateOrderRequest) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *CreateOrderRequest) GetIsFai() bool {
+	if x != nil {
+		return x.IsFai
+	}
+	return false
 }
 
 // CreateOrderResponse contains the created order.
@@ -911,11 +953,349 @@ func (x *ApproveFAIResponse) GetOrder() *ManufacturingOrder {
 	return nil
 }
 
+// DispatchListRequest is sent on kors.mes.of.dispatch_list.
+// Returns PLANNED + IN_PROGRESS orders sorted by priority DESC, due_date ASC.
+type DispatchListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // max results; 0 defaults to 50
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DispatchListRequest) Reset() {
+	*x = DispatchListRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DispatchListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DispatchListRequest) ProtoMessage() {}
+
+func (x *DispatchListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DispatchListRequest.ProtoReflect.Descriptor instead.
+func (*DispatchListRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DispatchListRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+// DispatchListResponse contains the ordered dispatch list.
+type DispatchListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Orders        []*ManufacturingOrder  `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DispatchListResponse) Reset() {
+	*x = DispatchListResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DispatchListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DispatchListResponse) ProtoMessage() {}
+
+func (x *DispatchListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DispatchListResponse.ProtoReflect.Descriptor instead.
+func (*DispatchListResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *DispatchListResponse) GetOrders() []*ManufacturingOrder {
+	if x != nil {
+		return x.Orders
+	}
+	return nil
+}
+
+// CreateFromRoutingRequest is sent on kors.mes.of.create_from_routing.
+// Creates an OF and instantiates all operations from a routing template in one transaction.
+type CreateFromRoutingRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RoutingId string                 `protobuf:"bytes,1,opt,name=routing_id,json=routingId,proto3" json:"routing_id,omitempty"`
+	Reference string                 `protobuf:"bytes,2,opt,name=reference,proto3" json:"reference,omitempty"`
+	Quantity  int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	// Optional planning
+	DueDate       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=due_date,json=dueDate,proto3" json:"due_date,omitempty"`
+	Priority      int32                  `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"` // 0 means use default (50)
+	IsFai         bool                   `protobuf:"varint,6,opt,name=is_fai,json=isFai,proto3" json:"is_fai,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateFromRoutingRequest) Reset() {
+	*x = CreateFromRoutingRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateFromRoutingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateFromRoutingRequest) ProtoMessage() {}
+
+func (x *CreateFromRoutingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateFromRoutingRequest.ProtoReflect.Descriptor instead.
+func (*CreateFromRoutingRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CreateFromRoutingRequest) GetRoutingId() string {
+	if x != nil {
+		return x.RoutingId
+	}
+	return ""
+}
+
+func (x *CreateFromRoutingRequest) GetReference() string {
+	if x != nil {
+		return x.Reference
+	}
+	return ""
+}
+
+func (x *CreateFromRoutingRequest) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
+func (x *CreateFromRoutingRequest) GetDueDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueDate
+	}
+	return nil
+}
+
+func (x *CreateFromRoutingRequest) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *CreateFromRoutingRequest) GetIsFai() bool {
+	if x != nil {
+		return x.IsFai
+	}
+	return false
+}
+
+// CreateFromRoutingResponse contains the created order and its operations.
+type CreateFromRoutingResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	Operations    []*Operation           `protobuf:"bytes,2,rep,name=operations,proto3" json:"operations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateFromRoutingResponse) Reset() {
+	*x = CreateFromRoutingResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateFromRoutingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateFromRoutingResponse) ProtoMessage() {}
+
+func (x *CreateFromRoutingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateFromRoutingResponse.ProtoReflect.Descriptor instead.
+func (*CreateFromRoutingResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CreateFromRoutingResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
+func (x *CreateFromRoutingResponse) GetOperations() []*Operation {
+	if x != nil {
+		return x.Operations
+	}
+	return nil
+}
+
+// SetPlanningRequest is sent on kors.mes.of.set_planning.
+// Updates due_date and priority on an existing order.
+type SetPlanningRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OfId          string                 `protobuf:"bytes,1,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	DueDate       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=due_date,json=dueDate,proto3" json:"due_date,omitempty"` // optional
+	Priority      int32                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`             // 1-100
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPlanningRequest) Reset() {
+	*x = SetPlanningRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPlanningRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPlanningRequest) ProtoMessage() {}
+
+func (x *SetPlanningRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPlanningRequest.ProtoReflect.Descriptor instead.
+func (*SetPlanningRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SetPlanningRequest) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *SetPlanningRequest) GetDueDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueDate
+	}
+	return nil
+}
+
+func (x *SetPlanningRequest) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+// SetPlanningResponse contains the updated order.
+type SetPlanningResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPlanningResponse) Reset() {
+	*x = SetPlanningResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPlanningResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPlanningResponse) ProtoMessage() {}
+
+func (x *SetPlanningResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPlanningResponse.ProtoReflect.Descriptor instead.
+func (*SetPlanningResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SetPlanningResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
 var File_mes_manufacturing_order_proto protoreflect.FileDescriptor
 
 const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1dmes/manufacturing_order.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9a\x04\n" +
+	"\x1dmes/manufacturing_order.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13mes/operation.proto\"\xed\x04\n" +
 	"\x12ManufacturingOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\treference\x18\x02 \x01(\tR\treference\x12\x1d\n" +
@@ -933,12 +1313,17 @@ const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"\x06is_fai\x18\n" +
 	" \x01(\bR\x05isFai\x12&\n" +
 	"\x0ffai_approved_by\x18\v \x01(\tR\rfaiApprovedBy\x12B\n" +
-	"\x0ffai_approved_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\rfaiApprovedAt\"m\n" +
+	"\x0ffai_approved_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\rfaiApprovedAt\x125\n" +
+	"\bdue_date\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\adueDate\x12\x1a\n" +
+	"\bpriority\x18\x0e \x01(\x05R\bpriority\"\xd7\x01\n" +
 	"\x12CreateOrderRequest\x12\x1c\n" +
 	"\treference\x18\x01 \x01(\tR\treference\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x02 \x01(\tR\tproductId\x12\x1a\n" +
-	"\bquantity\x18\x03 \x01(\x05R\bquantity\"D\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\x125\n" +
+	"\bdue_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\adueDate\x12\x1a\n" +
+	"\bpriority\x18\x05 \x01(\x05R\bpriority\x12\x15\n" +
+	"\x06is_fai\x18\x06 \x01(\bR\x05isFai\"D\n" +
 	"\x13CreateOrderResponse\x12-\n" +
 	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\"!\n" +
 	"\x0fGetOrderRequest\x12\x0e\n" +
@@ -972,6 +1357,29 @@ const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"\vapprover_id\x18\x02 \x01(\tR\n" +
 	"approverId\"C\n" +
 	"\x12ApproveFAIResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\"+\n" +
+	"\x13DispatchListRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\"G\n" +
+	"\x14DispatchListResponse\x12/\n" +
+	"\x06orders\x18\x01 \x03(\v2\x17.mes.ManufacturingOrderR\x06orders\"\xdd\x01\n" +
+	"\x18CreateFromRoutingRequest\x12\x1d\n" +
+	"\n" +
+	"routing_id\x18\x01 \x01(\tR\troutingId\x12\x1c\n" +
+	"\treference\x18\x02 \x01(\tR\treference\x12\x1a\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\x125\n" +
+	"\bdue_date\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\adueDate\x12\x1a\n" +
+	"\bpriority\x18\x05 \x01(\x05R\bpriority\x12\x15\n" +
+	"\x06is_fai\x18\x06 \x01(\bR\x05isFai\"z\n" +
+	"\x19CreateFromRoutingResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\x12.\n" +
+	"\n" +
+	"operations\x18\x02 \x03(\v2\x0e.mes.OperationR\n" +
+	"operations\"|\n" +
+	"\x12SetPlanningRequest\x12\x13\n" +
+	"\x05of_id\x18\x01 \x01(\tR\x04ofId\x125\n" +
+	"\bdue_date\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\adueDate\x12\x1a\n" +
+	"\bpriority\x18\x03 \x01(\x05R\bpriority\"D\n" +
+	"\x13SetPlanningResponse\x12-\n" +
 	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order*\xb7\x01\n" +
 	"\vOrderStatus\x12\x1c\n" +
 	"\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -994,46 +1402,61 @@ func file_mes_manufacturing_order_proto_rawDescGZIP() []byte {
 }
 
 var file_mes_manufacturing_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_mes_manufacturing_order_proto_goTypes = []any{
-	(OrderStatus)(0),              // 0: mes.OrderStatus
-	(*ManufacturingOrder)(nil),    // 1: mes.ManufacturingOrder
-	(*CreateOrderRequest)(nil),    // 2: mes.CreateOrderRequest
-	(*CreateOrderResponse)(nil),   // 3: mes.CreateOrderResponse
-	(*GetOrderRequest)(nil),       // 4: mes.GetOrderRequest
-	(*GetOrderResponse)(nil),      // 5: mes.GetOrderResponse
-	(*ListOrdersRequest)(nil),     // 6: mes.ListOrdersRequest
-	(*ListOrdersResponse)(nil),    // 7: mes.ListOrdersResponse
-	(*SuspendOrderRequest)(nil),   // 8: mes.SuspendOrderRequest
-	(*SuspendOrderResponse)(nil),  // 9: mes.SuspendOrderResponse
-	(*ResumeOrderRequest)(nil),    // 10: mes.ResumeOrderRequest
-	(*ResumeOrderResponse)(nil),   // 11: mes.ResumeOrderResponse
-	(*CancelOrderRequest)(nil),    // 12: mes.CancelOrderRequest
-	(*CancelOrderResponse)(nil),   // 13: mes.CancelOrderResponse
-	(*ApproveFAIRequest)(nil),     // 14: mes.ApproveFAIRequest
-	(*ApproveFAIResponse)(nil),    // 15: mes.ApproveFAIResponse
-	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
+	(OrderStatus)(0),                  // 0: mes.OrderStatus
+	(*ManufacturingOrder)(nil),        // 1: mes.ManufacturingOrder
+	(*CreateOrderRequest)(nil),        // 2: mes.CreateOrderRequest
+	(*CreateOrderResponse)(nil),       // 3: mes.CreateOrderResponse
+	(*GetOrderRequest)(nil),           // 4: mes.GetOrderRequest
+	(*GetOrderResponse)(nil),          // 5: mes.GetOrderResponse
+	(*ListOrdersRequest)(nil),         // 6: mes.ListOrdersRequest
+	(*ListOrdersResponse)(nil),        // 7: mes.ListOrdersResponse
+	(*SuspendOrderRequest)(nil),       // 8: mes.SuspendOrderRequest
+	(*SuspendOrderResponse)(nil),      // 9: mes.SuspendOrderResponse
+	(*ResumeOrderRequest)(nil),        // 10: mes.ResumeOrderRequest
+	(*ResumeOrderResponse)(nil),       // 11: mes.ResumeOrderResponse
+	(*CancelOrderRequest)(nil),        // 12: mes.CancelOrderRequest
+	(*CancelOrderResponse)(nil),       // 13: mes.CancelOrderResponse
+	(*ApproveFAIRequest)(nil),         // 14: mes.ApproveFAIRequest
+	(*ApproveFAIResponse)(nil),        // 15: mes.ApproveFAIResponse
+	(*DispatchListRequest)(nil),       // 16: mes.DispatchListRequest
+	(*DispatchListResponse)(nil),      // 17: mes.DispatchListResponse
+	(*CreateFromRoutingRequest)(nil),  // 18: mes.CreateFromRoutingRequest
+	(*CreateFromRoutingResponse)(nil), // 19: mes.CreateFromRoutingResponse
+	(*SetPlanningRequest)(nil),        // 20: mes.SetPlanningRequest
+	(*SetPlanningResponse)(nil),       // 21: mes.SetPlanningResponse
+	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
+	(*Operation)(nil),                 // 23: mes.Operation
 }
 var file_mes_manufacturing_order_proto_depIdxs = []int32{
 	0,  // 0: mes.ManufacturingOrder.status:type_name -> mes.OrderStatus
-	16, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
-	16, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
-	16, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
-	16, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
-	16, // 5: mes.ManufacturingOrder.fai_approved_at:type_name -> google.protobuf.Timestamp
-	1,  // 6: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 7: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
-	0,  // 8: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
-	1,  // 9: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
-	1,  // 10: mes.SuspendOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 11: mes.ResumeOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 12: mes.CancelOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 13: mes.ApproveFAIResponse.order:type_name -> mes.ManufacturingOrder
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	22, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
+	22, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
+	22, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
+	22, // 5: mes.ManufacturingOrder.fai_approved_at:type_name -> google.protobuf.Timestamp
+	22, // 6: mes.ManufacturingOrder.due_date:type_name -> google.protobuf.Timestamp
+	22, // 7: mes.CreateOrderRequest.due_date:type_name -> google.protobuf.Timestamp
+	1,  // 8: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 9: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
+	0,  // 10: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
+	1,  // 11: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
+	1,  // 12: mes.SuspendOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 13: mes.ResumeOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 14: mes.CancelOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 15: mes.ApproveFAIResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 16: mes.DispatchListResponse.orders:type_name -> mes.ManufacturingOrder
+	22, // 17: mes.CreateFromRoutingRequest.due_date:type_name -> google.protobuf.Timestamp
+	1,  // 18: mes.CreateFromRoutingResponse.order:type_name -> mes.ManufacturingOrder
+	23, // 19: mes.CreateFromRoutingResponse.operations:type_name -> mes.Operation
+	22, // 20: mes.SetPlanningRequest.due_date:type_name -> google.protobuf.Timestamp
+	1,  // 21: mes.SetPlanningResponse.order:type_name -> mes.ManufacturingOrder
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_mes_manufacturing_order_proto_init() }
@@ -1041,13 +1464,14 @@ func file_mes_manufacturing_order_proto_init() {
 	if File_mes_manufacturing_order_proto != nil {
 		return
 	}
+	file_mes_operation_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_manufacturing_order_proto_rawDesc), len(file_mes_manufacturing_order_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

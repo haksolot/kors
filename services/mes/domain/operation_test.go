@@ -87,7 +87,7 @@ func TestOperation_Start(t *testing.T) {
 			name: "in-progress operation cannot be started again",
 			setup: func() *domain.Operation {
 				op, _ := domain.NewOperation("of-1", 1, "Step 1")
-				_ = op.Start("op-1")
+				_ = op.Start("op-1", nil)
 				return op
 			},
 			operatorID: "operator-uuid-1",
@@ -97,7 +97,7 @@ func TestOperation_Start(t *testing.T) {
 			name: "completed operation cannot be started",
 			setup: func() *domain.Operation {
 				op, _ := domain.NewOperation("of-1", 1, "Step 1")
-				_ = op.Start("op-1")
+				_ = op.Start("op-1", nil)
 				_ = op.Complete("op-1")
 				return op
 			},
@@ -118,7 +118,7 @@ func TestOperation_Start(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			op := tc.setup()
-			err := op.Start(tc.operatorID)
+			err := op.Start(tc.operatorID, nil)
 			if tc.wantErr != nil {
 				require.ErrorIs(t, err, tc.wantErr)
 				return
@@ -142,7 +142,7 @@ func TestOperation_Complete(t *testing.T) {
 			name: "in-progress operation can be completed",
 			setup: func() *domain.Operation {
 				op, _ := domain.NewOperation("of-1", 1, "Step 1")
-				_ = op.Start("op-1")
+				_ = op.Start("op-1", nil)
 				return op
 			},
 			operatorID: "op-1",
@@ -201,7 +201,7 @@ func TestOperation_Skip(t *testing.T) {
 			name: "completed operation cannot be skipped",
 			setup: func() *domain.Operation {
 				op, _ := domain.NewOperation("of-1", 1, "Step 1")
-				_ = op.Start("op-1")
+				_ = op.Start("op-1", nil)
 				_ = op.Complete("op-1")
 				return op
 			},

@@ -42,14 +42,22 @@ message Operation {
 
   // instructions_url: reference to a work instruction document in MinIO.
   string instructions_url = 14;
+
+  // Cycle-time fields (BLOC 5 — TRS)
+  int32 planned_duration_seconds = 15; // from RoutingStep
+  int32 actual_duration_seconds  = 16; // computed at completion (completed_at - started_at)
+
+  // required_skill: JWT role the operator must hold to start this operation (AS9100D §7.2).
+  string required_skill = 17;
 }
 
 // --- Request / Reply messages ---
 
 // StartOperationRequest is sent on kors.mes.operation.start.
 message StartOperationRequest {
-  string operation_id = 1;
-  string operator_id  = 2; // extracted from JWT claims at the BFF, never trusted from client
+  string operation_id            = 1;
+  string operator_id             = 2; // extracted from JWT claims at the BFF, never trusted from client
+  repeated string operator_roles = 3; // JWT roles of the operator — used for skill qualification (AS9100D §7.2)
 }
 
 // StartOperationResponse contains the updated operation.
