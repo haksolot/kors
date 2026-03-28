@@ -11,8 +11,7 @@
 *.out
 /dist/
 
-# Go workspace
-go.work.sum
+# Go workspace (go.work.sum is committed for reproducible builds)
 
 # Environment files — NEVER commit
 .env

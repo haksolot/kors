@@ -71,3 +71,20 @@ message OperationCompletedEvent {
   int32  step_number   = 5;
   google.protobuf.Timestamp completed_at = 6;
 }
+
+// OFResumedEvent is published on kors.mes.of.resumed.
+message OFResumedEvent {
+  string event_id = 1;
+  string of_id    = 2;
+  google.protobuf.Timestamp resumed_at = 3;
+}
+
+// OperationSkippedEvent is published on kors.mes.operation.skipped.
+message OperationSkippedEvent {
+  string event_id     = 1;
+  string operation_id = 2;
+  string of_id        = 3;
+  int32  step_number  = 4;
+  string reason       = 5;
+  google.protobuf.Timestamp skipped_at = 6;
+}

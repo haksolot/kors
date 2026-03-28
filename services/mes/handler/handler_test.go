@@ -4,64 +4,60 @@ import (
 	"context"
 	"testing"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/haksolot/kors/proto/gen/mes"
+	pbmes "github.com/haksolot/kors/proto/gen/mes"
 	"github.com/haksolot/kors/services/mes/domain"
-	"github.com/haksolot/kors/services/mes/handler"
 )
-
-func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo) *handler.Handler {
-	log := zerolog.Nop()
-	return handler.New(orders, ops, &log)
-}
 
 // ── CreateOrder ───────────────────────────────────────────────────────────────
 
 func TestHandler_CreateOrder(t *testing.T) {
 	tests := []struct {
 		name      string
-		req       *mes.CreateOrderRequest
-		setupMock func(*mockOrderRepo)
+		req       *pbmes.CreateOrderRequest
+		setupMock func(*mockTransactor)
 		wantErr   bool
 	}{
 		{
-			name: "valid request creates order and saves it",
-			req: &mes.CreateOrderRequest{
-				Reference: "OF-001", ProductId: "prod-1", Quantity: 10,
-			},
-			setupMock: func(m *mockOrderRepo) {
-				m.On("Save", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+			name: "valid request creates order and writes outbox",
+			req:  &pbmes.CreateOrderRequest{Reference: "OF-001", ProductId: "prod-1", Quantity: 10},
+			setupMock: func(st *mockTransactor) {
+				st.On("WithTx", mock.Anything).Return(nil)
+				st.Ops.On("SaveOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+				st.Ops.On("InsertOutbox", mock.Anything, "OFCreated").Return(nil)
 			},
 		},
 		{
-			name: "empty reference returns error",
-			req: &mes.CreateOrderRequest{
-				Reference: "", ProductId: "prod-1", Quantity: 10,
-			},
-			setupMock: func(_ *mockOrderRepo) {},
+			name:      "empty reference returns error before tx",
+			req:       &pbmes.CreateOrderRequest{Reference: "", ProductId: "prod-1", Quantity: 10},
+			setupMock: func(_ *mockTransactor) {},
 			wantErr:   true,
 		},
 		{
-			name: "zero quantity returns error",
-			req: &mes.CreateOrderRequest{
-				Reference: "OF-002", ProductId: "prod-1", Quantity: 0,
-			},
-			setupMock: func(_ *mockOrderRepo) {},
+			name:      "zero quantity returns error before tx",
+			req:       &pbmes.CreateOrderRequest{Reference: "OF-002", ProductId: "prod-1", Quantity: 0},
+			setupMock: func(_ *mockTransactor) {},
 			wantErr:   true,
+		},
+		{
+			name: "db error is propagated",
+			req:  &pbmes.CreateOrderRequest{Reference: "OF-003", ProductId: "prod-1", Quantity: 5},
+			setupMock: func(st *mockTransactor) {
+				st.On("WithTx", mock.Anything).Return(errDB)
+			},
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			orders := &mockOrderRepo{}
-			ops := &mockOperationRepo{}
-			tc.setupMock(orders)
-			h := newTestHandler(orders, ops)
+			store := newMockTransactor()
+			tc.setupMock(store)
+			h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
 
 			payload, err := proto.Marshal(tc.req)
 			require.NoError(t, err)
@@ -75,11 +71,12 @@ func TestHandler_CreateOrder(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 
-			var response mes.CreateOrderResponse
+			var response pbmes.CreateOrderResponse
 			require.NoError(t, proto.Unmarshal(resp, &response))
 			assert.Equal(t, tc.req.Reference, response.Order.Reference)
-			assert.Equal(t, mes.OrderStatus_ORDER_STATUS_PLANNED, response.Order.Status)
-			orders.AssertExpectations(t)
+			assert.Equal(t, pbmes.OrderStatus_ORDER_STATUS_PLANNED, response.Order.Status)
+			store.AssertExpectations(t)
+			store.Ops.AssertExpectations(t)
 		})
 	}
 }
@@ -92,14 +89,13 @@ func TestHandler_GetOrder(t *testing.T) {
 		order, _ := domain.NewOrder("OF-001", "prod-1", 10)
 		orders.On("FindByID", mock.Anything, order.ID).Return(order, nil)
 
-		h := newTestHandler(orders, &mockOperationRepo{})
-		req := &mes.GetOrderRequest{Id: order.ID}
-		payload, _ := proto.Marshal(req)
+		h := newTestHandler(orders, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.GetOrderRequest{Id: order.ID})
 
 		resp, err := h.GetOrder(context.Background(), payload)
 		require.NoError(t, err)
 
-		var response mes.GetOrderResponse
+		var response pbmes.GetOrderResponse
 		require.NoError(t, proto.Unmarshal(resp, &response))
 		assert.Equal(t, order.ID, response.Order.Id)
 		orders.AssertExpectations(t)
@@ -107,12 +103,10 @@ func TestHandler_GetOrder(t *testing.T) {
 
 	t.Run("not found returns error", func(t *testing.T) {
 		orders := &mockOrderRepo{}
-		orders.On("FindByID", mock.Anything, "missing-id").
-			Return(nil, domain.ErrOrderNotFound)
+		orders.On("FindByID", mock.Anything, "missing-id").Return(nil, domain.ErrOrderNotFound)
 
-		h := newTestHandler(orders, &mockOperationRepo{})
-		req := &mes.GetOrderRequest{Id: "missing-id"}
-		payload, _ := proto.Marshal(req)
+		h := newTestHandler(orders, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.GetOrderRequest{Id: "missing-id"})
 
 		_, err := h.GetOrder(context.Background(), payload)
 		require.Error(t, err)
@@ -120,30 +114,286 @@ func TestHandler_GetOrder(t *testing.T) {
 	})
 }
 
+// ── SuspendOrder ──────────────────────────────────────────────────────────────
+
+func TestHandler_SuspendOrder(t *testing.T) {
+	t.Run("in-progress order can be suspended", func(t *testing.T) {
+		orders := &mockOrderRepo{}
+		order, _ := domain.NewOrder("OF-001", "prod-1", 10)
+		_ = order.Start()
+		orders.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFSuspended").Return(nil)
+
+		h := newTestHandler(orders, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.SuspendOrderRequest{Id: order.ID, Reason: "shortage"})
+
+		resp, err := h.SuspendOrder(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.SuspendOrderResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OrderStatus_ORDER_STATUS_SUSPENDED, response.Order.Status)
+		store.AssertExpectations(t)
+		store.Ops.AssertExpectations(t)
+	})
+
+	t.Run("planned order cannot be suspended", func(t *testing.T) {
+		orders := &mockOrderRepo{}
+		order, _ := domain.NewOrder("OF-002", "prod-1", 10)
+		orders.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		h := newTestHandler(orders, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.SuspendOrderRequest{Id: order.ID, Reason: "test"})
+
+		_, err := h.SuspendOrder(context.Background(), payload)
+		require.Error(t, err)
+	})
+}
+
+// ── ResumeOrder ───────────────────────────────────────────────────────────────
+
+func TestHandler_ResumeOrder(t *testing.T) {
+	t.Run("suspended order can be resumed", func(t *testing.T) {
+		orders := &mockOrderRepo{}
+		order, _ := domain.NewOrder("OF-001", "prod-1", 10)
+		_ = order.Start()
+		_ = order.Suspend("shortage")
+		orders.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFResumed").Return(nil)
+
+		h := newTestHandler(orders, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.ResumeOrderRequest{Id: order.ID})
+
+		resp, err := h.ResumeOrder(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.ResumeOrderResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OrderStatus_ORDER_STATUS_IN_PROGRESS, response.Order.Status)
+		store.AssertExpectations(t)
+	})
+}
+
+// ── CancelOrder ───────────────────────────────────────────────────────────────
+
+func TestHandler_CancelOrder(t *testing.T) {
+	t.Run("planned order can be cancelled", func(t *testing.T) {
+		orders := &mockOrderRepo{}
+		order, _ := domain.NewOrder("OF-001", "prod-1", 10)
+		orders.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFCancelled").Return(nil)
+
+		h := newTestHandler(orders, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.CancelOrderRequest{Id: order.ID, Reason: "obsolete"})
+
+		resp, err := h.CancelOrder(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.CancelOrderResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OrderStatus_ORDER_STATUS_CANCELLED, response.Order.Status)
+	})
+}
+
+// ── CreateOperation ───────────────────────────────────────────────────────────
+
+func TestHandler_CreateOperation(t *testing.T) {
+	tests := []struct {
+		name      string
+		req       *pbmes.CreateOperationRequest
+		setupMock func(*mockTransactor)
+		wantErr   bool
+	}{
+		{
+			name: "valid request creates operation",
+			req:  &pbmes.CreateOperationRequest{OfId: "of-1", StepNumber: 1, Name: "Découpe"},
+			setupMock: func(st *mockTransactor) {
+				st.On("WithTx", mock.Anything).Return(nil)
+				st.Ops.On("SaveOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+			},
+		},
+		{
+			name:      "empty name returns error",
+			req:       &pbmes.CreateOperationRequest{OfId: "of-1", StepNumber: 1, Name: ""},
+			setupMock: func(_ *mockTransactor) {},
+			wantErr:   true,
+		},
+		{
+			name:      "zero step number returns error",
+			req:       &pbmes.CreateOperationRequest{OfId: "of-1", StepNumber: 0, Name: "Découpe"},
+			setupMock: func(_ *mockTransactor) {},
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newMockTransactor()
+			tc.setupMock(store)
+			h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+
+			payload, _ := proto.Marshal(tc.req)
+			resp, err := h.CreateOperation(context.Background(), payload)
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, resp)
+				return
+			}
+			require.NoError(t, err)
+
+			var response pbmes.CreateOperationResponse
+			require.NoError(t, proto.Unmarshal(resp, &response))
+			assert.Equal(t, tc.req.Name, response.Operation.Name)
+			assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_PENDING, response.Operation.Status)
+			store.AssertExpectations(t)
+			store.Ops.AssertExpectations(t)
+		})
+	}
+}
+
+// ── GetOperation ──────────────────────────────────────────────────────────────
+
+func TestHandler_GetOperation(t *testing.T) {
+	t.Run("existing operation is returned", func(t *testing.T) {
+		ops := &mockOperationRepo{}
+		op, _ := domain.NewOperation("of-1", 1, "Découpe")
+		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.GetOperationRequest{Id: op.ID})
+
+		resp, err := h.GetOperation(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.GetOperationResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, op.ID, response.Operation.Id)
+		ops.AssertExpectations(t)
+	})
+}
+
+// ── ListOperations ────────────────────────────────────────────────────────────
+
+func TestHandler_ListOperations(t *testing.T) {
+	t.Run("returns all operations for an OF", func(t *testing.T) {
+		ops := &mockOperationRepo{}
+		op1, _ := domain.NewOperation("of-1", 1, "Découpe")
+		op2, _ := domain.NewOperation("of-1", 2, "Soudure")
+		ops.On("FindOperationsByOFID", mock.Anything, "of-1").Return([]*domain.Operation{op1, op2}, nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.ListOperationsRequest{OfId: "of-1"})
+
+		resp, err := h.ListOperations(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.ListOperationsResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Len(t, response.Operations, 2)
+		ops.AssertExpectations(t)
+	})
+}
+
 // ── StartOperation ────────────────────────────────────────────────────────────
 
 func TestHandler_StartOperation(t *testing.T) {
 	t.Run("pending operation can be started", func(t *testing.T) {
-		orders := &mockOrderRepo{}
 		ops := &mockOperationRepo{}
-
-		order, _ := domain.NewOrder("OF-001", "prod-1", 10)
-		_ = order.Start()
-		op, _ := domain.NewOperation(order.ID, 1, "Découpe")
-
+		op, _ := domain.NewOperation("of-1", 1, "Découpe")
 		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
-		ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
 
-		h := newTestHandler(orders, ops)
-		req := &mes.StartOperationRequest{OperationId: op.ID, OperatorId: "operator-1"}
-		payload, _ := proto.Marshal(req)
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OperationStarted").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, store)
+		payload, _ := proto.Marshal(&pbmes.StartOperationRequest{OperationId: op.ID, OperatorId: "op-1"})
 
 		resp, err := h.StartOperation(context.Background(), payload)
 		require.NoError(t, err)
 
-		var response mes.StartOperationResponse
+		var response pbmes.StartOperationResponse
 		require.NoError(t, proto.Unmarshal(resp, &response))
-		assert.Equal(t, mes.OperationStatus_OPERATION_STATUS_IN_PROGRESS, response.Operation.Status)
-		ops.AssertExpectations(t)
+		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_IN_PROGRESS, response.Operation.Status)
+		store.AssertExpectations(t)
+		store.Ops.AssertExpectations(t)
+	})
+}
+
+// ── CompleteOperation ─────────────────────────────────────────────────────────
+
+func TestHandler_CompleteOperation(t *testing.T) {
+	t.Run("in-progress operation can be completed", func(t *testing.T) {
+		ops := &mockOperationRepo{}
+		op, _ := domain.NewOperation("of-1", 1, "Découpe")
+		_ = op.Start("op-1")
+		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OperationCompleted").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, store)
+		payload, _ := proto.Marshal(&pbmes.CompleteOperationRequest{OperationId: op.ID, OperatorId: "op-1"})
+
+		resp, err := h.CompleteOperation(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.CompleteOperationResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_COMPLETED, response.Operation.Status)
+		store.AssertExpectations(t)
+	})
+}
+
+// ── SkipOperation ─────────────────────────────────────────────────────────────
+
+func TestHandler_SkipOperation(t *testing.T) {
+	t.Run("pending operation can be skipped with reason", func(t *testing.T) {
+		ops := &mockOperationRepo{}
+		op, _ := domain.NewOperation("of-1", 1, "Contrôle visuel")
+		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OperationSkipped").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, store)
+		payload, _ := proto.Marshal(&pbmes.SkipOperationRequest{OperationId: op.ID, Reason: "non applicable"})
+
+		resp, err := h.SkipOperation(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.SkipOperationResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_SKIPPED, response.Operation.Status)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("skip without reason returns error", func(t *testing.T) {
+		ops := &mockOperationRepo{}
+		op, _ := domain.NewOperation("of-1", 1, "Contrôle visuel")
+		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		h := newTestHandler(&mockOrderRepo{}, ops, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.SkipOperationRequest{OperationId: op.ID, Reason: ""})
+
+		_, err := h.SkipOperation(context.Background(), payload)
+		require.Error(t, err)
 	})
 }

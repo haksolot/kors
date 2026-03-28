@@ -13,7 +13,7 @@ import (
 )
 
 // PostgresRepo implements domain.OrderRepository, domain.OperationRepository,
-// and domain.OutboxRepository using pgx/v5. All methods require a live *pgxpool.Pool.
+// domain.Transactor, and the outbox worker interface using pgx/v5.
 type PostgresRepo struct {
 	db *pgxpool.Pool
 }
@@ -140,7 +140,7 @@ func (r *PostgresRepo) List(ctx context.Context, filter domain.ListOrdersFilter)
 
 // ── Operations ────────────────────────────────────────────────────────────────
 
-// SaveOperation persists a new Operation.
+// SaveOperation persists a new Operation (used by integration tests).
 func (r *PostgresRepo) SaveOperation(ctx context.Context, op *domain.Operation) error {
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO operations
@@ -207,6 +207,97 @@ func (r *PostgresRepo) UpdateOperation(ctx context.Context, op *domain.Operation
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateOperation %s: %w", op.ID, err)
+	}
+	return nil
+}
+
+// ── Transactor ────────────────────────────────────────────────────────────────
+
+// WithTx implements domain.Transactor. It begins a transaction, calls fn with a
+// txOps bound to that transaction, and commits on success or rolls back on error.
+func (r *PostgresRepo) WithTx(ctx context.Context, fn func(domain.TxOps) error) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("WithTx begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := fn(&txOps{tx: tx}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// txOps wraps a pgx.Tx and implements domain.TxOps.
+// All methods route SQL through the active transaction.
+type txOps struct{ tx pgx.Tx }
+
+func (t *txOps) SaveOrder(ctx context.Context, o *domain.Order) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO manufacturing_orders
+			(id, reference, product_id, quantity, status, created_at, updated_at, started_at, completed_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		o.ID, o.Reference, o.ProductID, o.Quantity, string(o.Status),
+		o.CreatedAt, o.UpdatedAt, o.StartedAt, o.CompletedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("SaveOrder %s: %w", o.Reference, domain.ErrOrderAlreadyExists)
+		}
+		return fmt.Errorf("SaveOrder %s: %w", o.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) UpdateOrder(ctx context.Context, o *domain.Order) error {
+	_, err := t.tx.Exec(ctx,
+		`UPDATE manufacturing_orders
+		 SET status=$1, updated_at=$2, started_at=$3, completed_at=$4
+		 WHERE id=$5`,
+		string(o.Status), o.UpdatedAt, o.StartedAt, o.CompletedAt, o.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateOrder %s: %w", o.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) SaveOperation(ctx context.Context, op *domain.Operation) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO operations
+			(id, of_id, step_number, name, operator_id, status, skip_reason, created_at, started_at, completed_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		op.ID, op.OFID, op.StepNumber, op.Name,
+		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
+		op.CreatedAt, op.StartedAt, op.CompletedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("SaveOperation %s: %w", op.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) UpdateOperation(ctx context.Context, op *domain.Operation) error {
+	_, err := t.tx.Exec(ctx,
+		`UPDATE operations
+		 SET operator_id=$1, status=$2, skip_reason=$3, started_at=$4, completed_at=$5
+		 WHERE id=$6`,
+		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
+		op.StartedAt, op.CompletedAt, op.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateOperation %s: %w", op.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO outbox (event_type, subject, payload) VALUES ($1, $2, $3)`,
+		entry.EventType, entry.Subject, entry.Payload,
+	)
+	if err != nil {
+		return fmt.Errorf("InsertOutbox %s: %w", entry.EventType, err)
 	}
 	return nil
 }
