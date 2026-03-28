@@ -540,3 +540,191 @@ func TestHandler_AddGenealogyEntry(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// ── SignOffOperation ───────────────────────────────────────────────────────────
+
+func TestHandler_SignOffOperation(t *testing.T) {
+	t.Run("sign-off transitions operation to released", func(t *testing.T) {
+		op := &domain.Operation{
+			ID:              "00000000-0000-0000-0000-000000000001",
+			OFID:            "00000000-0000-0000-0000-000000000002",
+			StepNumber:      1,
+			Name:            "Weld joint",
+			Status:          domain.OperationStatusPendingSignOff,
+			RequiresSignOff: true,
+		}
+
+		opsRepo := &mockOperationRepo{}
+		opsRepo.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OperationSignedOff").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, opsRepo, store)
+		payload, _ := proto.Marshal(&pbmes.SignOffOperationRequest{
+			OperationId: op.ID,
+			InspectorId: "00000000-0000-0000-0000-000000000020",
+		})
+
+		resp, err := h.SignOffOperation(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.SignOffOperationResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_RELEASED, response.Operation.Status)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("sign-off on non-pending_sign_off operation returns error", func(t *testing.T) {
+		op := &domain.Operation{
+			ID:     "00000000-0000-0000-0000-000000000001",
+			Status: domain.OperationStatusCompleted,
+		}
+
+		opsRepo := &mockOperationRepo{}
+		opsRepo.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		h := newTestHandler(&mockOrderRepo{}, opsRepo, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.SignOffOperationRequest{
+			OperationId: op.ID,
+			InspectorId: "00000000-0000-0000-0000-000000000020",
+		})
+
+		_, err := h.SignOffOperation(context.Background(), payload)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrNotPendingSignOff)
+	})
+}
+
+// ── DeclareNC ─────────────────────────────────────────────────────────────────
+
+func TestHandler_DeclareNC(t *testing.T) {
+	t.Run("nc declared writes outbox event", func(t *testing.T) {
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "NCDeclared").Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.DeclareNCRequest{
+			OperationId:      "00000000-0000-0000-0000-000000000001",
+			OfId:             "00000000-0000-0000-0000-000000000002",
+			DefectCode:       "DIM_OUT_OF_TOLERANCE",
+			Description:      "Diameter 0.2mm over tolerance",
+			AffectedQuantity: 1,
+			DeclaredBy:       "00000000-0000-0000-0000-000000000010",
+		})
+
+		resp, err := h.DeclareNC(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.DeclareNCResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.NotEmpty(t, response.EventId)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("missing required fields returns error", func(t *testing.T) {
+		h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.DeclareNCRequest{
+			OperationId: "00000000-0000-0000-0000-000000000001",
+			// missing of_id and defect_code
+		})
+		_, err := h.DeclareNC(context.Background(), payload)
+		require.Error(t, err)
+	})
+}
+
+// ── ApproveFAI ────────────────────────────────────────────────────────────────
+
+func TestHandler_ApproveFAI(t *testing.T) {
+	t.Run("fai approved writes outbox event", func(t *testing.T) {
+		order := &domain.Order{
+			ID:        "00000000-0000-0000-0000-000000000001",
+			Reference: "OF-FAI-001",
+			ProductID: "00000000-0000-0000-0000-000000000002",
+			Quantity:  1,
+			Status:    domain.OrderStatusInProgress,
+			IsFAI:     true,
+		}
+
+		ordersRepo := &mockOrderRepo{}
+		ordersRepo.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFFAIApproved").Return(nil)
+
+		h := newTestHandler(ordersRepo, &mockOperationRepo{}, store)
+		payload, _ := proto.Marshal(&pbmes.ApproveFAIRequest{
+			OfId:       order.ID,
+			ApproverId: "00000000-0000-0000-0000-000000000030",
+		})
+
+		resp, err := h.ApproveFAI(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.ApproveFAIResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.True(t, response.Order.IsFai)
+		assert.NotEmpty(t, response.Order.FaiApprovedBy)
+		store.AssertExpectations(t)
+	})
+
+	t.Run("non-fai order returns error", func(t *testing.T) {
+		order := &domain.Order{
+			ID:    "00000000-0000-0000-0000-000000000001",
+			IsFAI: false,
+		}
+
+		ordersRepo := &mockOrderRepo{}
+		ordersRepo.On("FindByID", mock.Anything, order.ID).Return(order, nil)
+
+		h := newTestHandler(ordersRepo, &mockOperationRepo{}, newMockTransactor())
+		payload, _ := proto.Marshal(&pbmes.ApproveFAIRequest{
+			OfId:       order.ID,
+			ApproverId: "00000000-0000-0000-0000-000000000030",
+		})
+
+		_, err := h.ApproveFAI(context.Background(), payload)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrNotFAIOrder)
+	})
+}
+
+// ── AttachInstructions ────────────────────────────────────────────────────────
+
+func TestHandler_AttachInstructions(t *testing.T) {
+	t.Run("instructions url is persisted", func(t *testing.T) {
+		op := &domain.Operation{
+			ID:         "00000000-0000-0000-0000-000000000001",
+			OFID:       "00000000-0000-0000-0000-000000000002",
+			StepNumber: 1,
+			Name:       "Inspect surface",
+			Status:     domain.OperationStatusPending,
+		}
+
+		opsRepo := &mockOperationRepo{}
+		opsRepo.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+		store := newMockTransactor()
+		store.On("WithTx", mock.Anything).Return(nil)
+		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+
+		h := newTestHandler(&mockOrderRepo{}, opsRepo, store)
+		payload, _ := proto.Marshal(&pbmes.AttachInstructionsRequest{
+			OperationId:    op.ID,
+			InstructionsUrl: "minio://instructions/sop-weld-v3.pdf",
+		})
+
+		resp, err := h.AttachInstructions(context.Background(), payload)
+		require.NoError(t, err)
+
+		var response pbmes.AttachInstructionsResponse
+		require.NoError(t, proto.Unmarshal(resp, &response))
+		assert.Equal(t, "minio://instructions/sop-weld-v3.pdf", response.Operation.InstructionsUrl)
+		store.AssertExpectations(t)
+	})
+}

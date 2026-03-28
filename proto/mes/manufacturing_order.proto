@@ -29,6 +29,11 @@ message ManufacturingOrder {
   google.protobuf.Timestamp updated_at  = 7;
   google.protobuf.Timestamp started_at  = 8;  // set when status → IN_PROGRESS
   google.protobuf.Timestamp completed_at = 9; // set when status → COMPLETED
+
+  // FAI (First Article Inspection) fields (AS9100D §8.6)
+  bool   is_fai          = 10; // true if this order requires FAI approval
+  string fai_approved_by = 11; // UUID of the quality_manager who approved
+  google.protobuf.Timestamp fai_approved_at = 12;
 }
 
 // --- Request / Reply messages (NATS Request-Reply) ---
@@ -97,5 +102,17 @@ message CancelOrderRequest {
 
 // CancelOrderResponse contains the updated order.
 message CancelOrderResponse {
+  ManufacturingOrder order = 1;
+}
+
+// ApproveFAIRequest is sent on kors.mes.of.fai_approve (AS9100D §8.6).
+// approver_id must be extracted from a validated JWT with role quality_manager (BFF responsibility).
+message ApproveFAIRequest {
+  string of_id       = 1;
+  string approver_id = 2; // UUID of quality_manager extracted from JWT by BFF
+}
+
+// ApproveFAIResponse contains the updated order.
+message ApproveFAIResponse {
   ManufacturingOrder order = 1;
 }

@@ -29,10 +29,12 @@ func New(db *pgxpool.Pool) *PostgresRepo {
 func (r *PostgresRepo) Save(ctx context.Context, o *domain.Order) error {
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO manufacturing_orders
-			(id, reference, product_id, quantity, status, created_at, updated_at, started_at, completed_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			(id, reference, product_id, quantity, status, created_at, updated_at, started_at, completed_at,
+			 is_fai, fai_approved_by, fai_approved_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 		o.ID, o.Reference, o.ProductID, o.Quantity, string(o.Status),
 		o.CreatedAt, o.UpdatedAt, o.StartedAt, o.CompletedAt,
+		o.IsFAI, nullableString(o.FAIApprovedBy), o.FAIApprovedAt,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -47,7 +49,8 @@ func (r *PostgresRepo) Save(ctx context.Context, o *domain.Order) error {
 func (r *PostgresRepo) FindByID(ctx context.Context, id string) (*domain.Order, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, reference, product_id, quantity, status,
-		        created_at, updated_at, started_at, completed_at
+		        created_at, updated_at, started_at, completed_at,
+		        is_fai, fai_approved_by, fai_approved_at
 		 FROM manufacturing_orders WHERE id = $1`, id,
 	)
 	o, err := scanOrder(row)
@@ -64,7 +67,8 @@ func (r *PostgresRepo) FindByID(ctx context.Context, id string) (*domain.Order, 
 func (r *PostgresRepo) FindByReference(ctx context.Context, reference string) (*domain.Order, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, reference, product_id, quantity, status,
-		        created_at, updated_at, started_at, completed_at
+		        created_at, updated_at, started_at, completed_at,
+		        is_fai, fai_approved_by, fai_approved_at
 		 FROM manufacturing_orders WHERE reference = $1`, reference,
 	)
 	o, err := scanOrder(row)
@@ -81,9 +85,11 @@ func (r *PostgresRepo) FindByReference(ctx context.Context, reference string) (*
 func (r *PostgresRepo) Update(ctx context.Context, o *domain.Order) error {
 	_, err := r.db.Exec(ctx,
 		`UPDATE manufacturing_orders
-		 SET status=$1, updated_at=$2, started_at=$3, completed_at=$4
-		 WHERE id=$5`,
-		string(o.Status), o.UpdatedAt, o.StartedAt, o.CompletedAt, o.ID,
+		 SET status=$1, updated_at=$2, started_at=$3, completed_at=$4,
+		     is_fai=$5, fai_approved_by=$6, fai_approved_at=$7
+		 WHERE id=$8`,
+		string(o.Status), o.UpdatedAt, o.StartedAt, o.CompletedAt,
+		o.IsFAI, nullableString(o.FAIApprovedBy), o.FAIApprovedAt, o.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("Update order %s: %w", o.ID, err)
@@ -105,7 +111,8 @@ func (r *PostgresRepo) List(ctx context.Context, filter domain.ListOrdersFilter)
 	if filter.Status != nil {
 		rows, err = r.db.Query(ctx,
 			`SELECT id, reference, product_id, quantity, status,
-			        created_at, updated_at, started_at, completed_at
+			        created_at, updated_at, started_at, completed_at,
+			        is_fai, fai_approved_by, fai_approved_at
 			 FROM manufacturing_orders
 			 WHERE status = $1
 			 ORDER BY created_at DESC
@@ -115,7 +122,8 @@ func (r *PostgresRepo) List(ctx context.Context, filter domain.ListOrdersFilter)
 	} else {
 		rows, err = r.db.Query(ctx,
 			`SELECT id, reference, product_id, quantity, status,
-			        created_at, updated_at, started_at, completed_at
+			        created_at, updated_at, started_at, completed_at,
+			        is_fai, fai_approved_by, fai_approved_at
 			 FROM manufacturing_orders
 			 ORDER BY created_at DESC
 			 LIMIT $1`,
@@ -144,11 +152,13 @@ func (r *PostgresRepo) List(ctx context.Context, filter domain.ListOrdersFilter)
 func (r *PostgresRepo) SaveOperation(ctx context.Context, op *domain.Operation) error {
 	_, err := r.db.Exec(ctx,
 		`INSERT INTO operations
-			(id, of_id, step_number, name, operator_id, status, skip_reason, created_at, started_at, completed_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			(id, of_id, step_number, name, operator_id, status, skip_reason, created_at, started_at, completed_at,
+			 requires_sign_off, signed_off_by, signed_off_at, instructions_url)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		op.ID, op.OFID, op.StepNumber, op.Name,
 		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
 		op.CreatedAt, op.StartedAt, op.CompletedAt,
+		op.RequiresSignOff, nullableString(op.SignedOffBy), op.SignedOffAt, nullableString(op.InstructionsURL),
 	)
 	if err != nil {
 		return fmt.Errorf("SaveOperation %s: %w", op.ID, err)
@@ -160,7 +170,8 @@ func (r *PostgresRepo) SaveOperation(ctx context.Context, op *domain.Operation) 
 func (r *PostgresRepo) FindOperationByID(ctx context.Context, id string) (*domain.Operation, error) {
 	row := r.db.QueryRow(ctx,
 		`SELECT id, of_id, step_number, name, operator_id, status, skip_reason,
-		        created_at, started_at, completed_at
+		        created_at, started_at, completed_at,
+		        requires_sign_off, signed_off_by, signed_off_at, instructions_url
 		 FROM operations WHERE id = $1`, id,
 	)
 	op, err := scanOperation(row)
@@ -177,7 +188,8 @@ func (r *PostgresRepo) FindOperationByID(ctx context.Context, id string) (*domai
 func (r *PostgresRepo) FindOperationsByOFID(ctx context.Context, ofID string) ([]*domain.Operation, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, of_id, step_number, name, operator_id, status, skip_reason,
-		        created_at, started_at, completed_at
+		        created_at, started_at, completed_at,
+		        requires_sign_off, signed_off_by, signed_off_at, instructions_url
 		 FROM operations WHERE of_id = $1 ORDER BY step_number`, ofID,
 	)
 	if err != nil {
@@ -200,10 +212,13 @@ func (r *PostgresRepo) FindOperationsByOFID(ctx context.Context, ofID string) ([
 func (r *PostgresRepo) UpdateOperation(ctx context.Context, op *domain.Operation) error {
 	_, err := r.db.Exec(ctx,
 		`UPDATE operations
-		 SET operator_id=$1, status=$2, skip_reason=$3, started_at=$4, completed_at=$5
-		 WHERE id=$6`,
+		 SET operator_id=$1, status=$2, skip_reason=$3, started_at=$4, completed_at=$5,
+		     requires_sign_off=$6, signed_off_by=$7, signed_off_at=$8, instructions_url=$9
+		 WHERE id=$10`,
 		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
-		op.StartedAt, op.CompletedAt, op.ID,
+		op.StartedAt, op.CompletedAt,
+		op.RequiresSignOff, nullableString(op.SignedOffBy), op.SignedOffAt, nullableString(op.InstructionsURL),
+		op.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateOperation %s: %w", op.ID, err)
@@ -235,10 +250,12 @@ type txOps struct{ tx pgx.Tx }
 func (t *txOps) SaveOrder(ctx context.Context, o *domain.Order) error {
 	_, err := t.tx.Exec(ctx,
 		`INSERT INTO manufacturing_orders
-			(id, reference, product_id, quantity, status, created_at, updated_at, started_at, completed_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			(id, reference, product_id, quantity, status, created_at, updated_at, started_at, completed_at,
+			 is_fai, fai_approved_by, fai_approved_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 		o.ID, o.Reference, o.ProductID, o.Quantity, string(o.Status),
 		o.CreatedAt, o.UpdatedAt, o.StartedAt, o.CompletedAt,
+		o.IsFAI, nullableString(o.FAIApprovedBy), o.FAIApprovedAt,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -252,9 +269,11 @@ func (t *txOps) SaveOrder(ctx context.Context, o *domain.Order) error {
 func (t *txOps) UpdateOrder(ctx context.Context, o *domain.Order) error {
 	_, err := t.tx.Exec(ctx,
 		`UPDATE manufacturing_orders
-		 SET status=$1, updated_at=$2, started_at=$3, completed_at=$4
-		 WHERE id=$5`,
-		string(o.Status), o.UpdatedAt, o.StartedAt, o.CompletedAt, o.ID,
+		 SET status=$1, updated_at=$2, started_at=$3, completed_at=$4,
+		     is_fai=$5, fai_approved_by=$6, fai_approved_at=$7
+		 WHERE id=$8`,
+		string(o.Status), o.UpdatedAt, o.StartedAt, o.CompletedAt,
+		o.IsFAI, nullableString(o.FAIApprovedBy), o.FAIApprovedAt, o.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateOrder %s: %w", o.ID, err)
@@ -265,11 +284,13 @@ func (t *txOps) UpdateOrder(ctx context.Context, o *domain.Order) error {
 func (t *txOps) SaveOperation(ctx context.Context, op *domain.Operation) error {
 	_, err := t.tx.Exec(ctx,
 		`INSERT INTO operations
-			(id, of_id, step_number, name, operator_id, status, skip_reason, created_at, started_at, completed_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			(id, of_id, step_number, name, operator_id, status, skip_reason, created_at, started_at, completed_at,
+			 requires_sign_off, signed_off_by, signed_off_at, instructions_url)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		op.ID, op.OFID, op.StepNumber, op.Name,
 		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
 		op.CreatedAt, op.StartedAt, op.CompletedAt,
+		op.RequiresSignOff, nullableString(op.SignedOffBy), op.SignedOffAt, nullableString(op.InstructionsURL),
 	)
 	if err != nil {
 		return fmt.Errorf("SaveOperation %s: %w", op.ID, err)
@@ -280,10 +301,13 @@ func (t *txOps) SaveOperation(ctx context.Context, op *domain.Operation) error {
 func (t *txOps) UpdateOperation(ctx context.Context, op *domain.Operation) error {
 	_, err := t.tx.Exec(ctx,
 		`UPDATE operations
-		 SET operator_id=$1, status=$2, skip_reason=$3, started_at=$4, completed_at=$5
-		 WHERE id=$6`,
+		 SET operator_id=$1, status=$2, skip_reason=$3, started_at=$4, completed_at=$5,
+		     requires_sign_off=$6, signed_off_by=$7, signed_off_at=$8, instructions_url=$9
+		 WHERE id=$10`,
 		nullableString(op.OperatorID), string(op.Status), nullableString(op.SkipReason),
-		op.StartedAt, op.CompletedAt, op.ID,
+		op.StartedAt, op.CompletedAt,
+		op.RequiresSignOff, nullableString(op.SignedOffBy), op.SignedOffAt, nullableString(op.InstructionsURL),
+		op.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateOperation %s: %w", op.ID, err)
@@ -514,23 +538,29 @@ type scanner interface {
 func scanOrder(s scanner) (*domain.Order, error) {
 	var o domain.Order
 	var status string
+	var faiApprovedBy *string
 	if err := s.Scan(
 		&o.ID, &o.Reference, &o.ProductID, &o.Quantity, &status,
 		&o.CreatedAt, &o.UpdatedAt, &o.StartedAt, &o.CompletedAt,
+		&o.IsFAI, &faiApprovedBy, &o.FAIApprovedAt,
 	); err != nil {
 		return nil, err
 	}
 	o.Status = domain.OrderStatus(status)
+	if faiApprovedBy != nil {
+		o.FAIApprovedBy = *faiApprovedBy
+	}
 	return &o, nil
 }
 
 func scanOperation(s scanner) (*domain.Operation, error) {
 	var op domain.Operation
-	var status, operatorID, skipReason *string
+	var status, operatorID, skipReason, signedOffBy, instructionsURL *string
 	if err := s.Scan(
 		&op.ID, &op.OFID, &op.StepNumber, &op.Name,
 		&operatorID, &status, &skipReason,
 		&op.CreatedAt, &op.StartedAt, &op.CompletedAt,
+		&op.RequiresSignOff, &signedOffBy, &op.SignedOffAt, &instructionsURL,
 	); err != nil {
 		return nil, err
 	}
@@ -542,6 +572,12 @@ func scanOperation(s scanner) (*domain.Operation, error) {
 	}
 	if skipReason != nil {
 		op.SkipReason = *skipReason
+	}
+	if signedOffBy != nil {
+		op.SignedOffBy = *signedOffBy
+	}
+	if instructionsURL != nil {
+		op.InstructionsURL = *instructionsURL
 	}
 	return &op, nil
 }

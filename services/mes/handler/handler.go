@@ -809,6 +809,183 @@ func (h *Handler) GetGenealogy(ctx context.Context, payload []byte) ([]byte, err
 	return proto.Marshal(&pbmes.GetGenealogyResponse{Entries: all})
 }
 
+// ── Quality handlers (BLOC 4) ─────────────────────────────────────────────────
+
+// SignOffOperation handles kors.mes.operation.sign_off (AS9100D §8.6 hold point).
+// The BFF must extract inspector_id from the JWT and verify the quality_inspector role before calling.
+func (h *Handler) SignOffOperation(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.SignOffOperation")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.SignOffOperationRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOperationSignOff, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	op, err := h.ops.FindOperationByID(ctx, req.OperationId)
+	if err != nil {
+		return h.fail(domain.SubjectOperationSignOff, start, err)
+	}
+
+	if err := op.SignOff(req.InspectorId); err != nil {
+		return h.fail(domain.SubjectOperationSignOff, start, err)
+	}
+
+	evt, err := proto.Marshal(&pbmes.OperationSignedOffEvent{
+		EventId:     uuid.NewString(),
+		OperationId: op.ID,
+		OfId:        op.OFID,
+		StepNumber:  int32(op.StepNumber),
+		InspectorId: op.SignedOffBy,
+		SignedOffAt: timestamppb.New(*op.SignedOffAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectOperationSignOff, start, fmt.Errorf("marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateOperation(ctx, op); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "OperationSignedOff",
+			Subject:   domain.SubjectOperationSignedOff,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectOperationSignOff, start, err)
+	}
+
+	h.succeed(domain.SubjectOperationSignOff, start)
+	return proto.Marshal(&pbmes.SignOffOperationResponse{Operation: operationToProto(op)})
+}
+
+// DeclareNC handles kors.mes.operation.declare_nc (AS9100D §8.7).
+// Publishes kors.mes.nc.declared via outbox for the QMS service to consume.
+// No NC table is created in MES (event-driven decoupling).
+func (h *Handler) DeclareNC(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.DeclareNC")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.DeclareNCRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOperationDeclareNC, start, fmt.Errorf("unmarshal: %w", err))
+	}
+	if req.OperationId == "" || req.OfId == "" || req.DefectCode == "" {
+		return h.fail(domain.SubjectOperationDeclareNC, start, fmt.Errorf("operation_id, of_id and defect_code are required"))
+	}
+
+	eventID := uuid.NewString()
+	now := time.Now().UTC()
+
+	ncEvt, err := proto.Marshal(&pbmes.NCDeclaredEvent{
+		EventId:          eventID,
+		OperationId:      req.OperationId,
+		OfId:             req.OfId,
+		DefectCode:       req.DefectCode,
+		Description:      req.Description,
+		AffectedQuantity: req.AffectedQuantity,
+		SerialNumbers:    req.SerialNumbers,
+		DeclaredBy:       req.DeclaredBy,
+		DeclaredAt:       timestamppb.New(now),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectOperationDeclareNC, start, fmt.Errorf("marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "NCDeclared",
+			Subject:   domain.SubjectNCDeclared,
+			Payload:   ncEvt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectOperationDeclareNC, start, err)
+	}
+
+	h.succeed(domain.SubjectOperationDeclareNC, start)
+	return proto.Marshal(&pbmes.DeclareNCResponse{EventId: eventID})
+}
+
+// ApproveFAI handles kors.mes.of.fai_approve (AS9100D §8.6 FAI).
+// The BFF must extract approver_id from the JWT and verify the quality_manager role before calling.
+func (h *Handler) ApproveFAI(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ApproveFAI")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ApproveFAIRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOFFAIApprove, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	o, err := h.orders.FindByID(ctx, req.OfId)
+	if err != nil {
+		return h.fail(domain.SubjectOFFAIApprove, start, err)
+	}
+
+	if err := o.ApproveFAI(req.ApproverId); err != nil {
+		return h.fail(domain.SubjectOFFAIApprove, start, err)
+	}
+
+	faiEvt, err := proto.Marshal(&pbmes.OFFAIApprovedEvent{
+		EventId:    uuid.NewString(),
+		OfId:       o.ID,
+		ApproverId: o.FAIApprovedBy,
+		ApprovedAt: timestamppb.New(*o.FAIApprovedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectOFFAIApprove, start, fmt.Errorf("marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateOrder(ctx, o); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "OFFAIApproved",
+			Subject:   domain.SubjectOFFAIApproved,
+			Payload:   faiEvt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectOFFAIApprove, start, err)
+	}
+
+	h.succeed(domain.SubjectOFFAIApprove, start)
+	return proto.Marshal(&pbmes.ApproveFAIResponse{Order: orderToProto(o)})
+}
+
+// AttachInstructions handles kors.mes.operation.attach_instructions.
+// Associates a MinIO work instruction URL with an operation.
+func (h *Handler) AttachInstructions(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.AttachInstructions")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.AttachInstructionsRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOperationAttachInstructions, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	op, err := h.ops.FindOperationByID(ctx, req.OperationId)
+	if err != nil {
+		return h.fail(domain.SubjectOperationAttachInstructions, start, err)
+	}
+
+	op.AttachInstructions(req.InstructionsUrl)
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.UpdateOperation(ctx, op)
+	}); err != nil {
+		return h.fail(domain.SubjectOperationAttachInstructions, start, err)
+	}
+
+	h.succeed(domain.SubjectOperationAttachInstructions, start)
+	return proto.Marshal(&pbmes.AttachInstructionsResponse{Operation: operationToProto(op)})
+}
+
 // ── Metrics helpers ───────────────────────────────────────────────────────────
 
 func (h *Handler) succeed(subject string, start time.Time) {
@@ -833,6 +1010,7 @@ func orderToProto(o *domain.Order) *pbmes.ManufacturingOrder {
 		Status:    domainStatusToProto(o.Status),
 		CreatedAt: timestamppb.New(o.CreatedAt),
 		UpdatedAt: timestamppb.New(o.UpdatedAt),
+		IsFai:     o.IsFAI,
 	}
 	if o.StartedAt != nil {
 		pb.StartedAt = timestamppb.New(*o.StartedAt)
@@ -840,25 +1018,35 @@ func orderToProto(o *domain.Order) *pbmes.ManufacturingOrder {
 	if o.CompletedAt != nil {
 		pb.CompletedAt = timestamppb.New(*o.CompletedAt)
 	}
+	if o.FAIApprovedAt != nil {
+		pb.FaiApprovedBy = o.FAIApprovedBy
+		pb.FaiApprovedAt = timestamppb.New(*o.FAIApprovedAt)
+	}
 	return pb
 }
 
 func operationToProto(op *domain.Operation) *pbmes.Operation {
 	pb := &pbmes.Operation{
-		Id:         op.ID,
-		OfId:       op.OFID,
-		StepNumber: int32(op.StepNumber),
-		Name:       op.Name,
-		OperatorId: op.OperatorID,
-		Status:     domainOpStatusToProto(op.Status),
-		SkipReason: op.SkipReason,
-		CreatedAt:  timestamppb.New(op.CreatedAt),
+		Id:              op.ID,
+		OfId:            op.OFID,
+		StepNumber:      int32(op.StepNumber),
+		Name:            op.Name,
+		OperatorId:      op.OperatorID,
+		Status:          domainOpStatusToProto(op.Status),
+		SkipReason:      op.SkipReason,
+		CreatedAt:       timestamppb.New(op.CreatedAt),
+		RequiresSignOff: op.RequiresSignOff,
+		InstructionsUrl: op.InstructionsURL,
 	}
 	if op.StartedAt != nil {
 		pb.StartedAt = timestamppb.New(*op.StartedAt)
 	}
 	if op.CompletedAt != nil {
 		pb.CompletedAt = timestamppb.New(*op.CompletedAt)
+	}
+	if op.SignedOffAt != nil {
+		pb.SignedOffBy = op.SignedOffBy
+		pb.SignedOffAt = timestamppb.New(*op.SignedOffAt)
 	}
 	return pb
 }
@@ -907,6 +1095,10 @@ func domainOpStatusToProto(s domain.OperationStatus) pbmes.OperationStatus {
 		return pbmes.OperationStatus_OPERATION_STATUS_COMPLETED
 	case domain.OperationStatusSkipped:
 		return pbmes.OperationStatus_OPERATION_STATUS_SKIPPED
+	case domain.OperationStatusPendingSignOff:
+		return pbmes.OperationStatus_OPERATION_STATUS_PENDING_SIGN_OFF
+	case domain.OperationStatusReleased:
+		return pbmes.OperationStatus_OPERATION_STATUS_RELEASED
 	default:
 		return pbmes.OperationStatus_OPERATION_STATUS_UNSPECIFIED
 	}

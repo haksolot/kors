@@ -49,6 +49,17 @@ const (
 	SubjectSNScrapped          = "kors.mes.sn.scrapped"
 	SubjectGenealogyEntryAdded = "kors.mes.genealogy.entry_added"
 
+	// Synchronous request-reply subjects — quality (BLOC 4)
+	SubjectOperationSignOff         = "kors.mes.operation.sign_off"
+	SubjectOperationDeclareNC       = "kors.mes.operation.declare_nc"
+	SubjectOperationAttachInstructions = "kors.mes.operation.attach_instructions"
+	SubjectOFFAIApprove             = "kors.mes.of.fai_approve"
+
+	// Async events — quality (BLOC 4)
+	SubjectOperationSignedOff = "kors.mes.operation.signed_off"
+	SubjectNCDeclared         = "kors.mes.nc.declared"
+	SubjectOFFAIApproved      = "kors.mes.of.fai_approved"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

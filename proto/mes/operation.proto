@@ -8,11 +8,15 @@ option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
 
 // OperationStatus represents the lifecycle state of a production operation.
 enum OperationStatus {
-  OPERATION_STATUS_UNSPECIFIED = 0;
-  OPERATION_STATUS_PENDING     = 1; // waiting for the previous step to complete
-  OPERATION_STATUS_IN_PROGRESS = 2;
-  OPERATION_STATUS_COMPLETED   = 3;
-  OPERATION_STATUS_SKIPPED     = 4; // explicitly skipped with justification
+  OPERATION_STATUS_UNSPECIFIED     = 0;
+  OPERATION_STATUS_PENDING         = 1; // waiting for the previous step to complete
+  OPERATION_STATUS_IN_PROGRESS     = 2;
+  OPERATION_STATUS_COMPLETED       = 3;
+  OPERATION_STATUS_SKIPPED         = 4; // explicitly skipped with justification
+  // PENDING_SIGN_OFF: work done, awaiting quality_inspector sign-off (AS9100D §8.6 hold point).
+  OPERATION_STATUS_PENDING_SIGN_OFF = 5;
+  // RELEASED: sign-off accepted; operation fully released.
+  OPERATION_STATUS_RELEASED        = 6;
 }
 
 // Operation is a single production step within a ManufacturingOrder.
@@ -30,6 +34,14 @@ message Operation {
   google.protobuf.Timestamp completed_at = 9;
 
   string skip_reason = 10; // mandatory if status = SKIPPED
+
+  // Hold-point / sign-off fields (AS9100D §8.6)
+  bool   requires_sign_off = 11; // if true, Complete → PENDING_SIGN_OFF instead of COMPLETED
+  string signed_off_by     = 12; // UUID of the quality_inspector who signed off
+  google.protobuf.Timestamp signed_off_at = 13;
+
+  // instructions_url: reference to a work instruction document in MinIO.
+  string instructions_url = 14;
 }
 
 // --- Request / Reply messages ---
@@ -97,4 +109,44 @@ message ListOperationsRequest {
 // ListOperationsResponse contains all operations for a manufacturing order.
 message ListOperationsResponse {
   repeated Operation operations = 1;
+}
+
+// SignOffOperationRequest is sent on kors.mes.operation.sign_off (AS9100D §8.6).
+// inspector_id must be extracted from a validated JWT with role quality_inspector (BFF responsibility).
+message SignOffOperationRequest {
+  string operation_id  = 1;
+  string inspector_id  = 2; // UUID of quality_inspector extracted from JWT by BFF
+}
+
+// SignOffOperationResponse contains the updated operation.
+message SignOffOperationResponse {
+  Operation operation = 1;
+}
+
+// DeclareNCRequest is sent on kors.mes.operation.declare_nc (AS9100D §8.7).
+// The MES publishes kors.mes.nc.declared via the outbox; no NC table in MES.
+message DeclareNCRequest {
+  string operation_id       = 1;
+  string of_id              = 2;
+  string defect_code        = 3; // e.g. "DIM_OUT_OF_TOLERANCE", "SURFACE_DEFECT"
+  string description        = 4;
+  int32  affected_quantity  = 5;
+  repeated string serial_numbers = 6; // SNs affected, if known
+  string declared_by        = 7; // UUID of the operator/inspector extracted from JWT by BFF
+}
+
+// DeclareNCResponse acknowledges the NC declaration.
+message DeclareNCResponse {
+  string event_id = 1; // outbox event ID for tracing
+}
+
+// AttachInstructionsRequest is sent on kors.mes.operation.attach_instructions.
+message AttachInstructionsRequest {
+  string operation_id     = 1;
+  string instructions_url = 2; // MinIO URL, e.g. "minio://instructions/sop-weld-v3.pdf"
+}
+
+// AttachInstructionsResponse contains the updated operation.
+message AttachInstructionsResponse {
+  Operation operation = 1;
 }

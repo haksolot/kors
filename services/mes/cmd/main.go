@@ -149,6 +149,11 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		// Traceability — genealogy
 		{domain.SubjectGenealogyAdd, h.AddGenealogyEntry},
 		{domain.SubjectGenealogyGet, h.GetGenealogy},
+		// Quality — hold points, NC, FAI, work instructions (BLOC 4)
+		{domain.SubjectOperationSignOff, h.SignOffOperation},
+		{domain.SubjectOperationDeclareNC, h.DeclareNC},
+		{domain.SubjectOFFAIApprove, h.ApproveFAI},
+		{domain.SubjectOperationAttachInstructions, h.AttachInstructions},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))

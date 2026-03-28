@@ -84,16 +84,20 @@ func (OrderStatus) EnumDescriptor() ([]byte, []int) {
 // ManufacturingOrder is the central aggregate of the MES.
 // An OF (Ordre de Fabrication) tracks production of a product lot.
 type ManufacturingOrder struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // UUID
-	Reference     string                 `protobuf:"bytes,2,opt,name=reference,proto3" json:"reference,omitempty"`                  // Human-readable reference, e.g. "OF-2026-001"
-	ProductId     string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"` // UUID of the product to manufacture
-	Quantity      int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`                   // Number of units to produce
-	Status        OrderStatus            `protobuf:"varint,5,opt,name=status,proto3,enum=mes.OrderStatus" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`       // set when status → IN_PROGRESS
-	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"` // set when status → COMPLETED
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // UUID
+	Reference   string                 `protobuf:"bytes,2,opt,name=reference,proto3" json:"reference,omitempty"`                  // Human-readable reference, e.g. "OF-2026-001"
+	ProductId   string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"` // UUID of the product to manufacture
+	Quantity    int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`                   // Number of units to produce
+	Status      OrderStatus            `protobuf:"varint,5,opt,name=status,proto3,enum=mes.OrderStatus" json:"status,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	StartedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`       // set when status → IN_PROGRESS
+	CompletedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"` // set when status → COMPLETED
+	// FAI (First Article Inspection) fields (AS9100D §8.6)
+	IsFai         bool                   `protobuf:"varint,10,opt,name=is_fai,json=isFai,proto3" json:"is_fai,omitempty"`                          // true if this order requires FAI approval
+	FaiApprovedBy string                 `protobuf:"bytes,11,opt,name=fai_approved_by,json=faiApprovedBy,proto3" json:"fai_approved_by,omitempty"` // UUID of the quality_manager who approved
+	FaiApprovedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=fai_approved_at,json=faiApprovedAt,proto3" json:"fai_approved_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -187,6 +191,27 @@ func (x *ManufacturingOrder) GetStartedAt() *timestamppb.Timestamp {
 func (x *ManufacturingOrder) GetCompletedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *ManufacturingOrder) GetIsFai() bool {
+	if x != nil {
+		return x.IsFai
+	}
+	return false
+}
+
+func (x *ManufacturingOrder) GetFaiApprovedBy() string {
+	if x != nil {
+		return x.FaiApprovedBy
+	}
+	return ""
+}
+
+func (x *ManufacturingOrder) GetFaiApprovedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FaiApprovedAt
 	}
 	return nil
 }
@@ -787,11 +812,110 @@ func (x *CancelOrderResponse) GetOrder() *ManufacturingOrder {
 	return nil
 }
 
+// ApproveFAIRequest is sent on kors.mes.of.fai_approve (AS9100D §8.6).
+// approver_id must be extracted from a validated JWT with role quality_manager (BFF responsibility).
+type ApproveFAIRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OfId          string                 `protobuf:"bytes,1,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	ApproverId    string                 `protobuf:"bytes,2,opt,name=approver_id,json=approverId,proto3" json:"approver_id,omitempty"` // UUID of quality_manager extracted from JWT by BFF
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveFAIRequest) Reset() {
+	*x = ApproveFAIRequest{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveFAIRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveFAIRequest) ProtoMessage() {}
+
+func (x *ApproveFAIRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveFAIRequest.ProtoReflect.Descriptor instead.
+func (*ApproveFAIRequest) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ApproveFAIRequest) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *ApproveFAIRequest) GetApproverId() string {
+	if x != nil {
+		return x.ApproverId
+	}
+	return ""
+}
+
+// ApproveFAIResponse contains the updated order.
+type ApproveFAIResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Order         *ManufacturingOrder    `protobuf:"bytes,1,opt,name=order,proto3" json:"order,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveFAIResponse) Reset() {
+	*x = ApproveFAIResponse{}
+	mi := &file_mes_manufacturing_order_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveFAIResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveFAIResponse) ProtoMessage() {}
+
+func (x *ApproveFAIResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_manufacturing_order_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveFAIResponse.ProtoReflect.Descriptor instead.
+func (*ApproveFAIResponse) Descriptor() ([]byte, []int) {
+	return file_mes_manufacturing_order_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ApproveFAIResponse) GetOrder() *ManufacturingOrder {
+	if x != nil {
+		return x.Order
+	}
+	return nil
+}
+
 var File_mes_manufacturing_order_proto protoreflect.FileDescriptor
 
 const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"\n" +
-	"\x1dmes/manufacturing_order.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x03\n" +
+	"\x1dmes/manufacturing_order.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9a\x04\n" +
 	"\x12ManufacturingOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\treference\x18\x02 \x01(\tR\treference\x12\x1d\n" +
@@ -805,7 +929,11 @@ const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
 	"\n" +
 	"started_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12=\n" +
-	"\fcompleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"m\n" +
+	"\fcompleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12\x15\n" +
+	"\x06is_fai\x18\n" +
+	" \x01(\bR\x05isFai\x12&\n" +
+	"\x0ffai_approved_by\x18\v \x01(\tR\rfaiApprovedBy\x12B\n" +
+	"\x0ffai_approved_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\rfaiApprovedAt\"m\n" +
 	"\x12CreateOrderRequest\x12\x1c\n" +
 	"\treference\x18\x01 \x01(\tR\treference\x12\x1d\n" +
 	"\n" +
@@ -838,6 +966,12 @@ const file_mes_manufacturing_order_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"D\n" +
 	"\x13CancelOrderResponse\x12-\n" +
+	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order\"I\n" +
+	"\x11ApproveFAIRequest\x12\x13\n" +
+	"\x05of_id\x18\x01 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vapprover_id\x18\x02 \x01(\tR\n" +
+	"approverId\"C\n" +
+	"\x12ApproveFAIResponse\x12-\n" +
 	"\x05order\x18\x01 \x01(\v2\x17.mes.ManufacturingOrderR\x05order*\xb7\x01\n" +
 	"\vOrderStatus\x12\x1c\n" +
 	"\x18ORDER_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -860,7 +994,7 @@ func file_mes_manufacturing_order_proto_rawDescGZIP() []byte {
 }
 
 var file_mes_manufacturing_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_mes_manufacturing_order_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_mes_manufacturing_order_proto_goTypes = []any{
 	(OrderStatus)(0),              // 0: mes.OrderStatus
 	(*ManufacturingOrder)(nil),    // 1: mes.ManufacturingOrder
@@ -876,26 +1010,30 @@ var file_mes_manufacturing_order_proto_goTypes = []any{
 	(*ResumeOrderResponse)(nil),   // 11: mes.ResumeOrderResponse
 	(*CancelOrderRequest)(nil),    // 12: mes.CancelOrderRequest
 	(*CancelOrderResponse)(nil),   // 13: mes.CancelOrderResponse
-	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*ApproveFAIRequest)(nil),     // 14: mes.ApproveFAIRequest
+	(*ApproveFAIResponse)(nil),    // 15: mes.ApproveFAIResponse
+	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
 }
 var file_mes_manufacturing_order_proto_depIdxs = []int32{
 	0,  // 0: mes.ManufacturingOrder.status:type_name -> mes.OrderStatus
-	14, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
-	14, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
-	14, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
-	14, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
-	1,  // 5: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 6: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
-	0,  // 7: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
-	1,  // 8: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
-	1,  // 9: mes.SuspendOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 10: mes.ResumeOrderResponse.order:type_name -> mes.ManufacturingOrder
-	1,  // 11: mes.CancelOrderResponse.order:type_name -> mes.ManufacturingOrder
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	16, // 1: mes.ManufacturingOrder.created_at:type_name -> google.protobuf.Timestamp
+	16, // 2: mes.ManufacturingOrder.updated_at:type_name -> google.protobuf.Timestamp
+	16, // 3: mes.ManufacturingOrder.started_at:type_name -> google.protobuf.Timestamp
+	16, // 4: mes.ManufacturingOrder.completed_at:type_name -> google.protobuf.Timestamp
+	16, // 5: mes.ManufacturingOrder.fai_approved_at:type_name -> google.protobuf.Timestamp
+	1,  // 6: mes.CreateOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 7: mes.GetOrderResponse.order:type_name -> mes.ManufacturingOrder
+	0,  // 8: mes.ListOrdersRequest.status_filter:type_name -> mes.OrderStatus
+	1,  // 9: mes.ListOrdersResponse.orders:type_name -> mes.ManufacturingOrder
+	1,  // 10: mes.SuspendOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 11: mes.ResumeOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 12: mes.CancelOrderResponse.order:type_name -> mes.ManufacturingOrder
+	1,  // 13: mes.ApproveFAIResponse.order:type_name -> mes.ManufacturingOrder
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_mes_manufacturing_order_proto_init() }
@@ -909,7 +1047,7 @@ func file_mes_manufacturing_order_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_manufacturing_order_proto_rawDesc), len(file_mes_manufacturing_order_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

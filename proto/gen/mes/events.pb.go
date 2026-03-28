@@ -685,6 +685,270 @@ func (x *OperationSkippedEvent) GetSkippedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// OperationSignedOffEvent is published on kors.mes.operation.signed_off (AS9100D §8.6).
+type OperationSignedOffEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	OfId          string                 `protobuf:"bytes,3,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	StepNumber    int32                  `protobuf:"varint,4,opt,name=step_number,json=stepNumber,proto3" json:"step_number,omitempty"`
+	InspectorId   string                 `protobuf:"bytes,5,opt,name=inspector_id,json=inspectorId,proto3" json:"inspector_id,omitempty"` // UUID of the quality_inspector
+	SignedOffAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=signed_off_at,json=signedOffAt,proto3" json:"signed_off_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OperationSignedOffEvent) Reset() {
+	*x = OperationSignedOffEvent{}
+	mi := &file_mes_events_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OperationSignedOffEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OperationSignedOffEvent) ProtoMessage() {}
+
+func (x *OperationSignedOffEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OperationSignedOffEvent.ProtoReflect.Descriptor instead.
+func (*OperationSignedOffEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *OperationSignedOffEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OperationSignedOffEvent) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *OperationSignedOffEvent) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *OperationSignedOffEvent) GetStepNumber() int32 {
+	if x != nil {
+		return x.StepNumber
+	}
+	return 0
+}
+
+func (x *OperationSignedOffEvent) GetInspectorId() string {
+	if x != nil {
+		return x.InspectorId
+	}
+	return ""
+}
+
+func (x *OperationSignedOffEvent) GetSignedOffAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SignedOffAt
+	}
+	return nil
+}
+
+// NCDeclaredEvent is published on kors.mes.nc.declared (AS9100D §8.7).
+// Consumed by the QMS service to open a NonConformity record.
+type NCDeclaredEvent struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	EventId          string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	OperationId      string                 `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	OfId             string                 `protobuf:"bytes,3,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	DefectCode       string                 `protobuf:"bytes,4,opt,name=defect_code,json=defectCode,proto3" json:"defect_code,omitempty"`
+	Description      string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	AffectedQuantity int32                  `protobuf:"varint,6,opt,name=affected_quantity,json=affectedQuantity,proto3" json:"affected_quantity,omitempty"`
+	SerialNumbers    []string               `protobuf:"bytes,7,rep,name=serial_numbers,json=serialNumbers,proto3" json:"serial_numbers,omitempty"`
+	DeclaredBy       string                 `protobuf:"bytes,8,opt,name=declared_by,json=declaredBy,proto3" json:"declared_by,omitempty"`
+	DeclaredAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=declared_at,json=declaredAt,proto3" json:"declared_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *NCDeclaredEvent) Reset() {
+	*x = NCDeclaredEvent{}
+	mi := &file_mes_events_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NCDeclaredEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NCDeclaredEvent) ProtoMessage() {}
+
+func (x *NCDeclaredEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NCDeclaredEvent.ProtoReflect.Descriptor instead.
+func (*NCDeclaredEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *NCDeclaredEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetDefectCode() string {
+	if x != nil {
+		return x.DefectCode
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetAffectedQuantity() int32 {
+	if x != nil {
+		return x.AffectedQuantity
+	}
+	return 0
+}
+
+func (x *NCDeclaredEvent) GetSerialNumbers() []string {
+	if x != nil {
+		return x.SerialNumbers
+	}
+	return nil
+}
+
+func (x *NCDeclaredEvent) GetDeclaredBy() string {
+	if x != nil {
+		return x.DeclaredBy
+	}
+	return ""
+}
+
+func (x *NCDeclaredEvent) GetDeclaredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeclaredAt
+	}
+	return nil
+}
+
+// OFFAIApprovedEvent is published on kors.mes.of.fai_approved (AS9100D §8.6).
+type OFFAIApprovedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	OfId          string                 `protobuf:"bytes,2,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	ApproverId    string                 `protobuf:"bytes,3,opt,name=approver_id,json=approverId,proto3" json:"approver_id,omitempty"` // UUID of the quality_manager
+	ApprovedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=approved_at,json=approvedAt,proto3" json:"approved_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OFFAIApprovedEvent) Reset() {
+	*x = OFFAIApprovedEvent{}
+	mi := &file_mes_events_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OFFAIApprovedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OFFAIApprovedEvent) ProtoMessage() {}
+
+func (x *OFFAIApprovedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OFFAIApprovedEvent.ProtoReflect.Descriptor instead.
+func (*OFFAIApprovedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *OFFAIApprovedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *OFFAIApprovedEvent) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *OFFAIApprovedEvent) GetApproverId() string {
+	if x != nil {
+		return x.ApproverId
+	}
+	return ""
+}
+
+func (x *OFFAIApprovedEvent) GetApprovedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ApprovedAt
+	}
+	return nil
+}
+
 var File_mes_events_proto protoreflect.FileDescriptor
 
 const file_mes_events_proto_rawDesc = "" +
@@ -750,7 +1014,35 @@ const file_mes_events_proto_rawDesc = "" +
 	"stepNumber\x12\x16\n" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x129\n" +
 	"\n" +
-	"skipped_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tskippedAtB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"skipped_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tskippedAt\"\xf0\x01\n" +
+	"\x17OperationSignedOffEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12!\n" +
+	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12\x13\n" +
+	"\x05of_id\x18\x03 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vstep_number\x18\x04 \x01(\x05R\n" +
+	"stepNumber\x12!\n" +
+	"\finspector_id\x18\x05 \x01(\tR\vinspectorId\x12>\n" +
+	"\rsigned_off_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vsignedOffAt\"\xd9\x02\n" +
+	"\x0fNCDeclaredEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12!\n" +
+	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12\x13\n" +
+	"\x05of_id\x18\x03 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vdefect_code\x18\x04 \x01(\tR\n" +
+	"defectCode\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12+\n" +
+	"\x11affected_quantity\x18\x06 \x01(\x05R\x10affectedQuantity\x12%\n" +
+	"\x0eserial_numbers\x18\a \x03(\tR\rserialNumbers\x12\x1f\n" +
+	"\vdeclared_by\x18\b \x01(\tR\n" +
+	"declaredBy\x12;\n" +
+	"\vdeclared_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"declaredAt\"\xa2\x01\n" +
+	"\x12OFFAIApprovedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x13\n" +
+	"\x05of_id\x18\x02 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vapprover_id\x18\x03 \x01(\tR\n" +
+	"approverId\x12;\n" +
+	"\vapproved_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"approvedAtB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_events_proto_rawDescOnce sync.Once
@@ -764,7 +1056,7 @@ func file_mes_events_proto_rawDescGZIP() []byte {
 	return file_mes_events_proto_rawDescData
 }
 
-var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_mes_events_proto_goTypes = []any{
 	(*OFCreatedEvent)(nil),          // 0: mes.OFCreatedEvent
 	(*OFStartedEvent)(nil),          // 1: mes.OFStartedEvent
@@ -775,23 +1067,29 @@ var file_mes_events_proto_goTypes = []any{
 	(*OperationCompletedEvent)(nil), // 6: mes.OperationCompletedEvent
 	(*OFResumedEvent)(nil),          // 7: mes.OFResumedEvent
 	(*OperationSkippedEvent)(nil),   // 8: mes.OperationSkippedEvent
-	(*timestamppb.Timestamp)(nil),   // 9: google.protobuf.Timestamp
+	(*OperationSignedOffEvent)(nil), // 9: mes.OperationSignedOffEvent
+	(*NCDeclaredEvent)(nil),         // 10: mes.NCDeclaredEvent
+	(*OFFAIApprovedEvent)(nil),      // 11: mes.OFFAIApprovedEvent
+	(*timestamppb.Timestamp)(nil),   // 12: google.protobuf.Timestamp
 }
 var file_mes_events_proto_depIdxs = []int32{
-	9, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	9, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	9, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	9, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
-	9, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
-	9, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	9, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	9, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
-	9, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	12, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	12, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	12, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	12, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
+	12, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
+	12, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	12, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	12, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
+	12, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
+	12, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
+	12, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
+	12, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_mes_events_proto_init() }
@@ -805,7 +1103,7 @@ func file_mes_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_events_proto_rawDesc), len(file_mes_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
