@@ -1,5 +1,10 @@
 version: "2"
 
+run:
+  # golangci-lint is built with Go 1.24; override so it doesn't reject go.mod
+  # directives that declare a newer toolchain version (e.g. go 1.26.1).
+  go: "1.24"
+
 linters:
   default: none
   enable:
