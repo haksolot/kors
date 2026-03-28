@@ -1,22 +1,21 @@
-version: "2"
-
 run:
-  # golangci-lint is built with Go 1.24; override so it doesn't reject go.mod
-  # directives that declare a newer toolchain version (e.g. go 1.26.1).
+  # golangci-lint 1.64.8 is built with Go 1.24; override so it does not reject
+  # go.mod directives that declare a newer toolchain version (e.g. go 1.26.1).
   go: "1.24"
+  timeout: 5m
 
 linters:
-  default: none
+  disable-all: true
   enable:
-    - errcheck       # unchecked errors
-    - gosimple       # simplifications
-    - govet          # go vet checks
-    - ineffassign    # ineffectual assignments
-    - staticcheck    # staticcheck SA/S/ST rules
-    - unused         # unused code
-    - goimports      # import formatting
-    - misspell       # spelling mistakes
-    - noctx          # http calls without context
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - goimports
+    - misspell
+    - noctx
 
 linters-settings:
   goimports:
@@ -24,7 +23,6 @@ linters-settings:
 
 issues:
   exclude-rules:
-    # Test files: allow unused params, unchecked errors on cleanup helpers
     - path: "_test\\.go"
       linters:
         - errcheck
