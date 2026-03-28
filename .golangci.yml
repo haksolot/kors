@@ -1,0 +1,30 @@
+run:
+  # golangci-lint 1.64.8 is built with Go 1.24; override so it does not reject
+  # go.mod directives that declare a newer toolchain version (e.g. go 1.26.1).
+  go: "1.24"
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - goimports
+    - misspell
+    - noctx
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/haksolot/kors
+
+issues:
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

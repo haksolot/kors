@@ -1,0 +1,26 @@
+name: E2E
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: E2E scenario (MES + QMS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+          cache: true
+
+      - name: go test e2e
+        run: go test -C e2e -v -timeout 120s ./...
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
