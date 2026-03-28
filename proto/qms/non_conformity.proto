@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package qms;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/qms;qms";
+
+// NCStatus represents the lifecycle state of a NonConformity.
+enum NCStatus {
+  NC_STATUS_UNSPECIFIED        = 0;
+  NC_STATUS_OPEN               = 1;
+  NC_STATUS_UNDER_ANALYSIS     = 2;
+  NC_STATUS_PENDING_DISPOSITION = 3;
+  NC_STATUS_CLOSED             = 4;
+}
+
+// NCDisposition is the final decision on a NonConformity.
+enum NCDisposition {
+  NC_DISPOSITION_UNSPECIFIED          = 0;
+  NC_DISPOSITION_REWORK               = 1;
+  NC_DISPOSITION_SCRAP                = 2;
+  NC_DISPOSITION_USE_AS_IS            = 3;
+  NC_DISPOSITION_RETURN_TO_SUPPLIER   = 4;
+}
+
+// CAPAStatus represents the lifecycle state of a CAPA record.
+enum CAPAStatus {
+  CAPA_STATUS_UNSPECIFIED  = 0;
+  CAPA_STATUS_OPEN         = 1;
+  CAPA_STATUS_IN_PROGRESS  = 2;
+  CAPA_STATUS_COMPLETED    = 3;
+  CAPA_STATUS_CANCELLED    = 4;
+}
+
+// CAPAActionType distinguishes corrective from preventive actions.
+enum CAPAActionType {
+  CAPA_ACTION_TYPE_UNSPECIFIED  = 0;
+  CAPA_ACTION_TYPE_CORRECTIVE   = 1;
+  CAPA_ACTION_TYPE_PREVENTIVE   = 2;
+}
+
+// NonConformity is the central QMS aggregate (AS9100D §8.7).
+// Created automatically when kors.mes.nc.declared is consumed.
+message NonConformity {
+  string   id                = 1;  // UUID
+  string   operation_id      = 2;  // MES operation that triggered the NC (dedup key)
+  string   of_id             = 3;  // manufacturing order UUID
+  string   defect_code       = 4;
+  string   description       = 5;
+  int32    affected_quantity = 6;
+  repeated string serial_numbers = 7;
+  string   declared_by       = 8;  // operator UUID from MES
+  NCStatus status            = 9;
+  NCDisposition disposition  = 10; // set when status → PENDING_DISPOSITION
+  string   closed_by         = 11; // UUID of quality_manager who closed
+
+  google.protobuf.Timestamp created_at  = 12;
+  google.protobuf.Timestamp updated_at  = 13;
+  google.protobuf.Timestamp closed_at   = 14;
+}
+
+// CAPA (Corrective And Preventive Action) linked to a NonConformity.
+message CAPA {
+  string         id          = 1;  // UUID
+  string         nc_id       = 2;  // parent NonConformity UUID
+  CAPAActionType action_type = 3;
+  string         description = 4;
+  string         owner_id    = 5;  // UUID of responsible person
+  CAPAStatus     status      = 6;
+
+  google.protobuf.Timestamp due_date    = 7;  // optional target completion date
+  google.protobuf.Timestamp created_at  = 8;
+  google.protobuf.Timestamp updated_at  = 9;
+  google.protobuf.Timestamp completed_at = 10;
+}
+
+// --- Request / Reply messages (NATS Request-Reply) ---
+
+// GetNCRequest is sent on kors.qms.nc.get.
+message GetNCRequest {
+  string id = 1;
+}
+
+// GetNCResponse contains the requested NonConformity.
+message GetNCResponse {
+  NonConformity nc = 1;
+}
+
+// ListNCsRequest is sent on kors.qms.nc.list.
+message ListNCsRequest {
+  NCStatus status_filter = 1; // UNSPECIFIED = all
+  int32    page_size     = 2; // 0 → 50
+}
+
+// ListNCsResponse contains matching NonConformities.
+message ListNCsResponse {
+  repeated NonConformity ncs = 1;
+}
+
+// StartAnalysisRequest is sent on kors.qms.nc.analyse — OPEN → UNDER_ANALYSIS.
+message StartAnalysisRequest {
+  string nc_id    = 1;
+  string analyst_id = 2; // UUID of the quality analyst
+}
+
+// StartAnalysisResponse contains the updated NC.
+message StartAnalysisResponse {
+  NonConformity nc = 1;
+}
+
+// ProposeDispositionRequest is sent on kors.qms.nc.propose_disposition — UNDER_ANALYSIS → PENDING_DISPOSITION.
+message ProposeDispositionRequest {
+  string        nc_id       = 1;
+  NCDisposition disposition = 2;
+  string        analyst_id  = 3;
+}
+
+// ProposeDispositionResponse contains the updated NC.
+message ProposeDispositionResponse {
+  NonConformity nc = 1;
+}
+
+// CloseNCRequest is sent on kors.qms.nc.close — PENDING_DISPOSITION → CLOSED.
+// The BFF must extract closed_by from a validated JWT with role quality_manager.
+message CloseNCRequest {
+  string nc_id     = 1;
+  string closed_by = 2; // UUID of quality_manager
+}
+
+// CloseNCResponse contains the closed NC.
+message CloseNCResponse {
+  NonConformity nc = 1;
+}
+
+// CreateCAPARequest is sent on kors.qms.capa.create.
+message CreateCAPARequest {
+  string         nc_id       = 1;
+  CAPAActionType action_type = 2;
+  string         description = 3;
+  string         owner_id    = 4;
+  google.protobuf.Timestamp due_date = 5; // optional
+}
+
+// CreateCAPAResponse contains the created CAPA.
+message CreateCAPAResponse {
+  CAPA capa = 1;
+}
+
+// GetCAPARequest is sent on kors.qms.capa.get.
+message GetCAPARequest {
+  string id = 1;
+}
+
+// GetCAPAResponse contains the requested CAPA.
+message GetCAPAResponse {
+  CAPA capa = 1;
+}
+
+// ListCAPAsRequest is sent on kors.qms.capa.list.
+message ListCAPAsRequest {
+  string     nc_id         = 1; // filter by parent NC; empty = all
+  CAPAStatus status_filter = 2;
+  int32      page_size     = 3;
+}
+
+// ListCAPAsResponse contains matching CAPAs.
+message ListCAPAsResponse {
+  repeated CAPA capas = 1;
+}
+
+// StartCAPARequest is sent on kors.qms.capa.start — OPEN → IN_PROGRESS.
+message StartCAPARequest {
+  string capa_id = 1;
+}
+
+// StartCAPAResponse contains the updated CAPA.
+message StartCAPAResponse {
+  CAPA capa = 1;
+}
+
+// CompleteCAPARequest is sent on kors.qms.capa.complete — IN_PROGRESS → COMPLETED.
+message CompleteCAPARequest {
+  string capa_id = 1;
+}
+
+// CompleteCAPAResponse contains the completed CAPA.
+message CompleteCAPAResponse {
+  CAPA capa = 1;
+}

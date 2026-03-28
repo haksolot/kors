@@ -4,4 +4,5 @@ use (
 	./libs/core
 	./proto/gen
 	./services/mes
+	./services/qms
 )
