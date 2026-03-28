@@ -88,3 +88,35 @@ message OperationSkippedEvent {
   string reason       = 5;
   google.protobuf.Timestamp skipped_at = 6;
 }
+
+// OperationSignedOffEvent is published on kors.mes.operation.signed_off (AS9100D §8.6).
+message OperationSignedOffEvent {
+  string event_id      = 1;
+  string operation_id  = 2;
+  string of_id         = 3;
+  int32  step_number   = 4;
+  string inspector_id  = 5; // UUID of the quality_inspector
+  google.protobuf.Timestamp signed_off_at = 6;
+}
+
+// NCDeclaredEvent is published on kors.mes.nc.declared (AS9100D §8.7).
+// Consumed by the QMS service to open a NonConformity record.
+message NCDeclaredEvent {
+  string event_id          = 1;
+  string operation_id      = 2;
+  string of_id             = 3;
+  string defect_code       = 4;
+  string description       = 5;
+  int32  affected_quantity = 6;
+  repeated string serial_numbers = 7;
+  string declared_by       = 8;
+  google.protobuf.Timestamp declared_at = 9;
+}
+
+// OFFAIApprovedEvent is published on kors.mes.of.fai_approved (AS9100D §8.6).
+message OFFAIApprovedEvent {
+  string event_id     = 1;
+  string of_id        = 2;
+  string approver_id  = 3; // UUID of the quality_manager
+  google.protobuf.Timestamp approved_at = 4;
+}

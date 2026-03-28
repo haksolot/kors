@@ -27,6 +27,13 @@ var (
 	ErrInvalidOperationName   = errors.New("operation name must not be empty")
 	ErrSkipReasonRequired     = errors.New("skip reason is required when skipping an operation")
 
+	// Quality / sign-off errors
+	ErrSignOffRequired    = errors.New("operation requires quality sign-off before completion")
+	ErrNotPendingSignOff  = errors.New("operation is not pending sign-off")
+	ErrUnauthorizedRole   = errors.New("caller does not have the required role for this action")
+	ErrFAIAlreadyApproved = errors.New("first article inspection already approved")
+	ErrNotFAIOrder        = errors.New("manufacturing order is not flagged as a FAI order")
+
 	// Lot errors
 	ErrLotNotFound      = errors.New("lot not found")
 	ErrLotAlreadyExists = errors.New("lot reference already exists")

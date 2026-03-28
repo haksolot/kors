@@ -31,6 +31,10 @@ const (
 	OperationStatus_OPERATION_STATUS_IN_PROGRESS OperationStatus = 2
 	OperationStatus_OPERATION_STATUS_COMPLETED   OperationStatus = 3
 	OperationStatus_OPERATION_STATUS_SKIPPED     OperationStatus = 4 // explicitly skipped with justification
+	// PENDING_SIGN_OFF: work done, awaiting quality_inspector sign-off (AS9100D §8.6 hold point).
+	OperationStatus_OPERATION_STATUS_PENDING_SIGN_OFF OperationStatus = 5
+	// RELEASED: sign-off accepted; operation fully released.
+	OperationStatus_OPERATION_STATUS_RELEASED OperationStatus = 6
 )
 
 // Enum value maps for OperationStatus.
@@ -41,13 +45,17 @@ var (
 		2: "OPERATION_STATUS_IN_PROGRESS",
 		3: "OPERATION_STATUS_COMPLETED",
 		4: "OPERATION_STATUS_SKIPPED",
+		5: "OPERATION_STATUS_PENDING_SIGN_OFF",
+		6: "OPERATION_STATUS_RELEASED",
 	}
 	OperationStatus_value = map[string]int32{
-		"OPERATION_STATUS_UNSPECIFIED": 0,
-		"OPERATION_STATUS_PENDING":     1,
-		"OPERATION_STATUS_IN_PROGRESS": 2,
-		"OPERATION_STATUS_COMPLETED":   3,
-		"OPERATION_STATUS_SKIPPED":     4,
+		"OPERATION_STATUS_UNSPECIFIED":      0,
+		"OPERATION_STATUS_PENDING":          1,
+		"OPERATION_STATUS_IN_PROGRESS":      2,
+		"OPERATION_STATUS_COMPLETED":        3,
+		"OPERATION_STATUS_SKIPPED":          4,
+		"OPERATION_STATUS_PENDING_SIGN_OFF": 5,
+		"OPERATION_STATUS_RELEASED":         6,
 	}
 )
 
@@ -81,19 +89,25 @@ func (OperationStatus) EnumDescriptor() ([]byte, []int) {
 // Operation is a single production step within a ManufacturingOrder.
 // Steps are ordered by step_number (1-based).
 type Operation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                    // UUID
-	OfId          string                 `protobuf:"bytes,2,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`                    // Parent ManufacturingOrder UUID
-	StepNumber    int32                  `protobuf:"varint,3,opt,name=step_number,json=stepNumber,proto3" json:"step_number,omitempty"` // Execution order within the OF
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`                                // e.g. "Découpe", "Soudure", "Contrôle visuel"
-	OperatorId    string                 `protobuf:"bytes,5,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`  // UUID of the operator assigned (from JWT claims)
-	Status        OperationStatus        `protobuf:"varint,6,opt,name=status,proto3,enum=mes.OperationStatus" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
-	SkipReason    string                 `protobuf:"bytes,10,opt,name=skip_reason,json=skipReason,proto3" json:"skip_reason,omitempty"` // mandatory if status = SKIPPED
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                    // UUID
+	OfId        string                 `protobuf:"bytes,2,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`                    // Parent ManufacturingOrder UUID
+	StepNumber  int32                  `protobuf:"varint,3,opt,name=step_number,json=stepNumber,proto3" json:"step_number,omitempty"` // Execution order within the OF
+	Name        string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`                                // e.g. "Découpe", "Soudure", "Contrôle visuel"
+	OperatorId  string                 `protobuf:"bytes,5,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`  // UUID of the operator assigned (from JWT claims)
+	Status      OperationStatus        `protobuf:"varint,6,opt,name=status,proto3,enum=mes.OperationStatus" json:"status,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	StartedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	SkipReason  string                 `protobuf:"bytes,10,opt,name=skip_reason,json=skipReason,proto3" json:"skip_reason,omitempty"` // mandatory if status = SKIPPED
+	// Hold-point / sign-off fields (AS9100D §8.6)
+	RequiresSignOff bool                   `protobuf:"varint,11,opt,name=requires_sign_off,json=requiresSignOff,proto3" json:"requires_sign_off,omitempty"` // if true, Complete → PENDING_SIGN_OFF instead of COMPLETED
+	SignedOffBy     string                 `protobuf:"bytes,12,opt,name=signed_off_by,json=signedOffBy,proto3" json:"signed_off_by,omitempty"`              // UUID of the quality_inspector who signed off
+	SignedOffAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=signed_off_at,json=signedOffAt,proto3" json:"signed_off_at,omitempty"`
+	// instructions_url: reference to a work instruction document in MinIO.
+	InstructionsUrl string `protobuf:"bytes,14,opt,name=instructions_url,json=instructionsUrl,proto3" json:"instructions_url,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Operation) Reset() {
@@ -192,6 +206,34 @@ func (x *Operation) GetCompletedAt() *timestamppb.Timestamp {
 func (x *Operation) GetSkipReason() string {
 	if x != nil {
 		return x.SkipReason
+	}
+	return ""
+}
+
+func (x *Operation) GetRequiresSignOff() bool {
+	if x != nil {
+		return x.RequiresSignOff
+	}
+	return false
+}
+
+func (x *Operation) GetSignedOffBy() string {
+	if x != nil {
+		return x.SignedOffBy
+	}
+	return ""
+}
+
+func (x *Operation) GetSignedOffAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SignedOffAt
+	}
+	return nil
+}
+
+func (x *Operation) GetInstructionsUrl() string {
+	if x != nil {
+		return x.InstructionsUrl
 	}
 	return ""
 }
@@ -776,11 +818,347 @@ func (x *ListOperationsResponse) GetOperations() []*Operation {
 	return nil
 }
 
+// SignOffOperationRequest is sent on kors.mes.operation.sign_off (AS9100D §8.6).
+// inspector_id must be extracted from a validated JWT with role quality_inspector (BFF responsibility).
+type SignOffOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	InspectorId   string                 `protobuf:"bytes,2,opt,name=inspector_id,json=inspectorId,proto3" json:"inspector_id,omitempty"` // UUID of quality_inspector extracted from JWT by BFF
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOffOperationRequest) Reset() {
+	*x = SignOffOperationRequest{}
+	mi := &file_mes_operation_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOffOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOffOperationRequest) ProtoMessage() {}
+
+func (x *SignOffOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOffOperationRequest.ProtoReflect.Descriptor instead.
+func (*SignOffOperationRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *SignOffOperationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *SignOffOperationRequest) GetInspectorId() string {
+	if x != nil {
+		return x.InspectorId
+	}
+	return ""
+}
+
+// SignOffOperationResponse contains the updated operation.
+type SignOffOperationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SignOffOperationResponse) Reset() {
+	*x = SignOffOperationResponse{}
+	mi := &file_mes_operation_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SignOffOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SignOffOperationResponse) ProtoMessage() {}
+
+func (x *SignOffOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SignOffOperationResponse.ProtoReflect.Descriptor instead.
+func (*SignOffOperationResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SignOffOperationResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+// DeclareNCRequest is sent on kors.mes.operation.declare_nc (AS9100D §8.7).
+// The MES publishes kors.mes.nc.declared via the outbox; no NC table in MES.
+type DeclareNCRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	OperationId      string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	OfId             string                 `protobuf:"bytes,2,opt,name=of_id,json=ofId,proto3" json:"of_id,omitempty"`
+	DefectCode       string                 `protobuf:"bytes,3,opt,name=defect_code,json=defectCode,proto3" json:"defect_code,omitempty"` // e.g. "DIM_OUT_OF_TOLERANCE", "SURFACE_DEFECT"
+	Description      string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	AffectedQuantity int32                  `protobuf:"varint,5,opt,name=affected_quantity,json=affectedQuantity,proto3" json:"affected_quantity,omitempty"`
+	SerialNumbers    []string               `protobuf:"bytes,6,rep,name=serial_numbers,json=serialNumbers,proto3" json:"serial_numbers,omitempty"` // SNs affected, if known
+	DeclaredBy       string                 `protobuf:"bytes,7,opt,name=declared_by,json=declaredBy,proto3" json:"declared_by,omitempty"`          // UUID of the operator/inspector extracted from JWT by BFF
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DeclareNCRequest) Reset() {
+	*x = DeclareNCRequest{}
+	mi := &file_mes_operation_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeclareNCRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeclareNCRequest) ProtoMessage() {}
+
+func (x *DeclareNCRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeclareNCRequest.ProtoReflect.Descriptor instead.
+func (*DeclareNCRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DeclareNCRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *DeclareNCRequest) GetOfId() string {
+	if x != nil {
+		return x.OfId
+	}
+	return ""
+}
+
+func (x *DeclareNCRequest) GetDefectCode() string {
+	if x != nil {
+		return x.DefectCode
+	}
+	return ""
+}
+
+func (x *DeclareNCRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *DeclareNCRequest) GetAffectedQuantity() int32 {
+	if x != nil {
+		return x.AffectedQuantity
+	}
+	return 0
+}
+
+func (x *DeclareNCRequest) GetSerialNumbers() []string {
+	if x != nil {
+		return x.SerialNumbers
+	}
+	return nil
+}
+
+func (x *DeclareNCRequest) GetDeclaredBy() string {
+	if x != nil {
+		return x.DeclaredBy
+	}
+	return ""
+}
+
+// DeclareNCResponse acknowledges the NC declaration.
+type DeclareNCResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"` // outbox event ID for tracing
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeclareNCResponse) Reset() {
+	*x = DeclareNCResponse{}
+	mi := &file_mes_operation_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeclareNCResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeclareNCResponse) ProtoMessage() {}
+
+func (x *DeclareNCResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeclareNCResponse.ProtoReflect.Descriptor instead.
+func (*DeclareNCResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *DeclareNCResponse) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+// AttachInstructionsRequest is sent on kors.mes.operation.attach_instructions.
+type AttachInstructionsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OperationId     string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	InstructionsUrl string                 `protobuf:"bytes,2,opt,name=instructions_url,json=instructionsUrl,proto3" json:"instructions_url,omitempty"` // MinIO URL, e.g. "minio://instructions/sop-weld-v3.pdf"
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AttachInstructionsRequest) Reset() {
+	*x = AttachInstructionsRequest{}
+	mi := &file_mes_operation_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachInstructionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachInstructionsRequest) ProtoMessage() {}
+
+func (x *AttachInstructionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachInstructionsRequest.ProtoReflect.Descriptor instead.
+func (*AttachInstructionsRequest) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AttachInstructionsRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *AttachInstructionsRequest) GetInstructionsUrl() string {
+	if x != nil {
+		return x.InstructionsUrl
+	}
+	return ""
+}
+
+// AttachInstructionsResponse contains the updated operation.
+type AttachInstructionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Operation     *Operation             `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachInstructionsResponse) Reset() {
+	*x = AttachInstructionsResponse{}
+	mi := &file_mes_operation_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachInstructionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachInstructionsResponse) ProtoMessage() {}
+
+func (x *AttachInstructionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_operation_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachInstructionsResponse.ProtoReflect.Descriptor instead.
+func (*AttachInstructionsResponse) Descriptor() ([]byte, []int) {
+	return file_mes_operation_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AttachInstructionsResponse) GetOperation() *Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
 var File_mes_operation_proto protoreflect.FileDescriptor
 
 const file_mes_operation_proto_rawDesc = "" +
 	"\n" +
-	"\x13mes/operation.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x03\n" +
+	"\x13mes/operation.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x04\n" +
 	"\tOperation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x13\n" +
 	"\x05of_id\x18\x02 \x01(\tR\x04ofId\x12\x1f\n" +
@@ -797,7 +1175,11 @@ const file_mes_operation_proto_rawDesc = "" +
 	"\fcompleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12\x1f\n" +
 	"\vskip_reason\x18\n" +
 	" \x01(\tR\n" +
-	"skipReason\"[\n" +
+	"skipReason\x12*\n" +
+	"\x11requires_sign_off\x18\v \x01(\bR\x0frequiresSignOff\x12\"\n" +
+	"\rsigned_off_by\x18\f \x01(\tR\vsignedOffBy\x12>\n" +
+	"\rsigned_off_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vsignedOffAt\x12)\n" +
+	"\x10instructions_url\x18\x0e \x01(\tR\x0finstructionsUrl\"[\n" +
 	"\x15StartOperationRequest\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x1f\n" +
 	"\voperator_id\x18\x02 \x01(\tR\n" +
@@ -831,13 +1213,37 @@ const file_mes_operation_proto_rawDesc = "" +
 	"\x16ListOperationsResponse\x12.\n" +
 	"\n" +
 	"operations\x18\x01 \x03(\v2\x0e.mes.OperationR\n" +
-	"operations*\xb1\x01\n" +
+	"operations\"_\n" +
+	"\x17SignOffOperationRequest\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12!\n" +
+	"\finspector_id\x18\x02 \x01(\tR\vinspectorId\"H\n" +
+	"\x18SignOffOperationResponse\x12,\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation\"\x82\x02\n" +
+	"\x10DeclareNCRequest\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12\x13\n" +
+	"\x05of_id\x18\x02 \x01(\tR\x04ofId\x12\x1f\n" +
+	"\vdefect_code\x18\x03 \x01(\tR\n" +
+	"defectCode\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12+\n" +
+	"\x11affected_quantity\x18\x05 \x01(\x05R\x10affectedQuantity\x12%\n" +
+	"\x0eserial_numbers\x18\x06 \x03(\tR\rserialNumbers\x12\x1f\n" +
+	"\vdeclared_by\x18\a \x01(\tR\n" +
+	"declaredBy\".\n" +
+	"\x11DeclareNCResponse\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\"i\n" +
+	"\x19AttachInstructionsRequest\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12)\n" +
+	"\x10instructions_url\x18\x02 \x01(\tR\x0finstructionsUrl\"J\n" +
+	"\x1aAttachInstructionsResponse\x12,\n" +
+	"\toperation\x18\x01 \x01(\v2\x0e.mes.OperationR\toperation*\xf7\x01\n" +
 	"\x0fOperationStatus\x12 \n" +
 	"\x1cOPERATION_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18OPERATION_STATUS_PENDING\x10\x01\x12 \n" +
 	"\x1cOPERATION_STATUS_IN_PROGRESS\x10\x02\x12\x1e\n" +
 	"\x1aOPERATION_STATUS_COMPLETED\x10\x03\x12\x1c\n" +
-	"\x18OPERATION_STATUS_SKIPPED\x10\x04B,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"\x18OPERATION_STATUS_SKIPPED\x10\x04\x12%\n" +
+	"!OPERATION_STATUS_PENDING_SIGN_OFF\x10\x05\x12\x1d\n" +
+	"\x19OPERATION_STATUS_RELEASED\x10\x06B,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_operation_proto_rawDescOnce sync.Once
@@ -852,40 +1258,49 @@ func file_mes_operation_proto_rawDescGZIP() []byte {
 }
 
 var file_mes_operation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_mes_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_mes_operation_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_mes_operation_proto_goTypes = []any{
-	(OperationStatus)(0),              // 0: mes.OperationStatus
-	(*Operation)(nil),                 // 1: mes.Operation
-	(*StartOperationRequest)(nil),     // 2: mes.StartOperationRequest
-	(*StartOperationResponse)(nil),    // 3: mes.StartOperationResponse
-	(*CompleteOperationRequest)(nil),  // 4: mes.CompleteOperationRequest
-	(*CompleteOperationResponse)(nil), // 5: mes.CompleteOperationResponse
-	(*CreateOperationRequest)(nil),    // 6: mes.CreateOperationRequest
-	(*CreateOperationResponse)(nil),   // 7: mes.CreateOperationResponse
-	(*SkipOperationRequest)(nil),      // 8: mes.SkipOperationRequest
-	(*SkipOperationResponse)(nil),     // 9: mes.SkipOperationResponse
-	(*GetOperationRequest)(nil),       // 10: mes.GetOperationRequest
-	(*GetOperationResponse)(nil),      // 11: mes.GetOperationResponse
-	(*ListOperationsRequest)(nil),     // 12: mes.ListOperationsRequest
-	(*ListOperationsResponse)(nil),    // 13: mes.ListOperationsResponse
-	(*timestamppb.Timestamp)(nil),     // 14: google.protobuf.Timestamp
+	(OperationStatus)(0),               // 0: mes.OperationStatus
+	(*Operation)(nil),                  // 1: mes.Operation
+	(*StartOperationRequest)(nil),      // 2: mes.StartOperationRequest
+	(*StartOperationResponse)(nil),     // 3: mes.StartOperationResponse
+	(*CompleteOperationRequest)(nil),   // 4: mes.CompleteOperationRequest
+	(*CompleteOperationResponse)(nil),  // 5: mes.CompleteOperationResponse
+	(*CreateOperationRequest)(nil),     // 6: mes.CreateOperationRequest
+	(*CreateOperationResponse)(nil),    // 7: mes.CreateOperationResponse
+	(*SkipOperationRequest)(nil),       // 8: mes.SkipOperationRequest
+	(*SkipOperationResponse)(nil),      // 9: mes.SkipOperationResponse
+	(*GetOperationRequest)(nil),        // 10: mes.GetOperationRequest
+	(*GetOperationResponse)(nil),       // 11: mes.GetOperationResponse
+	(*ListOperationsRequest)(nil),      // 12: mes.ListOperationsRequest
+	(*ListOperationsResponse)(nil),     // 13: mes.ListOperationsResponse
+	(*SignOffOperationRequest)(nil),    // 14: mes.SignOffOperationRequest
+	(*SignOffOperationResponse)(nil),   // 15: mes.SignOffOperationResponse
+	(*DeclareNCRequest)(nil),           // 16: mes.DeclareNCRequest
+	(*DeclareNCResponse)(nil),          // 17: mes.DeclareNCResponse
+	(*AttachInstructionsRequest)(nil),  // 18: mes.AttachInstructionsRequest
+	(*AttachInstructionsResponse)(nil), // 19: mes.AttachInstructionsResponse
+	(*timestamppb.Timestamp)(nil),      // 20: google.protobuf.Timestamp
 }
 var file_mes_operation_proto_depIdxs = []int32{
 	0,  // 0: mes.Operation.status:type_name -> mes.OperationStatus
-	14, // 1: mes.Operation.created_at:type_name -> google.protobuf.Timestamp
-	14, // 2: mes.Operation.started_at:type_name -> google.protobuf.Timestamp
-	14, // 3: mes.Operation.completed_at:type_name -> google.protobuf.Timestamp
-	1,  // 4: mes.StartOperationResponse.operation:type_name -> mes.Operation
-	1,  // 5: mes.CompleteOperationResponse.operation:type_name -> mes.Operation
-	1,  // 6: mes.CreateOperationResponse.operation:type_name -> mes.Operation
-	1,  // 7: mes.SkipOperationResponse.operation:type_name -> mes.Operation
-	1,  // 8: mes.GetOperationResponse.operation:type_name -> mes.Operation
-	1,  // 9: mes.ListOperationsResponse.operations:type_name -> mes.Operation
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	20, // 1: mes.Operation.created_at:type_name -> google.protobuf.Timestamp
+	20, // 2: mes.Operation.started_at:type_name -> google.protobuf.Timestamp
+	20, // 3: mes.Operation.completed_at:type_name -> google.protobuf.Timestamp
+	20, // 4: mes.Operation.signed_off_at:type_name -> google.protobuf.Timestamp
+	1,  // 5: mes.StartOperationResponse.operation:type_name -> mes.Operation
+	1,  // 6: mes.CompleteOperationResponse.operation:type_name -> mes.Operation
+	1,  // 7: mes.CreateOperationResponse.operation:type_name -> mes.Operation
+	1,  // 8: mes.SkipOperationResponse.operation:type_name -> mes.Operation
+	1,  // 9: mes.GetOperationResponse.operation:type_name -> mes.Operation
+	1,  // 10: mes.ListOperationsResponse.operations:type_name -> mes.Operation
+	1,  // 11: mes.SignOffOperationResponse.operation:type_name -> mes.Operation
+	1,  // 12: mes.AttachInstructionsResponse.operation:type_name -> mes.Operation
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_mes_operation_proto_init() }
@@ -899,7 +1314,7 @@ func file_mes_operation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_operation_proto_rawDesc), len(file_mes_operation_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

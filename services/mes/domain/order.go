@@ -26,10 +26,15 @@ type Order struct {
 	ProductID   string
 	Quantity    int
 	Status      OrderStatus
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	StartedAt   *time.Time
-	CompletedAt *time.Time
+	// IsFAI: when true, this is a First Article Inspection order (AS9100D §8.6).
+	// An FAI order must be explicitly approved by a quality_manager via ApproveFAI.
+	IsFAI          bool
+	FAIApprovedBy  string     // UUID of the quality_manager who approved the FAI
+	FAIApprovedAt  *time.Time // nil until ApproveFAI is called
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	StartedAt      *time.Time
+	CompletedAt    *time.Time
 }
 
 // NewOrder creates a new ManufacturingOrder in Planned status.
@@ -118,6 +123,25 @@ func (o *Order) Resume() error {
 
 	now := time.Now().UTC()
 	o.Status = OrderStatusInProgress
+	o.UpdatedAt = now
+	return nil
+}
+
+// ApproveFAI records the quality_manager approval for a First Article Inspection order.
+// The caller must verify that approverID belongs to a user with role quality_manager.
+func (o *Order) ApproveFAI(approverID string) error {
+	if approverID == "" {
+		return ErrUnauthorizedRole
+	}
+	if !o.IsFAI {
+		return ErrNotFAIOrder
+	}
+	if o.FAIApprovedAt != nil {
+		return ErrFAIAlreadyApproved
+	}
+	now := time.Now().UTC()
+	o.FAIApprovedBy = approverID
+	o.FAIApprovedAt = &now
 	o.UpdatedAt = now
 	return nil
 }
