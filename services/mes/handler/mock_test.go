@@ -16,14 +16,14 @@ import (
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
 func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, trace, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -52,6 +52,34 @@ func (m *mockOrderRepo) List(ctx context.Context, f domain.ListOrdersFilter) ([]
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Order), args.Error(1)
+}
+
+func (m *mockOrderRepo) DispatchList(ctx context.Context, limit int) ([]*domain.Order, error) {
+	args := m.Called(ctx, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Order), args.Error(1)
+}
+
+// ── Routing repo mock ─────────────────────────────────────────────────────────
+
+type mockRoutingRepo struct{ mock.Mock }
+
+func (m *mockRoutingRepo) FindRoutingByID(ctx context.Context, id string) (*domain.Routing, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Routing), args.Error(1)
+}
+
+func (m *mockRoutingRepo) FindRoutingsByProductID(ctx context.Context, productID string) ([]*domain.Routing, error) {
+	args := m.Called(ctx, productID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Routing), args.Error(1)
 }
 
 // ── Operation repo mock ───────────────────────────────────────────────────────
@@ -157,6 +185,14 @@ func (m *mockTxOps) SaveOperation(ctx context.Context, op *domain.Operation) err
 
 func (m *mockTxOps) UpdateOperation(ctx context.Context, op *domain.Operation) error {
 	return m.Called(ctx, op).Error(0)
+}
+
+func (m *mockTxOps) SaveRouting(ctx context.Context, r *domain.Routing) error {
+	return m.Called(ctx, r).Error(0)
+}
+
+func (m *mockTxOps) SaveRoutingStep(ctx context.Context, step *domain.RoutingStep) error {
+	return m.Called(ctx, step).Error(0)
 }
 
 func (m *mockTxOps) SaveLot(ctx context.Context, l *domain.Lot) error {

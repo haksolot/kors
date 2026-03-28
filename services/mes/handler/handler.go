@@ -39,25 +39,39 @@ type TraceabilityRepository interface {
 	GetGenealogyByChildSN(ctx context.Context, snID string) ([]*domain.GenealogyEntry, error)
 }
 
+// RoutingRepository is the read-only persistence interface for Routing templates.
+type RoutingRepository interface {
+	FindRoutingByID(ctx context.Context, id string) (*domain.Routing, error)
+	FindRoutingsByProductID(ctx context.Context, productID string) ([]*domain.Routing, error)
+}
+
+// DispatchRepository adds the dispatch list query to the order repository.
+type DispatchRepository interface {
+	OrderRepository
+	DispatchList(ctx context.Context, limit int) ([]*domain.Order, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
 type Handler struct {
-	orders  OrderRepository
-	ops     OperationRepository
-	trace   TraceabilityRepository
-	store   domain.Transactor
-	log     *zerolog.Logger
-	reqTotal *prometheus.CounterVec
+	orders   DispatchRepository
+	ops      OperationRepository
+	trace    TraceabilityRepository
+	routings RoutingRepository
+	store    domain.Transactor
+	log      *zerolog.Logger
+	reqTotal    *prometheus.CounterVec
 	reqDuration *prometheus.HistogramVec
 }
 
 // New returns a Handler with the provided dependencies injected.
 // reg is used to register Prometheus metrics; pass prometheus.DefaultRegisterer in production.
 func New(
-	orders OrderRepository,
+	orders DispatchRepository,
 	ops OperationRepository,
 	trace TraceabilityRepository,
+	routings RoutingRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -66,6 +80,7 @@ func New(
 		orders:      orders,
 		ops:         ops,
 		trace:       trace,
+		routings:    routings,
 		store:       store,
 		log:         log,
 		reqTotal:    core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -405,7 +420,7 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find: %w", err))
 	}
 
-	if err := op.Start(req.OperatorId); err != nil {
+	if err := op.Start(req.OperatorId, req.OperatorRoles); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: %w", err))
 	}
 
@@ -986,6 +1001,264 @@ func (h *Handler) AttachInstructions(ctx context.Context, payload []byte) ([]byt
 	return proto.Marshal(&pbmes.AttachInstructionsResponse{Operation: operationToProto(op)})
 }
 
+// ── Routing & Planning handlers (BLOC 5) ──────────────────────────────────────
+
+// CreateRouting handles kors.mes.routing.create — saves a routing template with its steps.
+func (h *Handler) CreateRouting(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.CreateRouting")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.CreateRoutingRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectRoutingCreate, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	rt, err := domain.NewRouting(req.ProductId, req.Name, int(req.Version))
+	if err != nil {
+		return h.fail(domain.SubjectRoutingCreate, start, err)
+	}
+
+	for _, s := range req.Steps {
+		step, err := rt.AddStep(int(s.StepNumber), s.Name, int(s.PlannedDurationSeconds))
+		if err != nil {
+			return h.fail(domain.SubjectRoutingCreate, start, err)
+		}
+		step.RequiredSkill = s.RequiredSkill
+		step.InstructionsURL = s.InstructionsUrl
+		step.RequiresSignOff = s.RequiresSignOff
+	}
+
+	if req.Activate {
+		if err := rt.Activate(); err != nil {
+			return h.fail(domain.SubjectRoutingCreate, start, err)
+		}
+	}
+
+	evt, err := proto.Marshal(&pbmes.RoutingCreatedEvent{
+		EventId:   uuid.NewString(),
+		RoutingId: rt.ID,
+		ProductId: rt.ProductID,
+		Version:   int32(rt.Version),
+		Name:      rt.Name,
+		CreatedAt: timestamppb.New(rt.CreatedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectRoutingCreate, start, fmt.Errorf("marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveRouting(ctx, rt); err != nil {
+			return err
+		}
+		for _, step := range rt.Steps {
+			if err := tx.SaveRoutingStep(ctx, step); err != nil {
+				return err
+			}
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "RoutingCreated",
+			Subject:   domain.SubjectRoutingCreated,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectRoutingCreate, start, err)
+	}
+
+	h.log.Info().Str("routing_id", rt.ID).Str("name", rt.Name).Int("steps", len(rt.Steps)).Msg("routing created")
+	h.succeed(domain.SubjectRoutingCreate, start)
+	return proto.Marshal(&pbmes.CreateRoutingResponse{Routing: routingToProto(rt)})
+}
+
+// GetRouting handles kors.mes.routing.get.
+func (h *Handler) GetRouting(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetRouting")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.GetRoutingRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectRoutingGet, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	rt, err := h.routings.FindRoutingByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectRoutingGet, start, err)
+	}
+
+	h.succeed(domain.SubjectRoutingGet, start)
+	return proto.Marshal(&pbmes.GetRoutingResponse{Routing: routingToProto(rt)})
+}
+
+// ListRoutings handles kors.mes.routing.list — returns all routings for a product.
+func (h *Handler) ListRoutings(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ListRoutings")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ListRoutingsRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectRoutingList, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	routings, err := h.routings.FindRoutingsByProductID(ctx, req.ProductId)
+	if err != nil {
+		return h.fail(domain.SubjectRoutingList, start, err)
+	}
+
+	pbRoutings := make([]*pbmes.Routing, 0, len(routings))
+	for _, rt := range routings {
+		pbRoutings = append(pbRoutings, routingToProto(rt))
+	}
+	h.succeed(domain.SubjectRoutingList, start)
+	return proto.Marshal(&pbmes.ListRoutingsResponse{Routings: pbRoutings})
+}
+
+// CreateFromRouting handles kors.mes.of.create_from_routing — creates an OF and all its
+// operations from a routing template in a single transaction (ADR-004).
+func (h *Handler) CreateFromRouting(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.CreateFromRouting")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.CreateFromRoutingRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	rt, err := h.routings.FindRoutingByID(ctx, req.RoutingId)
+	if err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, err)
+	}
+
+	order, err := domain.NewOrder(req.Reference, rt.ProductID, int(req.Quantity))
+	if err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, err)
+	}
+	order.IsFAI = req.IsFai
+
+	if req.Priority > 0 || req.DueDate != nil {
+		priority := int(req.Priority)
+		if priority == 0 {
+			priority = 50
+		}
+		var dueDate *time.Time
+		if req.DueDate != nil {
+			t := req.DueDate.AsTime()
+			dueDate = &t
+		}
+		if err := order.SetPlanning(dueDate, priority); err != nil {
+			return h.fail(domain.SubjectOFCreateFromRouting, start, err)
+		}
+	}
+
+	ops, err := rt.InstantiateOperations(order.ID)
+	if err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, err)
+	}
+
+	ofEvt, err := proto.Marshal(&pbmes.OFCreatedEvent{
+		EventId:   uuid.NewString(),
+		OfId:      order.ID,
+		Reference: order.Reference,
+		ProductId: order.ProductID,
+		Quantity:  int32(order.Quantity),
+		CreatedAt: timestamppb.New(order.CreatedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, fmt.Errorf("marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveOrder(ctx, order); err != nil {
+			return err
+		}
+		for _, op := range ops {
+			if err := tx.SaveOperation(ctx, op); err != nil {
+				return err
+			}
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "OFCreated",
+			Subject:   domain.SubjectOFCreated,
+			Payload:   ofEvt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectOFCreateFromRouting, start, err)
+	}
+
+	pbOps := make([]*pbmes.Operation, 0, len(ops))
+	for _, op := range ops {
+		pbOps = append(pbOps, operationToProto(op))
+	}
+
+	h.log.Info().Str("of_id", order.ID).Str("routing_id", rt.ID).Int("ops", len(ops)).Msg("order created from routing")
+	h.succeed(domain.SubjectOFCreateFromRouting, start)
+	return proto.Marshal(&pbmes.CreateFromRoutingResponse{
+		Order:      orderToProto(order),
+		Operations: pbOps,
+	})
+}
+
+// GetDispatchList handles kors.mes.of.dispatch_list — PLANNED+IN_PROGRESS orders sorted by priority/due_date.
+func (h *Handler) GetDispatchList(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetDispatchList")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.DispatchListRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOFDispatchList, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	orders, err := h.orders.DispatchList(ctx, int(req.Limit))
+	if err != nil {
+		return h.fail(domain.SubjectOFDispatchList, start, err)
+	}
+
+	pbOrders := make([]*pbmes.ManufacturingOrder, 0, len(orders))
+	for _, o := range orders {
+		pbOrders = append(pbOrders, orderToProto(o))
+	}
+	h.succeed(domain.SubjectOFDispatchList, start)
+	return proto.Marshal(&pbmes.DispatchListResponse{Orders: pbOrders})
+}
+
+// SetPlanning handles kors.mes.of.set_planning — updates due_date and priority on an existing order.
+func (h *Handler) SetPlanning(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.SetPlanning")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.SetPlanningRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectOFSetPlanning, start, fmt.Errorf("unmarshal: %w", err))
+	}
+
+	order, err := h.orders.FindByID(ctx, req.OfId)
+	if err != nil {
+		return h.fail(domain.SubjectOFSetPlanning, start, err)
+	}
+
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		t := req.DueDate.AsTime()
+		dueDate = &t
+	}
+	if err := order.SetPlanning(dueDate, int(req.Priority)); err != nil {
+		return h.fail(domain.SubjectOFSetPlanning, start, err)
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.UpdateOrder(ctx, order)
+	}); err != nil {
+		return h.fail(domain.SubjectOFSetPlanning, start, err)
+	}
+
+	h.succeed(domain.SubjectOFSetPlanning, start)
+	return proto.Marshal(&pbmes.SetPlanningResponse{Order: orderToProto(order)})
+}
+
 // ── Metrics helpers ───────────────────────────────────────────────────────────
 
 func (h *Handler) succeed(subject string, start time.Time) {
@@ -1011,6 +1284,7 @@ func orderToProto(o *domain.Order) *pbmes.ManufacturingOrder {
 		CreatedAt: timestamppb.New(o.CreatedAt),
 		UpdatedAt: timestamppb.New(o.UpdatedAt),
 		IsFai:     o.IsFAI,
+		Priority:  int32(o.Priority),
 	}
 	if o.StartedAt != nil {
 		pb.StartedAt = timestamppb.New(*o.StartedAt)
@@ -1022,21 +1296,27 @@ func orderToProto(o *domain.Order) *pbmes.ManufacturingOrder {
 		pb.FaiApprovedBy = o.FAIApprovedBy
 		pb.FaiApprovedAt = timestamppb.New(*o.FAIApprovedAt)
 	}
+	if o.DueDate != nil {
+		pb.DueDate = timestamppb.New(*o.DueDate)
+	}
 	return pb
 }
 
 func operationToProto(op *domain.Operation) *pbmes.Operation {
 	pb := &pbmes.Operation{
-		Id:              op.ID,
-		OfId:            op.OFID,
-		StepNumber:      int32(op.StepNumber),
-		Name:            op.Name,
-		OperatorId:      op.OperatorID,
-		Status:          domainOpStatusToProto(op.Status),
-		SkipReason:      op.SkipReason,
-		CreatedAt:       timestamppb.New(op.CreatedAt),
-		RequiresSignOff: op.RequiresSignOff,
-		InstructionsUrl: op.InstructionsURL,
+		Id:                     op.ID,
+		OfId:                   op.OFID,
+		StepNumber:             int32(op.StepNumber),
+		Name:                   op.Name,
+		OperatorId:             op.OperatorID,
+		Status:                 domainOpStatusToProto(op.Status),
+		SkipReason:             op.SkipReason,
+		CreatedAt:              timestamppb.New(op.CreatedAt),
+		RequiresSignOff:        op.RequiresSignOff,
+		InstructionsUrl:        op.InstructionsURL,
+		PlannedDurationSeconds: int32(op.PlannedDurationSeconds),
+		ActualDurationSeconds:  int32(op.ActualDurationSeconds),
+		RequiredSkill:          op.RequiredSkill,
 	}
 	if op.StartedAt != nil {
 		pb.StartedAt = timestamppb.New(*op.StartedAt)
@@ -1153,10 +1433,39 @@ func domainSNStatusToProto(s domain.SerialNumberStatus) pbmes.SerialNumberStatus
 	}
 }
 
+func routingToProto(rt *domain.Routing) *pbmes.Routing {
+	pb := &pbmes.Routing{
+		Id:        rt.ID,
+		ProductId: rt.ProductID,
+		Version:   int32(rt.Version),
+		Name:      rt.Name,
+		IsActive:  rt.IsActive,
+		CreatedAt: timestamppb.New(rt.CreatedAt),
+	}
+	for _, step := range rt.Steps {
+		pb.Steps = append(pb.Steps, routingStepToProto(step))
+	}
+	return pb
+}
+
+func routingStepToProto(step *domain.RoutingStep) *pbmes.RoutingStep {
+	return &pbmes.RoutingStep{
+		Id:                     step.ID,
+		RoutingId:              step.RoutingID,
+		StepNumber:             int32(step.StepNumber),
+		Name:                   step.Name,
+		PlannedDurationSeconds: int32(step.PlannedDurationSeconds),
+		RequiredSkill:          step.RequiredSkill,
+		InstructionsUrl:        step.InstructionsURL,
+		RequiresSignOff:        step.RequiresSignOff,
+	}
+}
+
 // IsNotFound returns true if the error wraps a domain "not found" sentinel.
 func IsNotFound(err error) bool {
 	return errors.Is(err, domain.ErrOrderNotFound) ||
 		errors.Is(err, domain.ErrOperationNotFound) ||
 		errors.Is(err, domain.ErrLotNotFound) ||
-		errors.Is(err, domain.ErrSerialNumberNotFound)
+		errors.Is(err, domain.ErrSerialNumberNotFound) ||
+		errors.Is(err, domain.ErrRoutingNotFound)
 }

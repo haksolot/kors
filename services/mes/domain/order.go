@@ -31,10 +31,13 @@ type Order struct {
 	IsFAI          bool
 	FAIApprovedBy  string     // UUID of the quality_manager who approved the FAI
 	FAIApprovedAt  *time.Time // nil until ApproveFAI is called
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	StartedAt      *time.Time
-	CompletedAt    *time.Time
+	// Planning fields (BLOC 5)
+	DueDate  *time.Time // Target completion date; drives dispatch list ordering
+	Priority int        // 1 (lowest) – 100 (highest); defaults to 50
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	StartedAt   *time.Time
+	CompletedAt *time.Time
 }
 
 // NewOrder creates a new ManufacturingOrder in Planned status.
@@ -57,9 +60,22 @@ func NewOrder(reference, productID string, quantity int) (*Order, error) {
 		ProductID: productID,
 		Quantity:  quantity,
 		Status:    OrderStatusPlanned,
+		Priority:  50, // default mid-priority
 		CreatedAt: now,
 		UpdatedAt: now,
 	}, nil
+}
+
+// SetPlanning sets due_date and priority on the order.
+// priority must be in [1, 100]; dueDate may be nil.
+func (o *Order) SetPlanning(dueDate *time.Time, priority int) error {
+	if priority < 1 || priority > 100 {
+		return ErrInvalidPriority
+	}
+	o.DueDate = dueDate
+	o.Priority = priority
+	o.UpdatedAt = time.Now().UTC()
+	return nil
 }
 
 // Start transitions the order from Planned (or Suspended) to InProgress.

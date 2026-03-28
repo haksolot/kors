@@ -39,9 +39,16 @@ type Operation struct {
 	SignedOffAt     *time.Time // nil until sign-off
 	// InstructionsURL points to a work instruction document stored in MinIO (ADR-007).
 	InstructionsURL string
-	CreatedAt       time.Time
-	StartedAt       *time.Time
-	CompletedAt     *time.Time
+	// Cycle-time fields (BLOC 5 — TRS). PlannedDurationSeconds comes from the RoutingStep.
+	// ActualDurationSeconds is computed at completion: CompletedAt - StartedAt.
+	PlannedDurationSeconds int
+	ActualDurationSeconds  int
+	// RequiredSkill is the JWT role the operator must hold to start this operation (AS9100D §7.2).
+	// Empty string means no skill check.
+	RequiredSkill string
+	CreatedAt     time.Time
+	StartedAt     *time.Time
+	CompletedAt   *time.Time
 }
 
 // NewOperation creates a new Operation in Pending status.
@@ -68,7 +75,8 @@ func NewOperation(ofID string, stepNumber int, name string) (*Operation, error) 
 
 // Start transitions the operation from Pending to InProgress.
 // operatorID must be the Subject from a validated JWT — never from the request body.
-func (op *Operation) Start(operatorID string) error {
+// operatorRoles is the list of JWT roles for the operator; used to check RequiredSkill (AS9100D §7.2).
+func (op *Operation) Start(operatorID string, operatorRoles []string) error {
 	if operatorID == "" {
 		return ErrInvalidProductID // operatorID is a required field
 	}
@@ -84,11 +92,27 @@ func (op *Operation) Start(operatorID string) error {
 		return fmt.Errorf("Start: unknown status %q: %w", op.Status, ErrInvalidTransition)
 	}
 
+	// Skill qualification check (AS9100D §7.2): if a required skill is set, the operator
+	// must hold that role in their JWT claims.
+	if op.RequiredSkill != "" && !containsRole(operatorRoles, op.RequiredSkill) {
+		return fmt.Errorf("Start: operator lacks required skill %q: %w", op.RequiredSkill, ErrOperatorNotQualified)
+	}
+
 	now := time.Now().UTC()
 	op.OperatorID = operatorID
 	op.Status = OperationStatusInProgress
 	op.StartedAt = &now
 	return nil
+}
+
+// containsRole reports whether role is in roles.
+func containsRole(roles []string, role string) bool {
+	for _, r := range roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
 }
 
 // Complete transitions the operation from InProgress.
@@ -102,6 +126,10 @@ func (op *Operation) Complete(operatorID string) error {
 	now := time.Now().UTC()
 	op.OperatorID = operatorID
 	op.CompletedAt = &now
+	// Compute actual duration if we have a start time.
+	if op.StartedAt != nil {
+		op.ActualDurationSeconds = int(now.Sub(*op.StartedAt).Seconds())
+	}
 	if op.RequiresSignOff {
 		op.Status = OperationStatusPendingSignOff
 	} else {

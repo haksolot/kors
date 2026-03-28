@@ -60,6 +60,17 @@ const (
 	SubjectNCDeclared         = "kors.mes.nc.declared"
 	SubjectOFFAIApproved      = "kors.mes.of.fai_approved"
 
+	// Synchronous request-reply subjects — routings (BLOC 5)
+	SubjectRoutingCreate       = "kors.mes.routing.create"
+	SubjectRoutingGet          = "kors.mes.routing.get"
+	SubjectRoutingList         = "kors.mes.routing.list"
+	SubjectOFCreateFromRouting = "kors.mes.of.create_from_routing"
+	SubjectOFDispatchList      = "kors.mes.of.dispatch_list"
+	SubjectOFSetPlanning       = "kors.mes.of.set_planning"
+
+	// Async events — routings (BLOC 5)
+	SubjectRoutingCreated = "kors.mes.routing.created"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

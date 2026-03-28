@@ -8,6 +8,13 @@ type OrderRepository interface {
 	FindByID(ctx context.Context, id string) (*Order, error)
 	FindByReference(ctx context.Context, reference string) (*Order, error)
 	List(ctx context.Context, filter ListOrdersFilter) ([]*Order, error)
+	DispatchList(ctx context.Context, limit int) ([]*Order, error)
+}
+
+// RoutingRepository defines read-only persistence for Routing templates.
+type RoutingRepository interface {
+	FindRoutingByID(ctx context.Context, id string) (*Routing, error)
+	FindRoutingsByProductID(ctx context.Context, productID string) ([]*Routing, error)
 }
 
 // OperationRepository defines the read-only persistence contract for Operations.
@@ -38,6 +45,9 @@ type TxOps interface {
 	UpdateOrder(ctx context.Context, o *Order) error
 	SaveOperation(ctx context.Context, op *Operation) error
 	UpdateOperation(ctx context.Context, op *Operation) error
+	// Routing writes
+	SaveRouting(ctx context.Context, r *Routing) error
+	SaveRoutingStep(ctx context.Context, step *RoutingStep) error
 	// Traceability writes
 	SaveLot(ctx context.Context, l *Lot) error
 	UpdateLot(ctx context.Context, l *Lot) error

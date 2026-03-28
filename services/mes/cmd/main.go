@@ -101,7 +101,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Subscriptions ─────────────────────────────────────────────────────────
@@ -154,6 +154,13 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectOperationDeclareNC, h.DeclareNC},
 		{domain.SubjectOFFAIApprove, h.ApproveFAI},
 		{domain.SubjectOperationAttachInstructions, h.AttachInstructions},
+		// Routings & planning (BLOC 5)
+		{domain.SubjectRoutingCreate, h.CreateRouting},
+		{domain.SubjectRoutingGet, h.GetRouting},
+		{domain.SubjectRoutingList, h.ListRoutings},
+		{domain.SubjectOFCreateFromRouting, h.CreateFromRouting},
+		{domain.SubjectOFDispatchList, h.GetDispatchList},
+		{domain.SubjectOFSetPlanning, h.SetPlanning},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -188,9 +195,10 @@ func drainAll(subs []*nats.Subscription) {
 
 // compile-time interface compliance checks.
 var (
-	_ handler.OrderRepository        = (*repo.PostgresRepo)(nil)
+	_ handler.DispatchRepository     = (*repo.PostgresRepo)(nil)
 	_ handler.OperationRepository    = (*repo.PostgresRepo)(nil)
 	_ handler.TraceabilityRepository = (*repo.PostgresRepo)(nil)
+	_ handler.RoutingRepository      = (*repo.PostgresRepo)(nil)
 	_ domain.Transactor              = (*repo.PostgresRepo)(nil)
 	_ outbox.Repository              = (*repo.PostgresRepo)(nil)
 )

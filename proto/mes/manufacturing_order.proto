@@ -3,6 +3,7 @@ syntax = "proto3";
 package mes;
 
 import "google/protobuf/timestamp.proto";
+import "mes/operation.proto";
 
 option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
 
@@ -34,6 +35,10 @@ message ManufacturingOrder {
   bool   is_fai          = 10; // true if this order requires FAI approval
   string fai_approved_by = 11; // UUID of the quality_manager who approved
   google.protobuf.Timestamp fai_approved_at = 12;
+
+  // Planning fields (BLOC 5)
+  google.protobuf.Timestamp due_date = 13; // target completion date
+  int32 priority                     = 14; // 1 (lowest) – 100 (highest)
 }
 
 // --- Request / Reply messages (NATS Request-Reply) ---
@@ -43,6 +48,10 @@ message CreateOrderRequest {
   string reference  = 1;
   string product_id = 2;
   int32  quantity   = 3;
+  // Optional planning fields
+  google.protobuf.Timestamp due_date = 4;
+  int32 priority                     = 5; // 0 means use default (50)
+  bool  is_fai                       = 6;
 }
 
 // CreateOrderResponse contains the created order.
@@ -114,5 +123,47 @@ message ApproveFAIRequest {
 
 // ApproveFAIResponse contains the updated order.
 message ApproveFAIResponse {
+  ManufacturingOrder order = 1;
+}
+
+// DispatchListRequest is sent on kors.mes.of.dispatch_list.
+// Returns PLANNED + IN_PROGRESS orders sorted by priority DESC, due_date ASC.
+message DispatchListRequest {
+  int32 limit = 1; // max results; 0 defaults to 50
+}
+
+// DispatchListResponse contains the ordered dispatch list.
+message DispatchListResponse {
+  repeated ManufacturingOrder orders = 1;
+}
+
+// CreateFromRoutingRequest is sent on kors.mes.of.create_from_routing.
+// Creates an OF and instantiates all operations from a routing template in one transaction.
+message CreateFromRoutingRequest {
+  string routing_id = 1;
+  string reference  = 2;
+  int32  quantity   = 3;
+  // Optional planning
+  google.protobuf.Timestamp due_date = 4;
+  int32 priority                     = 5; // 0 means use default (50)
+  bool  is_fai                       = 6;
+}
+
+// CreateFromRoutingResponse contains the created order and its operations.
+message CreateFromRoutingResponse {
+  ManufacturingOrder       order      = 1;
+  repeated Operation       operations = 2;
+}
+
+// SetPlanningRequest is sent on kors.mes.of.set_planning.
+// Updates due_date and priority on an existing order.
+message SetPlanningRequest {
+  string of_id    = 1;
+  google.protobuf.Timestamp due_date = 2; // optional
+  int32 priority  = 3; // 1-100
+}
+
+// SetPlanningResponse contains the updated order.
+message SetPlanningResponse {
   ManufacturingOrder order = 1;
 }
