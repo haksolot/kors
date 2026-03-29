@@ -13,25 +13,30 @@ import (
 	"github.com/haksolot/kors/services/mes/handler"
 )
 
-// newTestHandler constructs a Handler wired with the given mocks and a no-op registry.
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
+	tools := &mockToolRepo{}
+	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
 func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
+	tools := &mockToolRepo{}
+	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
 func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, quals *mockQualificationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
+	tools := &mockToolRepo{}
+	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -255,6 +260,18 @@ func (m *mockTxOps) UpdateDowntimeEvent(ctx context.Context, d *domain.DowntimeE
 	return m.Called(ctx, d).Error(0)
 }
 
+func (m *mockTxOps) SaveTool(ctx context.Context, t *domain.Tool) error {
+	return m.Called(ctx, t).Error(0)
+}
+
+func (m *mockTxOps) UpdateTool(ctx context.Context, t *domain.Tool) error {
+	return m.Called(ctx, t).Error(0)
+}
+
+func (m *mockTxOps) LinkToolToOperation(ctx context.Context, operationID, toolID string) error {
+	return m.Called(ctx, operationID, toolID).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
@@ -349,4 +366,40 @@ func (m *mockTimeTrackingRepo) ListDowntimesByWorkstation(ctx context.Context, w
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.DowntimeEvent), args.Error(1)
+}
+
+// ── Tool repo mock ────────────────────────────────────────────────────────────
+
+type mockToolRepo struct{ mock.Mock }
+
+func (m *mockToolRepo) FindToolByID(ctx context.Context, id string) (*domain.Tool, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Tool), args.Error(1)
+}
+
+func (m *mockToolRepo) FindToolBySerialNumber(ctx context.Context, sn string) (*domain.Tool, error) {
+	args := m.Called(ctx, sn)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Tool), args.Error(1)
+}
+
+func (m *mockToolRepo) ListTools(ctx context.Context, limit, offset int) ([]*domain.Tool, error) {
+	args := m.Called(ctx, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Tool), args.Error(1)
+}
+
+func (m *mockToolRepo) ListToolsByOperation(ctx context.Context, operationID string) ([]*domain.Tool, error) {
+	args := m.Called(ctx, operationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Tool), args.Error(1)
 }

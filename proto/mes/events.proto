@@ -235,3 +235,28 @@ message DowntimeEndedEvent {
   int32 duration_seconds = 4;
   google.protobuf.Timestamp end_time = 5;
 }
+
+// ToolCreatedEvent is published on kors.mes.tool.created
+message ToolCreatedEvent {
+  string event_id = 1;
+  string tool_id = 2;
+  string serial_number = 3;
+  string name = 4;
+}
+
+// ToolCalibrationUpdatedEvent is published on kors.mes.tool.calibration_updated
+message ToolCalibrationUpdatedEvent {
+  string event_id = 1;
+  string tool_id = 2;
+  google.protobuf.Timestamp next_calibration_at = 3;
+  string performed_by = 4;
+}
+
+// ToolUsageRecordedEvent is published on kors.mes.tool.usage_recorded
+message ToolUsageRecordedEvent {
+  string event_id = 1;
+  string tool_id = 2;
+  string operation_id = 3;
+  int32 cycles_added = 4;
+  int32 total_cycles = 5;
+}

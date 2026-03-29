@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+enum ToolStatus {
+  TOOL_STATUS_UNSPECIFIED = 0;
+  TOOL_STATUS_VALID = 1;
+  TOOL_STATUS_EXPIRED = 2; // Calibration date passed
+  TOOL_STATUS_BLOCKED = 3; // Manually blocked for quality/repair
+  TOOL_STATUS_DECOMMISSIONED = 4;
+}
+
+message Tool {
+  string id = 1;
+  string serial_number = 2;
+  string name = 3;
+  string description = 4;
+  string category = 5; // e.g. "Gauges", "Cutting Tools"
+  ToolStatus status = 6;
+  google.protobuf.Timestamp last_calibration_at = 7;
+  google.protobuf.Timestamp next_calibration_at = 8;
+  int32 current_cycles = 9;
+  int32 max_cycles = 10; // 0 if unlimited
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message CreateToolRequest {
+  string serial_number = 1;
+  string name = 2;
+  string description = 3;
+  string category = 4;
+  google.protobuf.Timestamp last_calibration_at = 5;
+  google.protobuf.Timestamp next_calibration_at = 6;
+  int32 max_cycles = 7;
+}
+
+message CreateToolResponse {
+  Tool tool = 1;
+}
+
+message GetToolRequest {
+  string id = 1;
+}
+
+message GetToolResponse {
+  Tool tool = 1;
+}
+
+message ListToolsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListToolsResponse {
+  repeated Tool tools = 1;
+  int32 total = 2;
+}
+
+message CalibrateToolRequest {
+  string id = 1;
+  google.protobuf.Timestamp last_calibration_at = 2;
+  google.protobuf.Timestamp next_calibration_at = 3;
+  string performed_by = 4;
+}
+
+message CalibrateToolResponse {
+  Tool tool = 1;
+}
+
+message AssignToolToOperationRequest {
+  string operation_id = 1;
+  string tool_id = 2;
+}
+
+message AssignToolToOperationResponse {
+  bool success = 1;
+}
+
+message GetOperationToolsRequest {
+  string operation_id = 1;
+}
+
+message GetOperationToolsResponse {
+  repeated Tool tools = 1;
+}

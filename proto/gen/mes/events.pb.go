@@ -1903,6 +1903,221 @@ func (x *DowntimeEndedEvent) GetEndTime() *timestamppb.Timestamp {
 	return nil
 }
 
+// ToolCreatedEvent is published on kors.mes.tool.created
+type ToolCreatedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	ToolId        string                 `protobuf:"bytes,2,opt,name=tool_id,json=toolId,proto3" json:"tool_id,omitempty"`
+	SerialNumber  string                 `protobuf:"bytes,3,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolCreatedEvent) Reset() {
+	*x = ToolCreatedEvent{}
+	mi := &file_mes_events_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolCreatedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolCreatedEvent) ProtoMessage() {}
+
+func (x *ToolCreatedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolCreatedEvent.ProtoReflect.Descriptor instead.
+func (*ToolCreatedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ToolCreatedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *ToolCreatedEvent) GetToolId() string {
+	if x != nil {
+		return x.ToolId
+	}
+	return ""
+}
+
+func (x *ToolCreatedEvent) GetSerialNumber() string {
+	if x != nil {
+		return x.SerialNumber
+	}
+	return ""
+}
+
+func (x *ToolCreatedEvent) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// ToolCalibrationUpdatedEvent is published on kors.mes.tool.calibration_updated
+type ToolCalibrationUpdatedEvent struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	EventId           string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	ToolId            string                 `protobuf:"bytes,2,opt,name=tool_id,json=toolId,proto3" json:"tool_id,omitempty"`
+	NextCalibrationAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=next_calibration_at,json=nextCalibrationAt,proto3" json:"next_calibration_at,omitempty"`
+	PerformedBy       string                 `protobuf:"bytes,4,opt,name=performed_by,json=performedBy,proto3" json:"performed_by,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ToolCalibrationUpdatedEvent) Reset() {
+	*x = ToolCalibrationUpdatedEvent{}
+	mi := &file_mes_events_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolCalibrationUpdatedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolCalibrationUpdatedEvent) ProtoMessage() {}
+
+func (x *ToolCalibrationUpdatedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolCalibrationUpdatedEvent.ProtoReflect.Descriptor instead.
+func (*ToolCalibrationUpdatedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ToolCalibrationUpdatedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *ToolCalibrationUpdatedEvent) GetToolId() string {
+	if x != nil {
+		return x.ToolId
+	}
+	return ""
+}
+
+func (x *ToolCalibrationUpdatedEvent) GetNextCalibrationAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextCalibrationAt
+	}
+	return nil
+}
+
+func (x *ToolCalibrationUpdatedEvent) GetPerformedBy() string {
+	if x != nil {
+		return x.PerformedBy
+	}
+	return ""
+}
+
+// ToolUsageRecordedEvent is published on kors.mes.tool.usage_recorded
+type ToolUsageRecordedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	ToolId        string                 `protobuf:"bytes,2,opt,name=tool_id,json=toolId,proto3" json:"tool_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	CyclesAdded   int32                  `protobuf:"varint,4,opt,name=cycles_added,json=cyclesAdded,proto3" json:"cycles_added,omitempty"`
+	TotalCycles   int32                  `protobuf:"varint,5,opt,name=total_cycles,json=totalCycles,proto3" json:"total_cycles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ToolUsageRecordedEvent) Reset() {
+	*x = ToolUsageRecordedEvent{}
+	mi := &file_mes_events_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolUsageRecordedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolUsageRecordedEvent) ProtoMessage() {}
+
+func (x *ToolUsageRecordedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolUsageRecordedEvent.ProtoReflect.Descriptor instead.
+func (*ToolUsageRecordedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ToolUsageRecordedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *ToolUsageRecordedEvent) GetToolId() string {
+	if x != nil {
+		return x.ToolId
+	}
+	return ""
+}
+
+func (x *ToolUsageRecordedEvent) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *ToolUsageRecordedEvent) GetCyclesAdded() int32 {
+	if x != nil {
+		return x.CyclesAdded
+	}
+	return 0
+}
+
+func (x *ToolUsageRecordedEvent) GetTotalCycles() int32 {
+	if x != nil {
+		return x.TotalCycles
+	}
+	return 0
+}
+
 var File_mes_events_proto protoreflect.FileDescriptor
 
 const file_mes_events_proto_rawDesc = "" +
@@ -2099,7 +2314,23 @@ const file_mes_events_proto_rawDesc = "" +
 	"downtimeId\x12%\n" +
 	"\x0eworkstation_id\x18\x03 \x01(\tR\rworkstationId\x12)\n" +
 	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds\x125\n" +
-	"\bend_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendTimeB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"\bend_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\"\x7f\n" +
+	"\x10ToolCreatedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x17\n" +
+	"\atool_id\x18\x02 \x01(\tR\x06toolId\x12#\n" +
+	"\rserial_number\x18\x03 \x01(\tR\fserialNumber\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\"\xc0\x01\n" +
+	"\x1bToolCalibrationUpdatedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x17\n" +
+	"\atool_id\x18\x02 \x01(\tR\x06toolId\x12J\n" +
+	"\x13next_calibration_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x11nextCalibrationAt\x12!\n" +
+	"\fperformed_by\x18\x04 \x01(\tR\vperformedBy\"\xb5\x01\n" +
+	"\x16ToolUsageRecordedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x17\n" +
+	"\atool_id\x18\x02 \x01(\tR\x06toolId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12!\n" +
+	"\fcycles_added\x18\x04 \x01(\x05R\vcyclesAdded\x12!\n" +
+	"\ftotal_cycles\x18\x05 \x01(\x05R\vtotalCyclesB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_events_proto_rawDescOnce sync.Once
@@ -2113,7 +2344,7 @@ func file_mes_events_proto_rawDescGZIP() []byte {
 	return file_mes_events_proto_rawDescData
 }
 
-var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_mes_events_proto_goTypes = []any{
 	(*OFCreatedEvent)(nil),                  // 0: mes.OFCreatedEvent
 	(*OFStartedEvent)(nil),                  // 1: mes.OFStartedEvent
@@ -2138,38 +2369,42 @@ var file_mes_events_proto_goTypes = []any{
 	(*TimeLogRecordedEvent)(nil),            // 20: mes.TimeLogRecordedEvent
 	(*DowntimeStartedEvent)(nil),            // 21: mes.DowntimeStartedEvent
 	(*DowntimeEndedEvent)(nil),              // 22: mes.DowntimeEndedEvent
-	(*timestamppb.Timestamp)(nil),           // 23: google.protobuf.Timestamp
+	(*ToolCreatedEvent)(nil),                // 23: mes.ToolCreatedEvent
+	(*ToolCalibrationUpdatedEvent)(nil),     // 24: mes.ToolCalibrationUpdatedEvent
+	(*ToolUsageRecordedEvent)(nil),          // 25: mes.ToolUsageRecordedEvent
+	(*timestamppb.Timestamp)(nil),           // 26: google.protobuf.Timestamp
 }
 var file_mes_events_proto_depIdxs = []int32{
-	23, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	23, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	23, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	23, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
-	23, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
-	23, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	23, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	23, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
-	23, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
-	23, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
-	23, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
-	23, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
-	23, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	23, // 13: mes.QualificationCreatedEvent.expires_at:type_name -> google.protobuf.Timestamp
-	23, // 14: mes.QualificationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	23, // 15: mes.QualificationRenewedEvent.new_expires_at:type_name -> google.protobuf.Timestamp
-	23, // 16: mes.QualificationRenewedEvent.renewed_at:type_name -> google.protobuf.Timestamp
-	23, // 17: mes.QualificationRevokedEvent.revoked_at:type_name -> google.protobuf.Timestamp
-	23, // 18: mes.QualificationExpiredEvent.expired_at:type_name -> google.protobuf.Timestamp
-	23, // 19: mes.QualificationExpiringAlertEvent.expires_at:type_name -> google.protobuf.Timestamp
-	23, // 20: mes.WorkstationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	23, // 21: mes.WorkstationStatusChangedEvent.changed_at:type_name -> google.protobuf.Timestamp
-	23, // 22: mes.DowntimeStartedEvent.start_time:type_name -> google.protobuf.Timestamp
-	23, // 23: mes.DowntimeEndedEvent.end_time:type_name -> google.protobuf.Timestamp
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	26, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	26, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	26, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	26, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
+	26, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
+	26, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	26, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	26, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
+	26, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
+	26, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
+	26, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
+	26, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
+	26, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	26, // 13: mes.QualificationCreatedEvent.expires_at:type_name -> google.protobuf.Timestamp
+	26, // 14: mes.QualificationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	26, // 15: mes.QualificationRenewedEvent.new_expires_at:type_name -> google.protobuf.Timestamp
+	26, // 16: mes.QualificationRenewedEvent.renewed_at:type_name -> google.protobuf.Timestamp
+	26, // 17: mes.QualificationRevokedEvent.revoked_at:type_name -> google.protobuf.Timestamp
+	26, // 18: mes.QualificationExpiredEvent.expired_at:type_name -> google.protobuf.Timestamp
+	26, // 19: mes.QualificationExpiringAlertEvent.expires_at:type_name -> google.protobuf.Timestamp
+	26, // 20: mes.WorkstationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	26, // 21: mes.WorkstationStatusChangedEvent.changed_at:type_name -> google.protobuf.Timestamp
+	26, // 22: mes.DowntimeStartedEvent.start_time:type_name -> google.protobuf.Timestamp
+	26, // 23: mes.DowntimeEndedEvent.end_time:type_name -> google.protobuf.Timestamp
+	26, // 24: mes.ToolCalibrationUpdatedEvent.next_calibration_at:type_name -> google.protobuf.Timestamp
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_mes_events_proto_init() }
@@ -2183,7 +2418,7 @@ func file_mes_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_events_proto_rawDesc), len(file_mes_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

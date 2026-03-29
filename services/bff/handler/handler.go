@@ -136,6 +136,16 @@ func (h *Handler) Routes() http.Handler {
 		r.Post("/downtimes/start", h.startDowntime)
 		r.Post("/downtimes/{id}/end", h.endDowntime)
 
+		// Tools & Gauges (BLOC 8)
+		r.Post("/tools", h.createTool)
+		r.Get("/tools", h.listTools)
+		r.Route("/tools/{id}", func(r chi.Router) {
+			r.Get("/", h.getTool)
+			r.Post("/calibrate", h.calibrateTool)
+		})
+		r.Post("/operations/{op_id}/tools", h.assignToolToOperation)
+		r.Get("/operations/{op_id}/tools", h.listOperationTools)
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

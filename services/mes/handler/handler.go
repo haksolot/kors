@@ -73,6 +73,14 @@ type TimeTrackingRepository interface {
 	ListDowntimesByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*domain.DowntimeEvent, error)
 }
 
+// ToolRepository is the read-only interface for tools and gauges.
+type ToolRepository interface {
+	FindToolByID(ctx context.Context, id string) (*domain.Tool, error)
+	FindToolBySerialNumber(ctx context.Context, sn string) (*domain.Tool, error)
+	ListTools(ctx context.Context, limit, offset int) ([]*domain.Tool, error)
+	ListToolsByOperation(ctx context.Context, operationID string) ([]*domain.Tool, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -84,6 +92,7 @@ type Handler struct {
 	quals        QualificationRepository
 	workstations WorkstationRepository
 	time         TimeTrackingRepository
+	tools        ToolRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -100,6 +109,7 @@ func New(
 	quals QualificationRepository,
 	workstations WorkstationRepository,
 	timeRepo TimeTrackingRepository,
+	toolRepo ToolRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -112,6 +122,7 @@ func New(
 		quals:        quals,
 		workstations: workstations,
 		time:         timeRepo,
+		tools:        toolRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -483,8 +494,26 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		}
 		mergedRoles = append(mergedRoles, activeSkills...)
 	}
+
+	// Tool Interlock (BLOC 8): verify all tools assigned to this operation are valid.
+	tools, err := h.tools.ListToolsByOperation(ctx, op.ID)
+	if err == nil {
+		now := time.Now().UTC()
+		for _, t := range tools {
+			if !t.IsCalibrationValid(now) {
+				return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("tool %s (%s) is expired: %w", t.Name, t.SerialNumber, domain.ErrToolExpired))
+			}
+			if t.Status == domain.ToolStatusBlocked {
+				return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("tool %s (%s) is blocked: %w", t.Name, t.SerialNumber, domain.ErrToolBlocked))
+			}
+			if !t.HasRemainingLife() {
+				return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("tool %s (%s) has reached max cycles: %w", t.Name, t.SerialNumber, domain.ErrToolMaxCyclesReached))
+			}
+		}
+	}
+
 	if err := op.Start(req.OperatorId, mergedRoles); err != nil {
-		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: %w", err))
+		return h.fail(domain.SubjectOperationStart, start, err)
 	}
 
 	// Automatic state transition for the parent order (ADR-004 side-effect)

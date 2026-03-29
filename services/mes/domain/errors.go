@@ -86,4 +86,12 @@ var (
 	ErrInvalidDowntimeCategory  = errors.New("invalid downtime category")
 	ErrDowntimeAlreadyEnded     = errors.New("downtime event is already ended")
 	ErrDowntimeNotFound         = errors.New("downtime event not found")
+
+	// Tool errors
+	ErrToolNotFound        = errors.New("tool not found")
+	ErrInvalidToolInput    = errors.New("serial number and name are required for tool")
+	ErrInvalidToolCycles   = errors.New("max cycles must be non-negative")
+	ErrToolExpired         = errors.New("tool calibration is expired")
+	ErrToolBlocked         = errors.New("tool is manually blocked")
+	ErrToolMaxCyclesReached = errors.New("tool has reached maximum usage cycles")
 )
