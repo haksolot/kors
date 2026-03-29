@@ -295,3 +295,27 @@ message QualityAlertRaisedEvent {
   string characteristic_id = 4;
   string message = 5;
 }
+
+// AlertRaisedEvent is published on kors.mes.alert.raised
+message AlertRaisedEvent {
+  string event_id = 1;
+  string alert_id = 2;
+  string category = 3;
+  string level = 4;
+  string message = 5;
+}
+
+// AlertEscalatedEvent is published on kors.mes.alert.escalated
+message AlertEscalatedEvent {
+  string event_id = 1;
+  string alert_id = 2;
+  string old_level = 3;
+  string new_level = 4;
+}
+
+// AlertResolvedEvent is published on kors.mes.alert.resolved
+message AlertResolvedEvent {
+  string event_id = 1;
+  string alert_id = 2;
+  string resolved_by = 3;
+}

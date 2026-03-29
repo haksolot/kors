@@ -49,6 +49,25 @@ func (h *Handler) RecordMeasurement(ctx context.Context, payload []byte) ([]byte
 		return h.fail(domain.SubjectMeasurementRecord, start, fmt.Errorf("RecordMeasurement: marshal event: %w", err))
 	}
 
+	// ── Alert & SPC logic ─────────────────────────────────────────────────────
+	var alert *domain.Alert
+	var alertEvt, escReq []byte
+
+	if meas.Status == domain.MeasurementStatusFail {
+		alert, _ = domain.NewAlert(domain.AlertCategoryQuality, nil, &meas.OperationID, fmt.Sprintf("Quality check failed: %s", char.Name))
+		alertEvt, _ = proto.Marshal(&pbmes.AlertRaisedEvent{
+			EventId:  uuid.NewString(),
+			AlertId:  alert.ID,
+			Category: string(alert.Category),
+			Level:    string(alert.Level),
+			Message:  alert.Message,
+		})
+		escReq, _ = proto.Marshal(&pbmes.EscalationRequestedEvent{
+			AlertId:     alert.ID,
+			TargetLevel: pbmes.AlertLevel_ALERT_LEVEL_L2_MANAGER,
+		})
+	}
+
 	// SPC Drift Check
 	history, _ := h.quality.ListMeasurementsByCharacteristic(ctx, meas.CharacteristicID, 5)
 	driftAlert := domain.CheckSPCDrift(append([]*domain.Measurement{meas}, history...))
@@ -56,6 +75,25 @@ func (h *Handler) RecordMeasurement(ctx context.Context, payload []byte) ([]byte
 	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.SaveMeasurement(ctx, meas); err != nil {
 			return err
+		}
+		if alert != nil {
+			if err := tx.SaveAlert(ctx, alert); err != nil {
+				return err
+			}
+			if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
+				EventType: "AlertRaised",
+				Subject:   domain.SubjectAlertRaised,
+				Payload:   alertEvt,
+			}); err != nil {
+				return err
+			}
+			if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
+				EventType: "EscalationRequested",
+				Subject:   domain.SubjectAlertEscalationRequested,
+				Payload:   escReq,
+			}); err != nil {
+				return err
+			}
 		}
 		if driftAlert {
 			alertEvt, _ := proto.Marshal(&pbmes.QualityAlertRaisedEvent{

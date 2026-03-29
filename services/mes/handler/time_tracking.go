@@ -123,8 +123,24 @@ func (h *Handler) StartDowntime(ctx context.Context, payload []byte) ([]byte, er
 		return h.fail(domain.SubjectDowntimeStart, start, fmt.Errorf("StartDowntime: marshal event: %w", err))
 	}
 
+	alert, _ := domain.NewAlert(domain.AlertCategoryMachine, &dt.WorkstationID, dt.OperationID, fmt.Sprintf("Machine down: %s (%s)", dt.WorkstationID, dt.Category))
+	alertEvt, _ := proto.Marshal(&pbmes.AlertRaisedEvent{
+		EventId:  uuid.NewString(),
+		AlertId:  alert.ID,
+		Category: string(alert.Category),
+		Level:    string(alert.Level),
+		Message:  alert.Message,
+	})
+	escReq, _ := proto.Marshal(&pbmes.EscalationRequestedEvent{
+		AlertId:     alert.ID,
+		TargetLevel: pbmes.AlertLevel_ALERT_LEVEL_L2_MANAGER,
+	})
+
 	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.SaveDowntimeEvent(ctx, dt); err != nil {
+			return err
+		}
+		if err := tx.SaveAlert(ctx, alert); err != nil {
 			return err
 		}
 		// Also update workstation status to DOWN
@@ -135,10 +151,24 @@ func (h *Handler) StartDowntime(ctx context.Context, payload []byte) ([]byte, er
 				return err
 			}
 		}
-		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+		if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
 			EventType: "DowntimeStarted",
 			Subject:   domain.SubjectDowntimeStarted,
 			Payload:   evt,
+		}); err != nil {
+			return err
+		}
+		if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "AlertRaised",
+			Subject:   domain.SubjectAlertRaised,
+			Payload:   alertEvt,
+		}); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "EscalationRequested",
+			Subject:   domain.SubjectAlertEscalationRequested,
+			Payload:   escReq,
 		})
 	}); err != nil {
 		return h.fail(domain.SubjectDowntimeStart, start, fmt.Errorf("StartDowntime: tx: %w", err))
