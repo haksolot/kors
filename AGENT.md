@@ -14,6 +14,7 @@ Run these checks before starting any task:
 2. Read the relevant ADRs for the domain you are working in.
 3. Check existing code in the target service before generating new patterns.
 4. Never introduce a new dependency without explicit justification in the commit message.
+5. If the task touches the MES domain, read `docs/specs/MES_REQUIREMENTS.md` before generating any entity, struct, or migration. The functional requirements defined there are binding.
 
 ---
 
@@ -507,3 +508,68 @@ If you are unsure whether a pattern is correct for this codebase:
 4. Never invent a new architectural pattern without documenting it in a new ADR.
 
 The goal is consistency over cleverness. Code that looks identical across services is a feature, not a lack of creativity.
+
+---
+
+## 10. Functional Specifications
+
+Functional specs define WHAT the system must do. They are as binding as the architecture invariants.
+Code that implements a domain entity or workflow without covering the corresponding spec requirement is incomplete, not wrong — but must be flagged with a GitHub issue.
+
+### MES — Manufacturing Execution System
+
+Source of truth: `docs/specs/MES_REQUIREMENTS.md`
+
+This document covers 16 functional domains. Before implementing any MES entity, handler, or migration, identify which section(s) it maps to and list them in the commit message.
+```
+CORRECT commit:
+feat(mes): add WorkOrder aggregate with status machine
+
+Covers: MES_REQUIREMENTS §1 (OF management), §12 (RBAC)
+Statuses: planned, launched, in_progress, suspended, completed, closed
+Transitions enforced at domain layer, not handler layer.
+
+WRONG commit:
+feat(mes): add work order model
+```
+
+**Non-negotiable requirements from MES_REQUIREMENTS.md:**
+
+These are the constraints most likely to be missed by an agent working without context. They are listed here as a first-line reminder — read the full spec for detail.
+```
+TRACEABILITY
+- Every produced unit must be linked to: OF, route version, operator per operation,
+  workstation per operation, consumed material lots, tools and gauges used, timestamps
+- Full genealogy (ascending + descending) must be reconstructable in < 10 seconds
+- Audit trail is append-only — never UPDATE or DELETE traceability records
+
+STATUS MACHINES
+- WorkOrder statuses: planned → launched → in_progress → suspended → completed → closed
+- Suspension requires a mandatory reason field — null is rejected at DB level
+- Status transitions are enforced in the domain layer (not the handler, not the DB)
+
+BLOCKING RULES — these are hard blocks, not warnings
+- An operator cannot start an operation if their qualification for that operation is expired
+- A material lot with status 'blocked' or past its TOE/expiry date cannot be consumed
+- A gauge/tool past its calibration date blocks the operation it is assigned to
+- A non-conforming lot blocks all downstream operations automatically
+
+OPERATOR INTERFACE
+- All operator-facing operations must complete in < 2 seconds response time
+- Every critical step must support offline mode — data queued locally, synced on reconnect
+- Operator ID is always extracted from the validated JWT — never from the request payload
+
+EVENTS — every state transition publishes an outbox event
+- kors.mes.of.created
+- kors.mes.of.launched
+- kors.mes.of.suspended        (payload must include reason)
+- kors.mes.of.completed
+- kors.mes.operation.started
+- kors.mes.operation.completed
+- kors.mes.material.lot.consumed
+- kors.mes.nonconformity.raised (triggers automatic lot block)
+```
+
+### Adding specs for other domains
+
+When QMS, GMAO, TMS, or other modules are implemented, add their spec files under `docs/specs/` and add a corresponding block in this section following the same structure.
