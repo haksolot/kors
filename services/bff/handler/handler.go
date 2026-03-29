@@ -67,104 +67,104 @@ func (h *Handler) Routes() http.Handler {
 		r.Use(AuthMiddleware(h.validator))
 
 		// Manufacturing orders
-		r.Post("/orders", h.createOrder)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/orders", h.createOrder)
 		r.Get("/orders", h.listOrders)
 		r.Get("/dispatch", h.getDispatchList)
-		r.Post("/orders/from-routing", h.createFromRouting)
+		r.With(RequireRole(core.RoleAdmin)).Post("/orders/from-routing", h.createFromRouting)
 
 		r.Route("/orders/{id}", func(r chi.Router) {
 			r.Get("/", h.getOrder)
-			r.Post("/suspend", h.suspendOrder)
-			r.Post("/resume", h.resumeOrder)
-			r.Post("/cancel", h.cancelOrder)
-			r.Post("/approve-fai", h.approveFAI)
-			r.Patch("/planning", h.setPlanning)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleProductionManager, core.RoleAdmin)).Post("/suspend", h.suspendOrder)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleProductionManager, core.RoleAdmin)).Post("/resume", h.resumeOrder)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleProductionManager, core.RoleAdmin)).Post("/cancel", h.cancelOrder)
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/approve-fai", h.approveFAI)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Patch("/planning", h.setPlanning)
 
 			// Operations
 			r.Get("/operations", h.listOperations)
 			r.Route("/operations/{op_id}", func(r chi.Router) {
 				r.Get("/", h.getOperation)
-				r.Post("/start", h.startOperation)
-				r.Post("/complete", h.completeOperation)
-				r.Post("/skip", h.skipOperation)
-				r.Post("/sign-off", h.signOffOperation)
-				r.Post("/nc", h.declareNC)
-				r.Post("/instructions", h.attachInstructions)
+				r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/start", h.startOperation)
+				r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/complete", h.completeOperation)
+				r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/skip", h.skipOperation)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/sign-off", h.signOffOperation)
+				r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleQualityManager, core.RoleAdmin)).Post("/nc", h.declareNC)
+				r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/instructions", h.attachInstructions)
 			})
 		})
 
 		// Routings
-		r.Post("/routings", h.createRouting)
+		r.With(RequireRole(core.RoleAdmin)).Post("/routings", h.createRouting)
 		r.Get("/routings", h.listRoutings)
 		r.Get("/routings/{id}", h.getRouting)
 
 		// Lots
-		r.Post("/lots", h.createLot)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/lots", h.createLot)
 		r.Get("/lots/{id}", h.getLot)
 
 		// Serial numbers
-		r.Post("/serial-numbers", h.registerSN)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/serial-numbers", h.registerSN)
 		r.Route("/serial-numbers/{sn}", func(r chi.Router) {
 			r.Get("/", h.getSN)
-			r.Post("/release", h.releaseSN)
-			r.Post("/scrap", h.scrapSN)
-			r.Post("/genealogy", h.addGenealogyEntry)
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/release", h.releaseSN)
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/scrap", h.scrapSN)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/genealogy", h.addGenealogyEntry)
 			r.Get("/genealogy", h.getGenealogy)
 		})
 
 		// Qualifications (AS9100D §7.2)
-		r.Post("/qualifications", h.createQualification)
+		r.With(RequireRole(core.RoleAdmin)).Post("/qualifications", h.createQualification)
 		r.Get("/qualifications", h.listQualifications)
 		r.Get("/qualifications/expiring", h.listExpiringQualifications)
 		r.Route("/qualifications/{id}", func(r chi.Router) {
 			r.Get("/", h.getQualification)
-			r.Post("/renew", h.renewQualification)
-			r.Post("/revoke", h.revokeQualification)
+			r.With(RequireRole(core.RoleAdmin)).Post("/renew", h.renewQualification)
+			r.With(RequireRole(core.RoleAdmin)).Post("/revoke", h.revokeQualification)
 		})
 
 		// Workstations (BLOC 6)
-		r.Post("/workstations", h.createWorkstation)
+		r.With(RequireRole(core.RoleAdmin)).Post("/workstations", h.createWorkstation)
 		r.Get("/workstations", h.listWorkstations)
 		r.Route("/workstations/{id}", func(r chi.Router) {
 			r.Get("/", h.getWorkstation)
-			r.Patch("/status", h.updateWorkstationStatus)
+			r.With(RequireAnyRole(core.RoleAdmin, core.RoleSupervisor)).Patch("/status", h.updateWorkstationStatus)
 			r.Get("/oee", h.getWorkstationOEE)
 		})
 
 		// Time Tracking & Downtimes (BLOC 5)
-		r.Post("/time-logs", h.recordTimeLog)
-		r.Post("/downtimes/start", h.startDowntime)
-		r.Post("/downtimes/{id}/end", h.endDowntime)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/time-logs", h.recordTimeLog)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/downtimes/start", h.startDowntime)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/downtimes/{id}/end", h.endDowntime)
 
 		// Tools & Gauges (BLOC 8)
-		r.Post("/tools", h.createTool)
+		r.With(RequireRole(core.RoleAdmin)).Post("/tools", h.createTool)
 		r.Get("/tools", h.listTools)
 		r.Route("/tools/{id}", func(r chi.Router) {
 			r.Get("/", h.getTool)
-			r.Post("/calibrate", h.calibrateTool)
+			r.With(RequireAnyRole(core.RoleAdmin, core.RoleQualityManager)).Post("/calibrate", h.calibrateTool)
 		})
-		r.Post("/operations/{op_id}/tools", h.assignToolToOperation)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/operations/{op_id}/tools", h.assignToolToOperation)
 		r.Get("/operations/{op_id}/tools", h.listOperationTools)
 
 		// Materials & WIP (BLOC 9)
 		r.Route("/materials", func(r chi.Router) {
-			r.Post("/consume", h.consumeMaterial)
-			r.Post("/toe/start", h.startTOEExposure)
-			r.Post("/toe/stop", h.stopTOEExposure)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/consume", h.consumeMaterial)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/toe/start", h.startTOEExposure)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/toe/stop", h.stopTOEExposure)
 		})
-		r.Post("/transfers", h.transferEntity)
+		r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/transfers", h.transferEntity)
 
 		// Quality Inline (BLOC 10)
 		r.Route("/quality", func(r chi.Router) {
-			r.Post("/measurements", h.recordMeasurement)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/measurements", h.recordMeasurement)
 			r.Get("/operations/{id}/characteristics", h.getOperationCharacteristics)
 		})
 
 		// Alerts (BLOC 11)
 		r.Route("/alerts", func(r chi.Router) {
 			r.Get("/active", h.listActiveAlerts)
-			r.Post("/{id}/acknowledge", h.acknowledgeAlert)
-			r.Post("/{id}/resolve", h.resolveAlert)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/{id}/acknowledge", h.acknowledgeAlert)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/{id}/resolve", h.resolveAlert)
 		})
 
 		// QMS
@@ -172,17 +172,17 @@ func (h *Handler) Routes() http.Handler {
 			r.Get("/nc", h.listNCs)
 			r.Route("/nc/{id}", func(r chi.Router) {
 				r.Get("/", h.getNC)
-				r.Post("/analyse", h.startAnalysis)
-				r.Post("/disposition", h.proposeDisposition)
-				r.Post("/close", h.closeNC)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/analyse", h.startAnalysis)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/disposition", h.proposeDisposition)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/close", h.closeNC)
 			})
 
-			r.Post("/capa", h.createCAPA)
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).Post("/capa", h.createCAPA)
 			r.Get("/capa", h.listCAPAs)
 			r.Route("/capa/{id}", func(r chi.Router) {
 				r.Get("/", h.getCAPA)
-				r.Post("/start", h.startCAPA)
-				r.Post("/complete", h.completeCAPA)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin, core.RoleSupervisor)).Post("/start", h.startCAPA)
+				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin, core.RoleSupervisor)).Post("/complete", h.completeCAPA)
 			})
 		})
 	})
