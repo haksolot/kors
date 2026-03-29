@@ -101,6 +101,36 @@ func AuthMiddleware(v *core.JWTValidator) func(http.Handler) http.Handler {
 	}
 }
 
+// RequireRole ensures the authenticated user has the specified role.
+// Must be used after AuthMiddleware.
+func RequireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := claimsFromCtx(r)
+			if claims == nil || !claims.HasRole(role) {
+				writeError(w, http.StatusForbidden, "insufficient permissions: role "+role+" required")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyRole ensures the authenticated user has at least one of the specified roles.
+// Must be used after AuthMiddleware.
+func RequireAnyRole(roles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := claimsFromCtx(r)
+			if claims == nil || !claims.HasAnyRole(roles...) {
+				writeError(w, http.StatusForbidden, "insufficient permissions: one of "+strings.Join(roles, ", ")+" required")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // ── Logging middleware ─────────────────────────────────────────────────────────
 
 func LoggingMiddleware(log zerolog.Logger) func(http.Handler) http.Handler {

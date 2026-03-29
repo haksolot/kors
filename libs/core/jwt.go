@@ -9,11 +9,40 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+// Standard role names as defined in MES_REQUIREMENTS.md §12.
+const (
+	RoleOperator          = "kors-operator"
+	RoleSupervisor        = "kors-supervisor"
+	RoleProductionManager = "kors-prod-manager"
+	RoleQualityManager    = "kors-quality-manager"
+	RoleAdmin             = "kors-admin"
+)
+
 // Claims holds the extracted fields from a validated JWT.
 type Claims struct {
 	Subject string
 	Email   string
 	Roles   []string
+}
+
+// HasRole returns true if the user has the specified role.
+func (c *Claims) HasRole(role string) bool {
+	for _, r := range c.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}
+
+// HasAnyRole returns true if the user has at least one of the specified roles.
+func (c *Claims) HasAnyRole(roles ...string) bool {
+	for _, role := range roles {
+		if c.HasRole(role) {
+			return true
+		}
+	}
+	return false
 }
 
 // JWTValidator validates JWTs against a JWKS endpoint.
