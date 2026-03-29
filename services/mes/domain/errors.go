@@ -38,7 +38,15 @@ var (
 	ErrInvalidPriority = errors.New("priority must be between 1 and 100")
 
 	// Operator qualification errors (AS9100D §7.2)
-	ErrOperatorNotQualified = errors.New("operator does not hold the required skill for this operation")
+	ErrOperatorNotQualified        = errors.New("operator does not hold the required skill for this operation")
+	ErrQualificationNotFound       = errors.New("qualification not found")
+	ErrQualificationAlreadyRevoked = errors.New("qualification is already revoked")
+	ErrQualificationRevoked        = errors.New("qualification has been revoked")
+	ErrQualificationExpired        = errors.New("qualification has expired")
+	ErrInvalidQualificationSkill   = errors.New("qualification skill must not be empty")
+	ErrInvalidQualificationExpiry  = errors.New("qualification expiry must be strictly after issue date")
+	ErrInvalidQualificationLabel   = errors.New("qualification label must not be empty")
+	ErrInvalidWarningDays          = errors.New("warning days must be greater than zero")
 
 	// Routing errors
 	ErrInvalidRoutingName     = errors.New("routing name must not be empty")
