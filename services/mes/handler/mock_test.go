@@ -17,21 +17,21 @@ import (
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
 func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
 func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, quals *mockQualificationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -243,6 +243,18 @@ func (m *mockTxOps) UpdateWorkstation(ctx context.Context, w *domain.Workstation
 	return m.Called(ctx, w).Error(0)
 }
 
+func (m *mockTxOps) SaveTimeLog(ctx context.Context, l *domain.TimeLog) error {
+	return m.Called(ctx, l).Error(0)
+}
+
+func (m *mockTxOps) SaveDowntimeEvent(ctx context.Context, d *domain.DowntimeEvent) error {
+	return m.Called(ctx, d).Error(0)
+}
+
+func (m *mockTxOps) UpdateDowntimeEvent(ctx context.Context, d *domain.DowntimeEvent) error {
+	return m.Called(ctx, d).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
@@ -301,4 +313,40 @@ func (m *mockWorkstationRepo) ListWorkstations(ctx context.Context, limit, offse
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Workstation), args.Error(1)
+}
+
+// ── Time Tracking repo mock ───────────────────────────────────────────────────
+
+type mockTimeTrackingRepo struct{ mock.Mock }
+
+func (m *mockTimeTrackingRepo) FindDowntimeByID(ctx context.Context, id string) (*domain.DowntimeEvent, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.DowntimeEvent), args.Error(1)
+}
+
+func (m *mockTimeTrackingRepo) FindOngoingDowntime(ctx context.Context, workstationID string) (*domain.DowntimeEvent, error) {
+	args := m.Called(ctx, workstationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.DowntimeEvent), args.Error(1)
+}
+
+func (m *mockTimeTrackingRepo) ListTimeLogsByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*domain.TimeLog, error) {
+	args := m.Called(ctx, workstationID, from, to)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.TimeLog), args.Error(1)
+}
+
+func (m *mockTimeTrackingRepo) ListDowntimesByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*domain.DowntimeEvent, error) {
+	args := m.Called(ctx, workstationID, from, to)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.DowntimeEvent), args.Error(1)
 }

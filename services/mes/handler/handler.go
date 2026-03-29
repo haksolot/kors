@@ -65,6 +65,14 @@ type WorkstationRepository interface {
 	ListWorkstations(ctx context.Context, limit, offset int) ([]*domain.Workstation, error)
 }
 
+// TimeTrackingRepository is the read-only interface for time logs and downtimes.
+type TimeTrackingRepository interface {
+	FindDowntimeByID(ctx context.Context, id string) (*domain.DowntimeEvent, error)
+	FindOngoingDowntime(ctx context.Context, workstationID string) (*domain.DowntimeEvent, error)
+	ListTimeLogsByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*domain.TimeLog, error)
+	ListDowntimesByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*domain.DowntimeEvent, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -75,6 +83,7 @@ type Handler struct {
 	routings     RoutingRepository
 	quals        QualificationRepository
 	workstations WorkstationRepository
+	time         TimeTrackingRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -90,6 +99,7 @@ func New(
 	routings RoutingRepository,
 	quals QualificationRepository,
 	workstations WorkstationRepository,
+	timeRepo TimeTrackingRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -101,6 +111,7 @@ func New(
 		routings:     routings,
 		quals:        quals,
 		workstations: workstations,
+		time:         timeRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),

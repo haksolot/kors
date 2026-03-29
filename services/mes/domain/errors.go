@@ -76,4 +76,14 @@ var (
 	ErrInvalidWorkstationCapacity = errors.New("workstation capacity must be greater than zero")
 	ErrInvalidWorkstationRate     = errors.New("workstation nominal rate must not be negative")
 	ErrInvalidWorkstationStatus   = errors.New("invalid workstation status")
+
+	// Time tracking & OEE errors
+	ErrInvalidTimeLogInput      = errors.New("operation, workstation and operator IDs are required for time log")
+	ErrInvalidTimeLogDates      = errors.New("end time must be after start time")
+	ErrInvalidTimeLogQuantities = errors.New("good and scrap quantities must be non-negative")
+	ErrInvalidTimeLogType       = errors.New("invalid time log type")
+	ErrInvalidDowntimeInput     = errors.New("workstation ID and reported by are required for downtime")
+	ErrInvalidDowntimeCategory  = errors.New("invalid downtime category")
+	ErrDowntimeAlreadyEnded     = errors.New("downtime event is already ended")
+	ErrDowntimeNotFound         = errors.New("downtime event not found")
 )

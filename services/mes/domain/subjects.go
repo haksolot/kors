@@ -97,6 +97,17 @@ const (
 	SubjectWorkstationCreated       = "kors.mes.workstation.created"
 	SubjectWorkstationStatusChanged = "kors.mes.workstation.status_changed"
 
+	// Synchronous request-reply subjects — time tracking & OEE (BLOC 5)
+	SubjectTimeLogRecord      = "kors.mes.time_log.record"
+	SubjectDowntimeStart      = "kors.mes.downtime.start"
+	SubjectDowntimeEnd        = "kors.mes.downtime.end"
+	SubjectWorkstationOEEGet  = "kors.mes.workstation.oee.get"
+
+	// Async events — time tracking & OEE (BLOC 5)
+	SubjectTimeLogRecorded    = "kors.mes.time_log.recorded"
+	SubjectDowntimeStarted    = "kors.mes.downtime.started"
+	SubjectDowntimeEnded      = "kors.mes.downtime.ended"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

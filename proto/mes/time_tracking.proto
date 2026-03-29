@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+enum TimeLogType {
+  TIME_LOG_TYPE_UNSPECIFIED = 0;
+  TIME_LOG_TYPE_SETUP = 1;
+  TIME_LOG_TYPE_RUN = 2;
+}
+
+enum DowntimeCategory {
+  DOWNTIME_CATEGORY_UNSPECIFIED = 0;
+  DOWNTIME_CATEGORY_MACHINE_FAILURE = 1;
+  DOWNTIME_CATEGORY_PREVENTIVE_MAINTENANCE = 2;
+  DOWNTIME_CATEGORY_MATERIAL_SHORTAGE = 3;
+  DOWNTIME_CATEGORY_QUALITY_HOLD = 4;
+  DOWNTIME_CATEGORY_CHANGEOVER = 5;
+  DOWNTIME_CATEGORY_REGULATORY_PAUSE = 6;
+  DOWNTIME_CATEGORY_UNJUSTIFIED = 7;
+}
+
+message TimeLog {
+  string id = 1;
+  string operation_id = 2;
+  string workstation_id = 3;
+  string operator_id = 4;
+  TimeLogType log_type = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7;
+  int32 good_quantity = 8;
+  int32 scrap_quantity = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message DowntimeEvent {
+  string id = 1;
+  string workstation_id = 2;
+  string operation_id = 3; // optional
+  DowntimeCategory category = 4;
+  string description = 5;
+  google.protobuf.Timestamp start_time = 6;
+  google.protobuf.Timestamp end_time = 7; // null if ongoing
+  string reported_by = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message RecordTimeLogRequest {
+  string operation_id = 1;
+  string workstation_id = 2;
+  string operator_id = 3;
+  TimeLogType log_type = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp end_time = 6;
+  int32 good_quantity = 7;
+  int32 scrap_quantity = 8;
+}
+
+message RecordTimeLogResponse {
+  TimeLog time_log = 1;
+}
+
+message StartDowntimeRequest {
+  string workstation_id = 1;
+  string operation_id = 2; // optional
+  DowntimeCategory category = 3;
+  string description = 4;
+  string reported_by = 5;
+}
+
+message StartDowntimeResponse {
+  DowntimeEvent downtime = 1;
+}
+
+message EndDowntimeRequest {
+  string id = 1;
+}
+
+message EndDowntimeResponse {
+  DowntimeEvent downtime = 1;
+}
+
+message OEEData {
+  double availability = 1; // 0.0 to 1.0
+  double performance = 2;  // 0.0 to 1.0
+  double quality = 3;      // 0.0 to 1.0
+  double trs = 4;          // 0.0 to 1.0
+  int32 total_downtime_seconds = 5;
+  int32 total_operating_seconds = 6;
+  int32 total_good_quantity = 7;
+  int32 total_scrap_quantity = 8;
+}
+
+message GetWorkstationOEERequest {
+  string workstation_id = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+}
+
+message GetWorkstationOEEResponse {
+  string workstation_id = 1;
+  OEEData oee = 2;
+}
