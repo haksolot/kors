@@ -69,4 +69,11 @@ var (
 	ErrSNAlreadyReleased         = errors.New("serial number is already released")
 	ErrSNAlreadyScrapped         = errors.New("serial number is already scrapped")
 	ErrSNInvalidTransition       = errors.New("invalid serial number status transition")
+
+	// Workstation errors
+	ErrWorkstationNotFound        = errors.New("workstation not found")
+	ErrInvalidWorkstationName     = errors.New("workstation name must not be empty")
+	ErrInvalidWorkstationCapacity = errors.New("workstation capacity must be greater than zero")
+	ErrInvalidWorkstationRate     = errors.New("workstation nominal rate must not be negative")
+	ErrInvalidWorkstationStatus   = errors.New("invalid workstation status")
 )

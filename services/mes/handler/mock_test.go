@@ -17,21 +17,21 @@ import (
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
 func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
 func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, quals *mockQualificationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -235,6 +235,14 @@ func (m *mockTxOps) UpdateQualification(ctx context.Context, q *domain.Qualifica
 	return m.Called(ctx, q).Error(0)
 }
 
+func (m *mockTxOps) SaveWorkstation(ctx context.Context, w *domain.Workstation) error {
+	return m.Called(ctx, w).Error(0)
+}
+
+func (m *mockTxOps) UpdateWorkstation(ctx context.Context, w *domain.Workstation) error {
+	return m.Called(ctx, w).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
@@ -274,3 +282,23 @@ func (m *mockQualificationRepo) ListExpiringQualifications(ctx context.Context, 
 // ── Sentinel errors used in tests ────────────────────────────────────────────
 
 var errDB = errors.New("db error")
+
+// ── Workstation repo mock ─────────────────────────────────────────────────────
+
+type mockWorkstationRepo struct{ mock.Mock }
+
+func (m *mockWorkstationRepo) FindWorkstationByID(ctx context.Context, id string) (*domain.Workstation, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Workstation), args.Error(1)
+}
+
+func (m *mockWorkstationRepo) ListWorkstations(ctx context.Context, limit, offset int) ([]*domain.Workstation, error) {
+	args := m.Called(ctx, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Workstation), args.Error(1)
+}

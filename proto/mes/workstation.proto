@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// WorkstationStatus represents the current state of a workstation/machine.
+enum WorkstationStatus {
+  WORKSTATION_STATUS_UNSPECIFIED = 0;
+  WORKSTATION_STATUS_AVAILABLE = 1;
+  WORKSTATION_STATUS_IN_PRODUCTION = 2;
+  WORKSTATION_STATUS_DOWN = 3;
+  WORKSTATION_STATUS_MAINTENANCE = 4;
+}
+
+// Workstation represents a physical machine or workspace where operations are executed.
+message Workstation {
+  string id = 1; // UUID
+  string name = 2;
+  string description = 3;
+  int32 capacity = 4;
+  double nominal_rate = 5; // e.g., pieces per hour
+  WorkstationStatus status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message CreateWorkstationRequest {
+  string name = 1;
+  string description = 2;
+  int32 capacity = 3;
+  double nominal_rate = 4;
+}
+
+message CreateWorkstationResponse {
+  Workstation workstation = 1;
+}
+
+message GetWorkstationRequest {
+  string id = 1;
+}
+
+message GetWorkstationResponse {
+  Workstation workstation = 1;
+}
+
+message ListWorkstationsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message ListWorkstationsResponse {
+  repeated Workstation workstations = 1;
+  int32 total = 2;
+}
+
+message UpdateWorkstationStatusRequest {
+  string id = 1;
+  WorkstationStatus status = 2;
+}
+
+message UpdateWorkstationStatusResponse {
+  Workstation workstation = 1;
+}

@@ -59,19 +59,26 @@ type QualificationRepository interface {
 	ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*domain.Qualification, error)
 }
 
+// WorkstationRepository is the read-only interface for workstations.
+type WorkstationRepository interface {
+	FindWorkstationByID(ctx context.Context, id string) (*domain.Workstation, error)
+	ListWorkstations(ctx context.Context, limit, offset int) ([]*domain.Workstation, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
 type Handler struct {
-	orders   DispatchRepository
-	ops      OperationRepository
-	trace    TraceabilityRepository
-	routings RoutingRepository
-	quals    QualificationRepository
-	store    domain.Transactor
-	log      *zerolog.Logger
-	reqTotal    *prometheus.CounterVec
-	reqDuration *prometheus.HistogramVec
+	orders       DispatchRepository
+	ops          OperationRepository
+	trace        TraceabilityRepository
+	routings     RoutingRepository
+	quals        QualificationRepository
+	workstations WorkstationRepository
+	store        domain.Transactor
+	log          *zerolog.Logger
+	reqTotal     *prometheus.CounterVec
+	reqDuration  *prometheus.HistogramVec
 }
 
 // New returns a Handler with the provided dependencies injected.
@@ -82,20 +89,22 @@ func New(
 	trace TraceabilityRepository,
 	routings RoutingRepository,
 	quals QualificationRepository,
+	workstations WorkstationRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
 ) *Handler {
 	return &Handler{
-		orders:      orders,
-		ops:         ops,
-		trace:       trace,
-		routings:    routings,
-		quals:       quals,
-		store:       store,
-		log:         log,
-		reqTotal:    core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
-		reqDuration: core.NewHistogram(reg, "mes", "handler_duration_seconds", "NATS handler latency", []string{"subject"}, nil),
+		orders:       orders,
+		ops:          ops,
+		trace:        trace,
+		routings:     routings,
+		quals:        quals,
+		workstations: workstations,
+		store:        store,
+		log:          log,
+		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
+		reqDuration:  core.NewHistogram(reg, "mes", "handler_duration_seconds", "NATS handler latency", []string{"subject"}, nil),
 	}
 }
 

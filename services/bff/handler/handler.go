@@ -122,6 +122,14 @@ func (h *Handler) Routes() http.Handler {
 			r.Post("/revoke", h.revokeQualification)
 		})
 
+		// Workstations (BLOC 6)
+		r.Post("/workstations", h.createWorkstation)
+		r.Get("/workstations", h.listWorkstations)
+		r.Route("/workstations/{id}", func(r chi.Router) {
+			r.Get("/", h.getWorkstation)
+			r.Patch("/status", h.updateWorkstationStatus)
+		})
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

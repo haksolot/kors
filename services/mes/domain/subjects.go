@@ -87,6 +87,16 @@ const (
 	SubjectQualificationExpired       = "kors.mes.qualification.expired"
 	SubjectQualificationExpiringAlert = "kors.mes.qualification.expiring_alert"
 
+	// Synchronous request-reply subjects — workstations (BLOC 6)
+	SubjectWorkstationCreate       = "kors.mes.workstation.create"
+	SubjectWorkstationGet          = "kors.mes.workstation.get"
+	SubjectWorkstationList         = "kors.mes.workstation.list"
+	SubjectWorkstationUpdateStatus = "kors.mes.workstation.update_status"
+
+	// Async events — workstations (BLOC 6)
+	SubjectWorkstationCreated       = "kors.mes.workstation.created"
+	SubjectWorkstationStatusChanged = "kors.mes.workstation.status_changed"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )
