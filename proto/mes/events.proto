@@ -187,3 +187,22 @@ message QualificationExpiringAlertEvent {
   google.protobuf.Timestamp expires_at  = 5;
   int32  days_remaining    = 6;
 }
+
+// WorkstationCreatedEvent is published on kors.mes.workstation.created
+message WorkstationCreatedEvent {
+  string event_id = 1;
+  string workstation_id = 2;
+  string name = 3;
+  int32 capacity = 4;
+  double nominal_rate = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// WorkstationStatusChangedEvent is published on kors.mes.workstation.status_changed
+message WorkstationStatusChangedEvent {
+  string event_id = 1;
+  string workstation_id = 2;
+  string old_status = 3;
+  string new_status = 4;
+  google.protobuf.Timestamp changed_at = 5;
+}

@@ -52,6 +52,13 @@ type QualificationRepository interface {
 	ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*Qualification, error)
 }
 
+// WorkstationRepository defines read-only persistence for workstations (BLOC 6).
+// Write operations (create/update status) must go through Transactor to ensure atomicity with outbox.
+type WorkstationRepository interface {
+	FindWorkstationByID(ctx context.Context, id string) (*Workstation, error)
+	ListWorkstations(ctx context.Context, limit, offset int) ([]*Workstation, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -73,6 +80,9 @@ type TxOps interface {
 	// Qualification writes (AS9100D §7.2)
 	SaveQualification(ctx context.Context, q *Qualification) error
 	UpdateQualification(ctx context.Context, q *Qualification) error
+	// Workstation writes (BLOC 6)
+	SaveWorkstation(ctx context.Context, w *Workstation) error
+	UpdateWorkstation(ctx context.Context, w *Workstation) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.
