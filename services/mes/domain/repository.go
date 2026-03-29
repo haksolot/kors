@@ -70,6 +70,9 @@ type TxOps interface {
 	UpdateSerialNumber(ctx context.Context, sn *SerialNumber) error
 	SaveGenealogyEntry(ctx context.Context, e *GenealogyEntry) error
 	InsertOutbox(ctx context.Context, entry OutboxEntry) error
+	// Qualification writes (AS9100D §7.2)
+	SaveQualification(ctx context.Context, q *Qualification) error
+	UpdateQualification(ctx context.Context, q *Qualification) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.
