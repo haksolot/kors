@@ -312,17 +312,24 @@ func TestHandler_ListOperations(t *testing.T) {
 // ── StartOperation ────────────────────────────────────────────────────────────
 
 func TestHandler_StartOperation(t *testing.T) {
-	t.Run("pending operation can be started", func(t *testing.T) {
+	t.Run("pending operation can be started and order status updated", func(t *testing.T) {
 		ops := &mockOperationRepo{}
 		op, _ := domain.NewOperation("of-1", 1, "Découpe")
 		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
 
+		order, _ := domain.NewOrder("OF-1", "prod-1", 10)
+		order.ID = "of-1"
+		orders := &mockOrderRepo{}
+		orders.On("FindByID", mock.Anything, "of-1").Return(order, nil)
+
 		store := newMockTransactor()
 		store.On("WithTx", mock.Anything).Return(nil)
 		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
 		store.Ops.On("InsertOutbox", mock.Anything, "OperationStarted").Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFStarted").Return(nil)
 
-		h := newTestHandler(&mockOrderRepo{}, ops, store)
+		h := newTestHandler(orders, ops, store)
 		payload, _ := proto.Marshal(&pbmes.StartOperationRequest{OperationId: op.ID, OperatorId: "op-1"})
 
 		resp, err := h.StartOperation(context.Background(), payload)
@@ -333,24 +340,35 @@ func TestHandler_StartOperation(t *testing.T) {
 		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_IN_PROGRESS, response.Operation.Status)
 		store.AssertExpectations(t)
 		store.Ops.AssertExpectations(t)
+		orders.AssertExpectations(t)
 	})
 }
 
 // ── CompleteOperation ─────────────────────────────────────────────────────────
 
 func TestHandler_CompleteOperation(t *testing.T) {
-	t.Run("in-progress operation can be completed", func(t *testing.T) {
+	t.Run("in-progress operation can be completed and order status updated", func(t *testing.T) {
 		ops := &mockOperationRepo{}
 		op, _ := domain.NewOperation("of-1", 1, "Découpe")
 		_ = op.Start("op-1", nil)
 		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+		// Mock FindOperationsByOFID returning only this operation (so allDone is true)
+		ops.On("FindOperationsByOFID", mock.Anything, "of-1").Return([]*domain.Operation{op}, nil)
+
+		order, _ := domain.NewOrder("OF-1", "prod-1", 10)
+		order.ID = "of-1"
+		_ = order.Start()
+		orders := &mockOrderRepo{}
+		orders.On("FindByID", mock.Anything, "of-1").Return(order, nil)
 
 		store := newMockTransactor()
 		store.On("WithTx", mock.Anything).Return(nil)
 		store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+		store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
 		store.Ops.On("InsertOutbox", mock.Anything, "OperationCompleted").Return(nil)
+		store.Ops.On("InsertOutbox", mock.Anything, "OFCompleted").Return(nil)
 
-		h := newTestHandler(&mockOrderRepo{}, ops, store)
+		h := newTestHandler(orders, ops, store)
 		payload, _ := proto.Marshal(&pbmes.CompleteOperationRequest{OperationId: op.ID, OperatorId: "op-1"})
 
 		resp, err := h.CompleteOperation(context.Background(), payload)
@@ -360,6 +378,8 @@ func TestHandler_CompleteOperation(t *testing.T) {
 		require.NoError(t, proto.Unmarshal(resp, &response))
 		assert.Equal(t, pbmes.OperationStatus_OPERATION_STATUS_COMPLETED, response.Operation.Status)
 		store.AssertExpectations(t)
+		ops.AssertExpectations(t)
+		orders.AssertExpectations(t)
 	})
 }
 
