@@ -433,14 +433,28 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 
 	op, err := h.ops.FindOperationByID(ctx, req.OperationId)
 	if err != nil {
-		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find: %w", err))
+		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find op: %w", err))
+	}
+
+	order, err := h.orders.FindByID(ctx, op.OFID)
+	if err != nil {
+		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find order: %w", err))
 	}
 
 	if err := op.Start(req.OperatorId, req.OperatorRoles); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: %w", err))
 	}
 
-	evt, err := proto.Marshal(&pbmes.OperationStartedEvent{
+	// Automatic state transition for the parent order (ADR-004 side-effect)
+	orderStarted := false
+	if order.Status == domain.OrderStatusPlanned || order.Status == domain.OrderStatusSuspended {
+		if err := order.Start(); err != nil {
+			return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: start order: %w", err))
+		}
+		orderStarted = true
+	}
+
+	opEvt, err := proto.Marshal(&pbmes.OperationStartedEvent{
 		EventId:     uuid.NewString(),
 		OperationId: op.ID,
 		OfId:        op.OFID,
@@ -449,23 +463,52 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		StartedAt:   timestamppb.New(*op.StartedAt),
 	})
 	if err != nil {
-		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: marshal event: %w", err))
+		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: marshal op event: %w", err))
+	}
+
+	var ofEvt []byte
+	if orderStarted {
+		ofEvt, err = proto.Marshal(&pbmes.OFStartedEvent{
+			EventId:   uuid.NewString(),
+			OfId:      order.ID,
+			StartedAt: timestamppb.New(*order.StartedAt),
+		})
+		if err != nil {
+			return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: marshal of event: %w", err))
+		}
 	}
 
 	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.UpdateOperation(ctx, op); err != nil {
 			return err
 		}
-		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+		if orderStarted {
+			if err := tx.UpdateOrder(ctx, order); err != nil {
+				return err
+			}
+		}
+
+		if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
 			EventType: "OperationStarted",
 			Subject:   domain.SubjectOperationStarted,
-			Payload:   evt,
-		})
+			Payload:   opEvt,
+		}); err != nil {
+			return err
+		}
+
+		if orderStarted {
+			return tx.InsertOutbox(ctx, domain.OutboxEntry{
+				EventType: "OFStarted",
+				Subject:   domain.SubjectOFStarted,
+				Payload:   ofEvt,
+			})
+		}
+		return nil
 	}); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: tx: %w", err))
 	}
 
-	h.log.Info().Str("operation_id", op.ID).Str("operator_id", op.OperatorID).Msg("operation started")
+	h.log.Info().Str("operation_id", op.ID).Str("of_id", op.OFID).Msg("operation and order started")
 	h.succeed(domain.SubjectOperationStart, start)
 	return proto.Marshal(&pbmes.StartOperationResponse{Operation: operationToProto(op)})
 }
@@ -490,7 +533,38 @@ func (h *Handler) CompleteOperation(ctx context.Context, payload []byte) ([]byte
 		return h.fail(domain.SubjectOperationComplete, start, fmt.Errorf("CompleteOperation: %w", err))
 	}
 
-	evt, err := proto.Marshal(&pbmes.OperationCompletedEvent{
+	// Automatic state transition for the parent order if all operations are terminal
+	orderCompleted := false
+	var order *domain.Order
+	allOps, err := h.ops.FindOperationsByOFID(ctx, op.OFID)
+	if err == nil {
+		allDone := true
+		for _, o := range allOps {
+			// Check if this specific operation is done (the one we just updated)
+			// or if other operations are already in terminal states
+			status := o.Status
+			if o.ID == op.ID {
+				status = op.Status
+			}
+			if status != domain.OperationStatusCompleted &&
+				status != domain.OperationStatusSkipped &&
+				status != domain.OperationStatusReleased {
+				allDone = false
+				break
+			}
+		}
+
+		if allDone {
+			order, err = h.orders.FindByID(ctx, op.OFID)
+			if err == nil && order.Status == domain.OrderStatusInProgress {
+				if err := order.Complete(); err == nil {
+					orderCompleted = true
+				}
+			}
+		}
+	}
+
+	opEvt, err := proto.Marshal(&pbmes.OperationCompletedEvent{
 		EventId:                uuid.NewString(),
 		OperationId:            op.ID,
 		OfId:                   op.OFID,
@@ -504,20 +578,53 @@ func (h *Handler) CompleteOperation(ctx context.Context, payload []byte) ([]byte
 		return h.fail(domain.SubjectOperationComplete, start, fmt.Errorf("CompleteOperation: marshal event: %w", err))
 	}
 
+	var ofEvt []byte
+	if orderCompleted {
+		ofEvt, err = proto.Marshal(&pbmes.OFCompletedEvent{
+			EventId:     uuid.NewString(),
+			OfId:        order.ID,
+			CompletedAt: timestamppb.New(*order.CompletedAt),
+		})
+		if err != nil {
+			return h.fail(domain.SubjectOperationComplete, start, fmt.Errorf("CompleteOperation: marshal of event: %w", err))
+		}
+	}
+
 	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.UpdateOperation(ctx, op); err != nil {
 			return err
 		}
-		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+		if orderCompleted {
+			if err := tx.UpdateOrder(ctx, order); err != nil {
+				return err
+			}
+		}
+
+		if err := tx.InsertOutbox(ctx, domain.OutboxEntry{
 			EventType: "OperationCompleted",
 			Subject:   domain.SubjectOperationCompleted,
-			Payload:   evt,
-		})
+			Payload:   opEvt,
+		}); err != nil {
+			return err
+		}
+
+		if orderCompleted {
+			return tx.InsertOutbox(ctx, domain.OutboxEntry{
+				EventType: "OFCompleted",
+				Subject:   domain.SubjectOFCompleted,
+				Payload:   ofEvt,
+			})
+		}
+		return nil
 	}); err != nil {
 		return h.fail(domain.SubjectOperationComplete, start, fmt.Errorf("CompleteOperation: tx: %w", err))
 	}
 
 	h.log.Info().Str("operation_id", op.ID).Msg("operation completed")
+	if orderCompleted {
+		h.log.Info().Str("of_id", order.ID).Msg("manufacturing order completed")
+	}
+
 	h.succeed(domain.SubjectOperationComplete, start)
 	return proto.Marshal(&pbmes.CompleteOperationResponse{Operation: operationToProto(op)})
 }
