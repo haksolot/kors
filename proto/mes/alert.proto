@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+enum AlertStatus {
+  ALERT_STATUS_UNSPECIFIED = 0;
+  ALERT_STATUS_ACTIVE      = 1;
+  ALERT_STATUS_ACKNOWLEDGED = 2;
+  ALERT_STATUS_RESOLVED    = 3;
+}
+
+enum AlertLevel {
+  ALERT_LEVEL_UNSPECIFIED = 0;
+  ALERT_LEVEL_L1_SUPERVISOR = 1;
+  ALERT_LEVEL_L2_MANAGER    = 2;
+  ALERT_LEVEL_L3_DIRECTOR   = 3;
+}
+
+enum AlertCategory {
+  ALERT_CATEGORY_UNSPECIFIED = 0;
+  ALERT_CATEGORY_MACHINE     = 1;
+  ALERT_CATEGORY_QUALITY     = 2;
+  ALERT_CATEGORY_PLANNING    = 3;
+  ALERT_CATEGORY_LOGISTICS   = 4;
+}
+
+message Alert {
+  string id = 1;
+  AlertCategory category = 2;
+  AlertLevel level = 3;
+  AlertStatus status = 4;
+  string workstation_id = 5; // Optional
+  string operation_id = 6;   // Optional
+  string message = 7;
+  int32 escalation_count = 8;
+  string acknowledged_by = 9;
+  google.protobuf.Timestamp acknowledged_at = 10;
+  string resolved_by = 11;
+  google.protobuf.Timestamp resolved_at = 12;
+  string resolution_notes = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}
+
+message RaiseAlertRequest {
+  AlertCategory category = 1;
+  string workstation_id = 2;
+  string operation_id = 3;
+  string message = 4;
+}
+
+message RaiseAlertResponse {
+  Alert alert = 1;
+}
+
+message AcknowledgeAlertRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+message AcknowledgeAlertResponse {
+  Alert alert = 1;
+}
+
+message ResolveAlertRequest {
+  string id = 1;
+  string user_id = 2;
+  string notes = 3;
+}
+
+message ResolveAlertResponse {
+  Alert alert = 1;
+}
+
+message ListActiveAlertsRequest {
+}
+
+message ListActiveAlertsResponse {
+  repeated Alert alerts = 1;
+}
+
+message EscalationRequestedEvent {
+  string alert_id = 1;
+  AlertLevel target_level = 2;
+}

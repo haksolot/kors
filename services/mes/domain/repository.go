@@ -91,6 +91,12 @@ type QualityRepository interface {
 	ListMeasurementsByCharacteristic(ctx context.Context, characteristicID string, limit int) ([]*Measurement, error)
 }
 
+// AlertRepository defines read-only persistence for alerts (BLOC 11).
+type AlertRepository interface {
+	FindAlertByID(ctx context.Context, id string) (*Alert, error)
+	ListActiveAlerts(ctx context.Context) ([]*Alert, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -131,6 +137,9 @@ type TxOps interface {
 	// Quality writes (BLOC 10)
 	SaveControlCharacteristic(ctx context.Context, c *ControlCharacteristic) error
 	SaveMeasurement(ctx context.Context, m *Measurement) error
+	// Alert writes (BLOC 11)
+	SaveAlert(ctx context.Context, a *Alert) error
+	UpdateAlert(ctx context.Context, a *Alert) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.

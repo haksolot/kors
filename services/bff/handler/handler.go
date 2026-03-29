@@ -160,6 +160,13 @@ func (h *Handler) Routes() http.Handler {
 			r.Get("/operations/{id}/characteristics", h.getOperationCharacteristics)
 		})
 
+		// Alerts (BLOC 11)
+		r.Route("/alerts", func(r chi.Router) {
+			r.Get("/active", h.listActiveAlerts)
+			r.Post("/{id}/acknowledge", h.acknowledgeAlert)
+			r.Post("/{id}/resolve", h.resolveAlert)
+		})
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

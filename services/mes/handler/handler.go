@@ -97,6 +97,12 @@ type QualityRepository interface {
 	ListMeasurementsByCharacteristic(ctx context.Context, characteristicID string, limit int) ([]*domain.Measurement, error)
 }
 
+// AlertRepository is the read-only interface for alerts.
+type AlertRepository interface {
+	FindAlertByID(ctx context.Context, id string) (*domain.Alert, error)
+	ListActiveAlerts(ctx context.Context) ([]*domain.Alert, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -111,6 +117,7 @@ type Handler struct {
 	tools        ToolRepository
 	materials    MaterialRepository
 	quality      QualityRepository
+	alerts       AlertRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -130,6 +137,7 @@ func New(
 	toolRepo ToolRepository,
 	materialRepo MaterialRepository,
 	qualityRepo QualityRepository,
+	alertRepo AlertRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -145,6 +153,7 @@ func New(
 		tools:        toolRepo,
 		materials:    materialRepo,
 		quality:      qualityRepo,
+		alerts:       alertRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),

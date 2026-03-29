@@ -38,4 +38,3 @@ func (h *Handler) getOperationCharacteristics(w http.ResponseWriter, r *http.Req
 	}
 	writeJSON(w, http.StatusOK, &resp)
 }
-Applied fuzzy match at line 1-3.

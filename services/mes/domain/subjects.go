@@ -140,6 +140,18 @@ const (
 	SubjectMeasurementRecorded = "kors.mes.measurement.recorded"
 	SubjectQualityAlertRaised  = "kors.mes.quality.alert"
 
+	// Synchronous request-reply subjects — alerts (BLOC 11)
+	SubjectAlertRaise       = "kors.mes.alert.raise"
+	SubjectAlertAcknowledge = "kors.mes.alert.acknowledge"
+	SubjectAlertResolve     = "kors.mes.alert.resolve"
+	SubjectAlertListActive  = "kors.mes.alert.list_active"
+
+	// Async events — alerts (BLOC 11)
+	SubjectAlertRaised      = "kors.mes.alert.raised"
+	SubjectAlertEscalated   = "kors.mes.alert.escalated"
+	SubjectAlertResolved    = "kors.mes.alert.resolved"
+	SubjectAlertEscalationRequested = "kors.mes.alert.escalation_requested"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )
