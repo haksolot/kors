@@ -206,3 +206,32 @@ message WorkstationStatusChangedEvent {
   string new_status = 4;
   google.protobuf.Timestamp changed_at = 5;
 }
+
+// TimeLogRecordedEvent is published on kors.mes.timelog.recorded
+message TimeLogRecordedEvent {
+  string event_id = 1;
+  string time_log_id = 2;
+  string operation_id = 3;
+  string workstation_id = 4;
+  int32 duration_seconds = 5;
+  int32 good_quantity = 6;
+  int32 scrap_quantity = 7;
+}
+
+// DowntimeStartedEvent is published on kors.mes.downtime.started
+message DowntimeStartedEvent {
+  string event_id = 1;
+  string downtime_id = 2;
+  string workstation_id = 3;
+  string category = 4;
+  google.protobuf.Timestamp start_time = 5;
+}
+
+// DowntimeEndedEvent is published on kors.mes.downtime.ended
+message DowntimeEndedEvent {
+  string event_id = 1;
+  string downtime_id = 2;
+  string workstation_id = 3;
+  int32 duration_seconds = 4;
+  google.protobuf.Timestamp end_time = 5;
+}

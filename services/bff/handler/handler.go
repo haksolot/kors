@@ -128,7 +128,13 @@ func (h *Handler) Routes() http.Handler {
 		r.Route("/workstations/{id}", func(r chi.Router) {
 			r.Get("/", h.getWorkstation)
 			r.Patch("/status", h.updateWorkstationStatus)
+			r.Get("/oee", h.getWorkstationOEE)
 		})
+
+		// Time Tracking & Downtimes (BLOC 5)
+		r.Post("/time-logs", h.recordTimeLog)
+		r.Post("/downtimes/start", h.startDowntime)
+		r.Post("/downtimes/{id}/end", h.endDowntime)
 
 		// QMS
 		r.Route("/qms", func(r chi.Router) {

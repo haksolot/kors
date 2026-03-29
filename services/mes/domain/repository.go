@@ -59,6 +59,14 @@ type WorkstationRepository interface {
 	ListWorkstations(ctx context.Context, limit, offset int) ([]*Workstation, error)
 }
 
+// TimeTrackingRepository defines read-only persistence for time logs and downtimes (BLOC 5).
+type TimeTrackingRepository interface {
+	FindDowntimeByID(ctx context.Context, id string) (*DowntimeEvent, error)
+	FindOngoingDowntime(ctx context.Context, workstationID string) (*DowntimeEvent, error)
+	ListTimeLogsByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*TimeLog, error)
+	ListDowntimesByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*DowntimeEvent, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -83,6 +91,10 @@ type TxOps interface {
 	// Workstation writes (BLOC 6)
 	SaveWorkstation(ctx context.Context, w *Workstation) error
 	UpdateWorkstation(ctx context.Context, w *Workstation) error
+	// Time tracking writes (BLOC 5)
+	SaveTimeLog(ctx context.Context, l *TimeLog) error
+	SaveDowntimeEvent(ctx context.Context, d *DowntimeEvent) error
+	UpdateDowntimeEvent(ctx context.Context, d *DowntimeEvent) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.

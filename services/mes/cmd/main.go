@@ -105,7 +105,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Qualification expiry scanner ──────────────────────────────────────────
@@ -179,6 +179,11 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectWorkstationGet, h.GetWorkstation},
 		{domain.SubjectWorkstationList, h.ListWorkstations},
 		{domain.SubjectWorkstationUpdateStatus, h.UpdateWorkstationStatus},
+		// Time Tracking & OEE (BLOC 5)
+		{domain.SubjectTimeLogRecord, h.RecordTimeLog},
+		{domain.SubjectDowntimeStart, h.StartDowntime},
+		{domain.SubjectDowntimeEnd, h.EndDowntime},
+		{domain.SubjectWorkstationOEEGet, h.GetWorkstationOEE},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -219,6 +224,7 @@ var (
 	_ handler.RoutingRepository       = (*repo.PostgresRepo)(nil)
 	_ handler.QualificationRepository = (*repo.PostgresRepo)(nil)
 	_ handler.WorkstationRepository   = (*repo.PostgresRepo)(nil)
+	_ handler.TimeTrackingRepository  = (*repo.PostgresRepo)(nil)
 	_ domain.Transactor               = (*repo.PostgresRepo)(nil)
 	_ outbox.Repository               = (*repo.PostgresRepo)(nil)
 	_ qualification.Repository        = (*repo.PostgresRepo)(nil)
