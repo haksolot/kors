@@ -653,6 +653,19 @@ func scanRoutingStep(s scanner) (*domain.RoutingStep, error) {
 
 // ── Outbox ────────────────────────────────────────────────────────────────────
 
+// InsertOutboxDirect writes a single outbox entry using the pool (no transaction).
+// Used by background scanners that have no associated business mutation.
+func (r *PostgresRepo) InsertOutboxDirect(ctx context.Context, entry domain.OutboxEntry) error {
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO outbox (event_type, subject, payload) VALUES ($1, $2, $3)`,
+		entry.EventType, entry.Subject, entry.Payload,
+	)
+	if err != nil {
+		return fmt.Errorf("InsertOutboxDirect %s: %w", entry.EventType, err)
+	}
+	return nil
+}
+
 // InsertOutboxTx writes a single outbox entry within the provided pgx.Tx.
 // The transaction must be open; this method does not commit.
 func (r *PostgresRepo) InsertOutboxTx(ctx context.Context, tx pgx.Tx, entry domain.OutboxEntry) error {
