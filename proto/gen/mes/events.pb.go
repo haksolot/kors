@@ -1051,6 +1051,449 @@ func (x *RoutingCreatedEvent) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// QualificationCreatedEvent is published on kors.mes.qualification.created (AS9100D §7.2).
+type QualificationCreatedEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	QualificationId string                 `protobuf:"bytes,2,opt,name=qualification_id,json=qualificationId,proto3" json:"qualification_id,omitempty"`
+	OperatorId      string                 `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	Skill           string                 `protobuf:"bytes,4,opt,name=skill,proto3" json:"skill,omitempty"`
+	GrantedBy       string                 `protobuf:"bytes,5,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
+	ExpiresAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *QualificationCreatedEvent) Reset() {
+	*x = QualificationCreatedEvent{}
+	mi := &file_mes_events_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QualificationCreatedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QualificationCreatedEvent) ProtoMessage() {}
+
+func (x *QualificationCreatedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QualificationCreatedEvent.ProtoReflect.Descriptor instead.
+func (*QualificationCreatedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *QualificationCreatedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *QualificationCreatedEvent) GetQualificationId() string {
+	if x != nil {
+		return x.QualificationId
+	}
+	return ""
+}
+
+func (x *QualificationCreatedEvent) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *QualificationCreatedEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *QualificationCreatedEvent) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
+}
+
+func (x *QualificationCreatedEvent) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *QualificationCreatedEvent) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+// QualificationRenewedEvent is published on kors.mes.qualification.renewed (AS9100D §7.2).
+type QualificationRenewedEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	QualificationId string                 `protobuf:"bytes,2,opt,name=qualification_id,json=qualificationId,proto3" json:"qualification_id,omitempty"`
+	OperatorId      string                 `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	Skill           string                 `protobuf:"bytes,4,opt,name=skill,proto3" json:"skill,omitempty"`
+	RenewedBy       string                 `protobuf:"bytes,5,opt,name=renewed_by,json=renewedBy,proto3" json:"renewed_by,omitempty"`
+	NewExpiresAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=new_expires_at,json=newExpiresAt,proto3" json:"new_expires_at,omitempty"`
+	RenewedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=renewed_at,json=renewedAt,proto3" json:"renewed_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *QualificationRenewedEvent) Reset() {
+	*x = QualificationRenewedEvent{}
+	mi := &file_mes_events_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QualificationRenewedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QualificationRenewedEvent) ProtoMessage() {}
+
+func (x *QualificationRenewedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QualificationRenewedEvent.ProtoReflect.Descriptor instead.
+func (*QualificationRenewedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *QualificationRenewedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *QualificationRenewedEvent) GetQualificationId() string {
+	if x != nil {
+		return x.QualificationId
+	}
+	return ""
+}
+
+func (x *QualificationRenewedEvent) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *QualificationRenewedEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *QualificationRenewedEvent) GetRenewedBy() string {
+	if x != nil {
+		return x.RenewedBy
+	}
+	return ""
+}
+
+func (x *QualificationRenewedEvent) GetNewExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NewExpiresAt
+	}
+	return nil
+}
+
+func (x *QualificationRenewedEvent) GetRenewedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RenewedAt
+	}
+	return nil
+}
+
+// QualificationRevokedEvent is published on kors.mes.qualification.revoked (AS9100D §7.2).
+type QualificationRevokedEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	QualificationId string                 `protobuf:"bytes,2,opt,name=qualification_id,json=qualificationId,proto3" json:"qualification_id,omitempty"`
+	OperatorId      string                 `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	Skill           string                 `protobuf:"bytes,4,opt,name=skill,proto3" json:"skill,omitempty"`
+	RevokedBy       string                 `protobuf:"bytes,5,opt,name=revoked_by,json=revokedBy,proto3" json:"revoked_by,omitempty"`
+	Reason          string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	RevokedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *QualificationRevokedEvent) Reset() {
+	*x = QualificationRevokedEvent{}
+	mi := &file_mes_events_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QualificationRevokedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QualificationRevokedEvent) ProtoMessage() {}
+
+func (x *QualificationRevokedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QualificationRevokedEvent.ProtoReflect.Descriptor instead.
+func (*QualificationRevokedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *QualificationRevokedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetQualificationId() string {
+	if x != nil {
+		return x.QualificationId
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetRevokedBy() string {
+	if x != nil {
+		return x.RevokedBy
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *QualificationRevokedEvent) GetRevokedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RevokedAt
+	}
+	return nil
+}
+
+// QualificationExpiredEvent is published on kors.mes.qualification.expired
+// by the qualification alert scanner when a qualification passes its expires_at.
+type QualificationExpiredEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	QualificationId string                 `protobuf:"bytes,2,opt,name=qualification_id,json=qualificationId,proto3" json:"qualification_id,omitempty"`
+	OperatorId      string                 `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	Skill           string                 `protobuf:"bytes,4,opt,name=skill,proto3" json:"skill,omitempty"`
+	ExpiredAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expired_at,json=expiredAt,proto3" json:"expired_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *QualificationExpiredEvent) Reset() {
+	*x = QualificationExpiredEvent{}
+	mi := &file_mes_events_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QualificationExpiredEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QualificationExpiredEvent) ProtoMessage() {}
+
+func (x *QualificationExpiredEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QualificationExpiredEvent.ProtoReflect.Descriptor instead.
+func (*QualificationExpiredEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *QualificationExpiredEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *QualificationExpiredEvent) GetQualificationId() string {
+	if x != nil {
+		return x.QualificationId
+	}
+	return ""
+}
+
+func (x *QualificationExpiredEvent) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *QualificationExpiredEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *QualificationExpiredEvent) GetExpiredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiredAt
+	}
+	return nil
+}
+
+// QualificationExpiringAlertEvent is published on kors.mes.qualification.expiring_alert
+// by the qualification alert scanner when a qualification is within the warning window.
+type QualificationExpiringAlertEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	QualificationId string                 `protobuf:"bytes,2,opt,name=qualification_id,json=qualificationId,proto3" json:"qualification_id,omitempty"`
+	OperatorId      string                 `protobuf:"bytes,3,opt,name=operator_id,json=operatorId,proto3" json:"operator_id,omitempty"`
+	Skill           string                 `protobuf:"bytes,4,opt,name=skill,proto3" json:"skill,omitempty"`
+	ExpiresAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	DaysRemaining   int32                  `protobuf:"varint,6,opt,name=days_remaining,json=daysRemaining,proto3" json:"days_remaining,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *QualificationExpiringAlertEvent) Reset() {
+	*x = QualificationExpiringAlertEvent{}
+	mi := &file_mes_events_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QualificationExpiringAlertEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QualificationExpiringAlertEvent) ProtoMessage() {}
+
+func (x *QualificationExpiringAlertEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QualificationExpiringAlertEvent.ProtoReflect.Descriptor instead.
+func (*QualificationExpiringAlertEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *QualificationExpiringAlertEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *QualificationExpiringAlertEvent) GetQualificationId() string {
+	if x != nil {
+		return x.QualificationId
+	}
+	return ""
+}
+
+func (x *QualificationExpiringAlertEvent) GetOperatorId() string {
+	if x != nil {
+		return x.OperatorId
+	}
+	return ""
+}
+
+func (x *QualificationExpiringAlertEvent) GetSkill() string {
+	if x != nil {
+		return x.Skill
+	}
+	return ""
+}
+
+func (x *QualificationExpiringAlertEvent) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *QualificationExpiringAlertEvent) GetDaysRemaining() int32 {
+	if x != nil {
+		return x.DaysRemaining
+	}
+	return 0
+}
+
 var File_mes_events_proto protoreflect.FileDescriptor
 
 const file_mes_events_proto_rawDesc = "" +
@@ -1156,7 +1599,58 @@ const file_mes_events_proto_rawDesc = "" +
 	"\aversion\x18\x04 \x01(\x05R\aversion\x12\x12\n" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xad\x02\n" +
+	"\x19QualificationCreatedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12)\n" +
+	"\x10qualification_id\x18\x02 \x01(\tR\x0fqualificationId\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\x12\x14\n" +
+	"\x05skill\x18\x04 \x01(\tR\x05skill\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18\x05 \x01(\tR\tgrantedBy\x129\n" +
+	"\n" +
+	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xb4\x02\n" +
+	"\x19QualificationRenewedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12)\n" +
+	"\x10qualification_id\x18\x02 \x01(\tR\x0fqualificationId\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\x12\x14\n" +
+	"\x05skill\x18\x04 \x01(\tR\x05skill\x12\x1d\n" +
+	"\n" +
+	"renewed_by\x18\x05 \x01(\tR\trenewedBy\x12@\n" +
+	"\x0enew_expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\fnewExpiresAt\x129\n" +
+	"\n" +
+	"renewed_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\trenewedAt\"\x8a\x02\n" +
+	"\x19QualificationRevokedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12)\n" +
+	"\x10qualification_id\x18\x02 \x01(\tR\x0fqualificationId\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\x12\x14\n" +
+	"\x05skill\x18\x04 \x01(\tR\x05skill\x12\x1d\n" +
+	"\n" +
+	"revoked_by\x18\x05 \x01(\tR\trevokedBy\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x129\n" +
+	"\n" +
+	"revoked_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\"\xd3\x01\n" +
+	"\x19QualificationExpiredEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12)\n" +
+	"\x10qualification_id\x18\x02 \x01(\tR\x0fqualificationId\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\x12\x14\n" +
+	"\x05skill\x18\x04 \x01(\tR\x05skill\x129\n" +
+	"\n" +
+	"expired_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiredAt\"\x80\x02\n" +
+	"\x1fQualificationExpiringAlertEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12)\n" +
+	"\x10qualification_id\x18\x02 \x01(\tR\x0fqualificationId\x12\x1f\n" +
+	"\voperator_id\x18\x03 \x01(\tR\n" +
+	"operatorId\x12\x14\n" +
+	"\x05skill\x18\x04 \x01(\tR\x05skill\x129\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12%\n" +
+	"\x0edays_remaining\x18\x06 \x01(\x05R\rdaysRemainingB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_events_proto_rawDescOnce sync.Once
@@ -1170,42 +1664,54 @@ func file_mes_events_proto_rawDescGZIP() []byte {
 	return file_mes_events_proto_rawDescData
 }
 
-var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_mes_events_proto_goTypes = []any{
-	(*OFCreatedEvent)(nil),          // 0: mes.OFCreatedEvent
-	(*OFStartedEvent)(nil),          // 1: mes.OFStartedEvent
-	(*OFCompletedEvent)(nil),        // 2: mes.OFCompletedEvent
-	(*OFSuspendedEvent)(nil),        // 3: mes.OFSuspendedEvent
-	(*OFCancelledEvent)(nil),        // 4: mes.OFCancelledEvent
-	(*OperationStartedEvent)(nil),   // 5: mes.OperationStartedEvent
-	(*OperationCompletedEvent)(nil), // 6: mes.OperationCompletedEvent
-	(*OFResumedEvent)(nil),          // 7: mes.OFResumedEvent
-	(*OperationSkippedEvent)(nil),   // 8: mes.OperationSkippedEvent
-	(*OperationSignedOffEvent)(nil), // 9: mes.OperationSignedOffEvent
-	(*NCDeclaredEvent)(nil),         // 10: mes.NCDeclaredEvent
-	(*OFFAIApprovedEvent)(nil),      // 11: mes.OFFAIApprovedEvent
-	(*RoutingCreatedEvent)(nil),     // 12: mes.RoutingCreatedEvent
-	(*timestamppb.Timestamp)(nil),   // 13: google.protobuf.Timestamp
+	(*OFCreatedEvent)(nil),                  // 0: mes.OFCreatedEvent
+	(*OFStartedEvent)(nil),                  // 1: mes.OFStartedEvent
+	(*OFCompletedEvent)(nil),                // 2: mes.OFCompletedEvent
+	(*OFSuspendedEvent)(nil),                // 3: mes.OFSuspendedEvent
+	(*OFCancelledEvent)(nil),                // 4: mes.OFCancelledEvent
+	(*OperationStartedEvent)(nil),           // 5: mes.OperationStartedEvent
+	(*OperationCompletedEvent)(nil),         // 6: mes.OperationCompletedEvent
+	(*OFResumedEvent)(nil),                  // 7: mes.OFResumedEvent
+	(*OperationSkippedEvent)(nil),           // 8: mes.OperationSkippedEvent
+	(*OperationSignedOffEvent)(nil),         // 9: mes.OperationSignedOffEvent
+	(*NCDeclaredEvent)(nil),                 // 10: mes.NCDeclaredEvent
+	(*OFFAIApprovedEvent)(nil),              // 11: mes.OFFAIApprovedEvent
+	(*RoutingCreatedEvent)(nil),             // 12: mes.RoutingCreatedEvent
+	(*QualificationCreatedEvent)(nil),       // 13: mes.QualificationCreatedEvent
+	(*QualificationRenewedEvent)(nil),       // 14: mes.QualificationRenewedEvent
+	(*QualificationRevokedEvent)(nil),       // 15: mes.QualificationRevokedEvent
+	(*QualificationExpiredEvent)(nil),       // 16: mes.QualificationExpiredEvent
+	(*QualificationExpiringAlertEvent)(nil), // 17: mes.QualificationExpiringAlertEvent
+	(*timestamppb.Timestamp)(nil),           // 18: google.protobuf.Timestamp
 }
 var file_mes_events_proto_depIdxs = []int32{
-	13, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	13, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	13, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	13, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
-	13, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
-	13, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	13, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	13, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
-	13, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
-	13, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
-	13, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
-	13, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
-	13, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	18, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	18, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	18, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	18, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
+	18, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
+	18, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	18, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	18, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
+	18, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
+	18, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
+	18, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
+	18, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
+	18, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	18, // 13: mes.QualificationCreatedEvent.expires_at:type_name -> google.protobuf.Timestamp
+	18, // 14: mes.QualificationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	18, // 15: mes.QualificationRenewedEvent.new_expires_at:type_name -> google.protobuf.Timestamp
+	18, // 16: mes.QualificationRenewedEvent.renewed_at:type_name -> google.protobuf.Timestamp
+	18, // 17: mes.QualificationRevokedEvent.revoked_at:type_name -> google.protobuf.Timestamp
+	18, // 18: mes.QualificationExpiredEvent.expired_at:type_name -> google.protobuf.Timestamp
+	18, // 19: mes.QualificationExpiringAlertEvent.expires_at:type_name -> google.protobuf.Timestamp
+	20, // [20:20] is the sub-list for method output_type
+	20, // [20:20] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_mes_events_proto_init() }
@@ -1219,7 +1725,7 @@ func file_mes_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_events_proto_rawDesc), len(file_mes_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -653,6 +653,19 @@ func scanRoutingStep(s scanner) (*domain.RoutingStep, error) {
 
 // ── Outbox ────────────────────────────────────────────────────────────────────
 
+// InsertOutboxDirect writes a single outbox entry using the pool (no transaction).
+// Used by background scanners that have no associated business mutation.
+func (r *PostgresRepo) InsertOutboxDirect(ctx context.Context, entry domain.OutboxEntry) error {
+	_, err := r.db.Exec(ctx,
+		`INSERT INTO outbox (event_type, subject, payload) VALUES ($1, $2, $3)`,
+		entry.EventType, entry.Subject, entry.Payload,
+	)
+	if err != nil {
+		return fmt.Errorf("InsertOutboxDirect %s: %w", entry.EventType, err)
+	}
+	return nil
+}
+
 // InsertOutboxTx writes a single outbox entry within the provided pgx.Tx.
 // The transaction must be open; this method does not commit.
 func (r *PostgresRepo) InsertOutboxTx(ctx context.Context, tx pgx.Tx, entry domain.OutboxEntry) error {
@@ -805,6 +818,176 @@ func scanSN(s scanner) (*domain.SerialNumber, error) {
 	}
 	sn.Status = domain.SerialNumberStatus(status)
 	return &sn, nil
+}
+
+// ── Qualifications — read-only ─────────────────────────────────────────────────
+
+// FindQualificationByID retrieves a Qualification by UUID.
+// Returns domain.ErrQualificationNotFound if absent.
+func (r *PostgresRepo) FindQualificationByID(ctx context.Context, id string) (*domain.Qualification, error) {
+	row := r.db.QueryRow(ctx,
+		`SELECT id, operator_id, skill, label, issued_at, expires_at,
+		        granted_by, certificate_url, is_revoked,
+		        revoked_by, revoked_at, revoke_reason,
+		        created_at, updated_at
+		 FROM operator_qualifications WHERE id = $1`, id,
+	)
+	q, err := scanQualification(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("FindQualificationByID %s: %w", id, domain.ErrQualificationNotFound)
+		}
+		return nil, fmt.Errorf("FindQualificationByID %s: %w", id, err)
+	}
+	return q, nil
+}
+
+// ListQualificationsByOperator returns all qualifications for the given operator (all statuses).
+// Used for audit history — does not filter by status.
+func (r *PostgresRepo) ListQualificationsByOperator(ctx context.Context, operatorID string) ([]*domain.Qualification, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, operator_id, skill, label, issued_at, expires_at,
+		        granted_by, certificate_url, is_revoked,
+		        revoked_by, revoked_at, revoke_reason,
+		        created_at, updated_at
+		 FROM operator_qualifications
+		 WHERE operator_id = $1
+		 ORDER BY created_at DESC`, operatorID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ListQualificationsByOperator %s: %w", operatorID, err)
+	}
+	defer rows.Close()
+
+	var quals []*domain.Qualification
+	for rows.Next() {
+		q, err := scanQualification(rows)
+		if err != nil {
+			return nil, fmt.Errorf("ListQualificationsByOperator scan: %w", err)
+		}
+		quals = append(quals, q)
+	}
+	return quals, rows.Err()
+}
+
+// ListActiveSkills returns the skill strings for all currently valid qualifications
+// (not revoked and not expired at time now) for the given operator.
+// This is the hot path for the StartOperation interlock; hits idx_qual_operator_skill.
+func (r *PostgresRepo) ListActiveSkills(ctx context.Context, operatorID string, now time.Time) ([]string, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT skill
+		 FROM operator_qualifications
+		 WHERE operator_id = $1
+		   AND is_revoked = FALSE
+		   AND expires_at > $2`, operatorID, now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ListActiveSkills %s: %w", operatorID, err)
+	}
+	defer rows.Close()
+
+	var skills []string
+	for rows.Next() {
+		var skill string
+		if err := rows.Scan(&skill); err != nil {
+			return nil, fmt.Errorf("ListActiveSkills scan: %w", err)
+		}
+		skills = append(skills, skill)
+	}
+	return skills, rows.Err()
+}
+
+// ListExpiringQualifications returns qualifications expiring within warningDays from now.
+// Only active (non-revoked, non-expired) qualifications are returned.
+func (r *PostgresRepo) ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*domain.Qualification, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, operator_id, skill, label, issued_at, expires_at,
+		        granted_by, certificate_url, is_revoked,
+		        revoked_by, revoked_at, revoke_reason,
+		        created_at, updated_at
+		 FROM operator_qualifications
+		 WHERE is_revoked = FALSE
+		   AND expires_at > $1
+		   AND expires_at <= ($1 + ($2 * INTERVAL '1 day'))
+		 ORDER BY expires_at ASC`, now, warningDays,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ListExpiringQualifications: %w", err)
+	}
+	defer rows.Close()
+
+	var quals []*domain.Qualification
+	for rows.Next() {
+		q, err := scanQualification(rows)
+		if err != nil {
+			return nil, fmt.Errorf("ListExpiringQualifications scan: %w", err)
+		}
+		quals = append(quals, q)
+	}
+	return quals, rows.Err()
+}
+
+// ── Qualifications — transactional writes ─────────────────────────────────────
+
+func (t *txOps) SaveQualification(ctx context.Context, q *domain.Qualification) error {
+	_, err := t.tx.Exec(ctx,
+		`INSERT INTO operator_qualifications
+			(id, operator_id, skill, label, issued_at, expires_at,
+			 granted_by, certificate_url, is_revoked,
+			 revoked_by, revoked_at, revoke_reason,
+			 created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		q.ID, q.OperatorID, q.Skill, q.Label, q.IssuedAt, q.ExpiresAt,
+		q.GrantedBy, nullableString(q.CertificateURL), q.IsRevoked,
+		nullableString(q.RevokedBy), q.RevokedAt, nullableString(q.RevokeReason),
+		q.CreatedAt, q.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("SaveQualification %s: %w", q.ID, err)
+	}
+	return nil
+}
+
+func (t *txOps) UpdateQualification(ctx context.Context, q *domain.Qualification) error {
+	_, err := t.tx.Exec(ctx,
+		`UPDATE operator_qualifications
+		 SET expires_at=$1, certificate_url=$2,
+		     is_revoked=$3, revoked_by=$4, revoked_at=$5, revoke_reason=$6,
+		     updated_at=$7
+		 WHERE id=$8`,
+		q.ExpiresAt, nullableString(q.CertificateURL),
+		q.IsRevoked, nullableString(q.RevokedBy), q.RevokedAt, nullableString(q.RevokeReason),
+		q.UpdatedAt, q.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("UpdateQualification %s: %w", q.ID, err)
+	}
+	return nil
+}
+
+// ── Qualification scan helper ─────────────────────────────────────────────────
+
+func scanQualification(s scanner) (*domain.Qualification, error) {
+	var q domain.Qualification
+	var certURL, revokedBy, revokeReason *string
+	if err := s.Scan(
+		&q.ID, &q.OperatorID, &q.Skill, &q.Label, &q.IssuedAt, &q.ExpiresAt,
+		&q.GrantedBy, &certURL, &q.IsRevoked,
+		&revokedBy, &q.RevokedAt, &revokeReason,
+		&q.CreatedAt, &q.UpdatedAt,
+	); err != nil {
+		return nil, err
+	}
+	if certURL != nil {
+		q.CertificateURL = *certURL
+	}
+	if revokedBy != nil {
+		q.RevokedBy = *revokedBy
+	}
+	if revokeReason != nil {
+		q.RevokeReason = *revokeReason
+	}
+	return &q, nil
 }
 
 func scanGenealogyEntry(s scanner) (*domain.GenealogyEntry, error) {

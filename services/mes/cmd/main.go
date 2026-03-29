@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
@@ -19,6 +20,7 @@ import (
 	"github.com/haksolot/kors/services/mes/domain"
 	"github.com/haksolot/kors/services/mes/handler"
 	"github.com/haksolot/kors/services/mes/outbox"
+	"github.com/haksolot/kors/services/mes/qualification"
 	"github.com/haksolot/kors/services/mes/repo"
 )
 
@@ -27,9 +29,11 @@ type Config struct {
 	DatabaseURL  string `env:"DATABASE_URL,required"`
 	NATSUrl      string `env:"NATS_URL,required"`
 	NATSCreds    string `env:"NATS_CREDS_PATH"`
-	JWKSEndpoint string `env:"JWKS_ENDPOINT"` // unused by MES — JWT validated in BFF
-	OTLPEndpoint string `env:"OTLP_ENDPOINT"`
-	ServiceName  string `env:"SERVICE_NAME,required"`
+	JWKSEndpoint         string `env:"JWKS_ENDPOINT"`        // unused by MES — JWT validated in BFF
+	OTLPEndpoint         string `env:"OTLP_ENDPOINT"`
+	ServiceName          string `env:"SERVICE_NAME,required"`
+	QualWarningDays      int    `env:"QUAL_WARNING_DAYS"`    // days before expiry to emit alerts (default 30)
+	QualScanIntervalSecs int    `env:"QUAL_SCAN_INTERVAL_SECS"` // scanner interval in seconds (default 3600)
 }
 
 func main() {
@@ -101,15 +105,24 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
+
+	// ── Qualification expiry scanner ──────────────────────────────────────────
+	warningDays := cfg.QualWarningDays
+	if warningDays <= 0 {
+		warningDays = domain.DefaultExpiryWarningDays
+	}
+	scanInterval := time.Duration(cfg.QualScanIntervalSecs) * time.Second
+	qualScanner := qualification.New(r, warningDays, scanInterval, log, reg)
 
 	// ── Subscriptions ─────────────────────────────────────────────────────────
 	subs := subscribeAll(ctx, h, nc, log)
 	defer drainAll(subs)
 
-	// ── Outbox worker ─────────────────────────────────────────────────────────
+	// ── Background workers ────────────────────────────────────────────────────
 	go worker.Run(ctx)
+	go qualScanner.Run(ctx)
 
 	log.Info().Str("service", cfg.ServiceName).Msg("MES service started")
 	<-ctx.Done()
@@ -195,10 +208,12 @@ func drainAll(subs []*nats.Subscription) {
 
 // compile-time interface compliance checks.
 var (
-	_ handler.DispatchRepository     = (*repo.PostgresRepo)(nil)
-	_ handler.OperationRepository    = (*repo.PostgresRepo)(nil)
-	_ handler.TraceabilityRepository = (*repo.PostgresRepo)(nil)
-	_ handler.RoutingRepository      = (*repo.PostgresRepo)(nil)
-	_ domain.Transactor              = (*repo.PostgresRepo)(nil)
-	_ outbox.Repository              = (*repo.PostgresRepo)(nil)
+	_ handler.DispatchRepository      = (*repo.PostgresRepo)(nil)
+	_ handler.OperationRepository     = (*repo.PostgresRepo)(nil)
+	_ handler.TraceabilityRepository  = (*repo.PostgresRepo)(nil)
+	_ handler.RoutingRepository       = (*repo.PostgresRepo)(nil)
+	_ handler.QualificationRepository  = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor                = (*repo.PostgresRepo)(nil)
+	_ outbox.Repository                = (*repo.PostgresRepo)(nil)
+	_ qualification.Repository         = (*repo.PostgresRepo)(nil)
 )

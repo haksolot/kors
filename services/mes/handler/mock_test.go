@@ -3,6 +3,7 @@ package handler_test
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -16,14 +17,21 @@ import (
 func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
 func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trace *mockTraceabilityRepo, store *mockTransactor) *handler.Handler {
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, store, reg, &log)
+}
+
+// newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
+func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, quals *mockQualificationRepo, store *mockTransactor) *handler.Handler {
+	log := zerolog.Nop()
+	reg := prometheus.NewRegistry()
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -217,6 +225,50 @@ func (m *mockTxOps) SaveGenealogyEntry(ctx context.Context, e *domain.GenealogyE
 
 func (m *mockTxOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) error {
 	return m.Called(ctx, entry.EventType).Error(0)
+}
+
+func (m *mockTxOps) SaveQualification(ctx context.Context, q *domain.Qualification) error {
+	return m.Called(ctx, q).Error(0)
+}
+
+func (m *mockTxOps) UpdateQualification(ctx context.Context, q *domain.Qualification) error {
+	return m.Called(ctx, q).Error(0)
+}
+
+// ── Qualification repo mock ───────────────────────────────────────────────────
+
+type mockQualificationRepo struct{ mock.Mock }
+
+func (m *mockQualificationRepo) FindQualificationByID(ctx context.Context, id string) (*domain.Qualification, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Qualification), args.Error(1)
+}
+
+func (m *mockQualificationRepo) ListQualificationsByOperator(ctx context.Context, operatorID string) ([]*domain.Qualification, error) {
+	args := m.Called(ctx, operatorID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Qualification), args.Error(1)
+}
+
+func (m *mockQualificationRepo) ListActiveSkills(ctx context.Context, operatorID string, now time.Time) ([]string, error) {
+	args := m.Called(ctx, operatorID, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *mockQualificationRepo) ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*domain.Qualification, error) {
+	args := m.Called(ctx, warningDays, now)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Qualification), args.Error(1)
 }
 
 // ── Sentinel errors used in tests ────────────────────────────────────────────

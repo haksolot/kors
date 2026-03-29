@@ -133,3 +133,57 @@ message RoutingCreatedEvent {
   string name       = 5;
   google.protobuf.Timestamp created_at = 6;
 }
+
+// QualificationCreatedEvent is published on kors.mes.qualification.created (AS9100D §7.2).
+message QualificationCreatedEvent {
+  string event_id          = 1;
+  string qualification_id  = 2;
+  string operator_id       = 3;
+  string skill             = 4;
+  string granted_by        = 5;
+  google.protobuf.Timestamp expires_at  = 6;
+  google.protobuf.Timestamp created_at  = 7;
+}
+
+// QualificationRenewedEvent is published on kors.mes.qualification.renewed (AS9100D §7.2).
+message QualificationRenewedEvent {
+  string event_id          = 1;
+  string qualification_id  = 2;
+  string operator_id       = 3;
+  string skill             = 4;
+  string renewed_by        = 5;
+  google.protobuf.Timestamp new_expires_at = 6;
+  google.protobuf.Timestamp renewed_at     = 7;
+}
+
+// QualificationRevokedEvent is published on kors.mes.qualification.revoked (AS9100D §7.2).
+message QualificationRevokedEvent {
+  string event_id          = 1;
+  string qualification_id  = 2;
+  string operator_id       = 3;
+  string skill             = 4;
+  string revoked_by        = 5;
+  string reason            = 6;
+  google.protobuf.Timestamp revoked_at = 7;
+}
+
+// QualificationExpiredEvent is published on kors.mes.qualification.expired
+// by the qualification alert scanner when a qualification passes its expires_at.
+message QualificationExpiredEvent {
+  string event_id          = 1;
+  string qualification_id  = 2;
+  string operator_id       = 3;
+  string skill             = 4;
+  google.protobuf.Timestamp expired_at = 5;
+}
+
+// QualificationExpiringAlertEvent is published on kors.mes.qualification.expiring_alert
+// by the qualification alert scanner when a qualification is within the warning window.
+message QualificationExpiringAlertEvent {
+  string event_id          = 1;
+  string qualification_id  = 2;
+  string operator_id       = 3;
+  string skill             = 4;
+  google.protobuf.Timestamp expires_at  = 5;
+  int32  days_remaining    = 6;
+}

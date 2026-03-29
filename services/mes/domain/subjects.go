@@ -71,6 +71,22 @@ const (
 	// Async events — routings (BLOC 5)
 	SubjectRoutingCreated = "kors.mes.routing.created"
 
+	// Synchronous request-reply subjects — qualifications (AS9100D §7.2)
+	SubjectQualificationCreate       = "kors.mes.qualification.create"
+	SubjectQualificationGet          = "kors.mes.qualification.get"
+	SubjectQualificationList         = "kors.mes.qualification.list"
+	SubjectQualificationRenew        = "kors.mes.qualification.renew"
+	SubjectQualificationRevoke       = "kors.mes.qualification.revoke"
+	SubjectQualificationListActive   = "kors.mes.qualification.list_active_skills"
+	SubjectQualificationListExpiring = "kors.mes.qualification.list_expiring"
+
+	// Async events — qualifications (AS9100D §7.2)
+	SubjectQualificationCreated       = "kors.mes.qualification.created"
+	SubjectQualificationRenewed       = "kors.mes.qualification.renewed"
+	SubjectQualificationRevoked       = "kors.mes.qualification.revoked"
+	SubjectQualificationExpired       = "kors.mes.qualification.expired"
+	SubjectQualificationExpiringAlert = "kors.mes.qualification.expiring_alert"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

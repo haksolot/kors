@@ -112,6 +112,16 @@ func (h *Handler) Routes() http.Handler {
 			r.Get("/genealogy", h.getGenealogy)
 		})
 
+		// Qualifications (AS9100D §7.2)
+		r.Post("/qualifications", h.createQualification)
+		r.Get("/qualifications", h.listQualifications)
+		r.Get("/qualifications/expiring", h.listExpiringQualifications)
+		r.Route("/qualifications/{id}", func(r chi.Router) {
+			r.Get("/", h.getQualification)
+			r.Post("/renew", h.renewQualification)
+			r.Post("/revoke", h.revokeQualification)
+		})
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

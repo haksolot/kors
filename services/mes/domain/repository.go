@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // OrderRepository defines the read-only persistence contract for ManufacturingOrders.
 // Write operations (create/update) must go through Transactor to ensure atomicity with outbox.
@@ -37,6 +40,18 @@ type TraceabilityRepository interface {
 	GetGenealogyByChildSN(ctx context.Context, snID string) ([]*GenealogyEntry, error)
 }
 
+// QualificationRepository defines read-only persistence for operator qualifications (AS9100D §7.2).
+// Write operations (create/renew/revoke) must go through Transactor to ensure atomicity with outbox.
+type QualificationRepository interface {
+	FindQualificationByID(ctx context.Context, id string) (*Qualification, error)
+	ListQualificationsByOperator(ctx context.Context, operatorID string) ([]*Qualification, error)
+	// ListActiveSkills returns the skill strings for all non-revoked, non-expired qualifications
+	// for the given operator at time now. This is the hot path for the StartOperation interlock.
+	ListActiveSkills(ctx context.Context, operatorID string, now time.Time) ([]string, error)
+	// ListExpiringQualifications returns qualifications expiring within warningDays from now.
+	ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*Qualification, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -55,6 +70,9 @@ type TxOps interface {
 	UpdateSerialNumber(ctx context.Context, sn *SerialNumber) error
 	SaveGenealogyEntry(ctx context.Context, e *GenealogyEntry) error
 	InsertOutbox(ctx context.Context, entry OutboxEntry) error
+	// Qualification writes (AS9100D §7.2)
+	SaveQualification(ctx context.Context, q *Qualification) error
+	UpdateQualification(ctx context.Context, q *Qualification) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.
