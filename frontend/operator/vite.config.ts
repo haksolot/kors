@@ -17,12 +17,19 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:80',
         changeOrigin: true,
+        headers: {
+          'Host': 'kors.local'
+        }
       },
       '/ws': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:80',
         ws: true,
+        changeOrigin: true,
+        headers: {
+          'Host': 'kors.local'
+        }
       }
     }
   }
