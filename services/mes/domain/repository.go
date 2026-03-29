@@ -82,6 +82,15 @@ type MaterialRepository interface {
 	ListTransfersByEntity(ctx context.Context, entityID string) ([]*LocationTransfer, error)
 }
 
+// QualityRepository defines read-only persistence for inline quality (BLOC 10).
+type QualityRepository interface {
+	FindCharacteristicByID(ctx context.Context, id string) (*ControlCharacteristic, error)
+	ListCharacteristicsByStep(ctx context.Context, stepID string) ([]*ControlCharacteristic, error)
+	ListCharacteristicsByOperation(ctx context.Context, operationID string) ([]*ControlCharacteristic, error)
+	ListMeasurementsByOperation(ctx context.Context, operationID string) ([]*Measurement, error)
+	ListMeasurementsByCharacteristic(ctx context.Context, characteristicID string, limit int) ([]*Measurement, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -119,6 +128,9 @@ type TxOps interface {
 	SaveTOEExposureLog(ctx context.Context, l *TOEExposureLog) error
 	UpdateTOEExposureLog(ctx context.Context, l *TOEExposureLog) error
 	SaveLocationTransfer(ctx context.Context, t *LocationTransfer) error
+	// Quality writes (BLOC 10)
+	SaveControlCharacteristic(ctx context.Context, c *ControlCharacteristic) error
+	SaveMeasurement(ctx context.Context, m *Measurement) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.

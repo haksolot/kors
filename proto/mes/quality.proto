@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+enum CharacteristicType {
+  CHARACTERISTIC_TYPE_UNSPECIFIED = 0;
+  CHARACTERISTIC_TYPE_QUANTITATIVE = 1; // Numeric values (e.g. 12.5mm)
+  CHARACTERISTIC_TYPE_QUALITATIVE = 2;  // Pass/Fail
+}
+
+enum MeasurementStatus {
+  MEASUREMENT_STATUS_UNSPECIFIED = 0;
+  MEASUREMENT_STATUS_PASS = 1;
+  MEASUREMENT_STATUS_FAIL = 2;
+  MEASUREMENT_STATUS_WARNING = 3; // SPC alert (drift)
+}
+
+message ControlCharacteristic {
+  string id = 1;
+  string step_id = 2; // Linked to a routing step
+  string name = 3;
+  CharacteristicType type = 4;
+  string unit = 5;
+  double nominal_value = 6;
+  double upper_tolerance = 7;
+  double lower_tolerance = 8;
+  bool is_mandatory = 9;
+}
+
+message Measurement {
+  string id = 1;
+  string operation_id = 2;
+  string characteristic_id = 3;
+  string value = 4; // Numeric or Pass/Fail
+  MeasurementStatus status = 5;
+  string operator_id = 6;
+  google.protobuf.Timestamp recorded_at = 7;
+}
+
+message RecordMeasurementRequest {
+  string operation_id = 1;
+  string characteristic_id = 2;
+  string value = 3;
+  string operator_id = 4;
+}
+
+message RecordMeasurementResponse {
+  Measurement measurement = 1;
+}
+
+message GetOperationCharacteristicsRequest {
+  string operation_id = 1;
+}
+
+message GetOperationCharacteristicsResponse {
+  repeated ControlCharacteristic characteristics = 1;
+}
+
+message GetMeasurementHistoryRequest {
+  string characteristic_id = 1;
+  int32 limit = 2;
+}
+
+message GetMeasurementHistoryResponse {
+  repeated Measurement measurements = 1;
+}

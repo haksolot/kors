@@ -18,7 +18,11 @@ func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTr
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
+	quality := &mockQualityRepo{}
+	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
+	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
+	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
@@ -27,7 +31,11 @@ func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trac
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
+	quality := &mockQualityRepo{}
+	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
+	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
+	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
@@ -36,7 +44,11 @@ func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, qual
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
+	quality := &mockQualityRepo{}
+	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
+	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
+	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -288,6 +300,14 @@ func (m *mockTxOps) SaveLocationTransfer(ctx context.Context, t *domain.Location
 	return m.Called(ctx, t).Error(0)
 }
 
+func (m *mockTxOps) SaveControlCharacteristic(ctx context.Context, c *domain.ControlCharacteristic) error {
+	return m.Called(ctx, c).Error(0)
+}
+
+func (m *mockTxOps) SaveMeasurement(ctx context.Context, meas *domain.Measurement) error {
+	return m.Called(ctx, meas).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
@@ -446,4 +466,48 @@ func (m *mockMaterialRepo) ListTransfersByEntity(ctx context.Context, entityID s
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.LocationTransfer), args.Error(1)
+}
+
+// ── Quality repo mock ─────────────────────────────────────────────────────────
+
+type mockQualityRepo struct{ mock.Mock }
+
+func (m *mockQualityRepo) FindCharacteristicByID(ctx context.Context, id string) (*domain.ControlCharacteristic, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ControlCharacteristic), args.Error(1)
+}
+
+func (m *mockQualityRepo) ListCharacteristicsByStep(ctx context.Context, stepID string) ([]*domain.ControlCharacteristic, error) {
+	args := m.Called(ctx, stepID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ControlCharacteristic), args.Error(1)
+}
+
+func (m *mockQualityRepo) ListCharacteristicsByOperation(ctx context.Context, operationID string) ([]*domain.ControlCharacteristic, error) {
+	args := m.Called(ctx, operationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ControlCharacteristic), args.Error(1)
+}
+
+func (m *mockQualityRepo) ListMeasurementsByOperation(ctx context.Context, operationID string) ([]*domain.Measurement, error) {
+	args := m.Called(ctx, operationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Measurement), args.Error(1)
+}
+
+func (m *mockQualityRepo) ListMeasurementsByCharacteristic(ctx context.Context, characteristicID string, limit int) ([]*domain.Measurement, error) {
+	args := m.Called(ctx, characteristicID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Measurement), args.Error(1)
 }
