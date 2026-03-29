@@ -1,6 +1,9 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // OrderRepository defines the read-only persistence contract for ManufacturingOrders.
 // Write operations (create/update) must go through Transactor to ensure atomicity with outbox.
@@ -35,6 +38,18 @@ type TraceabilityRepository interface {
 	FindSNBySN(ctx context.Context, sn string) (*SerialNumber, error)
 	GetGenealogyByParentSN(ctx context.Context, snID string) ([]*GenealogyEntry, error)
 	GetGenealogyByChildSN(ctx context.Context, snID string) ([]*GenealogyEntry, error)
+}
+
+// QualificationRepository defines read-only persistence for operator qualifications (AS9100D §7.2).
+// Write operations (create/renew/revoke) must go through Transactor to ensure atomicity with outbox.
+type QualificationRepository interface {
+	FindQualificationByID(ctx context.Context, id string) (*Qualification, error)
+	ListQualificationsByOperator(ctx context.Context, operatorID string) ([]*Qualification, error)
+	// ListActiveSkills returns the skill strings for all non-revoked, non-expired qualifications
+	// for the given operator at time now. This is the hot path for the StartOperation interlock.
+	ListActiveSkills(ctx context.Context, operatorID string, now time.Time) ([]string, error)
+	// ListExpiringQualifications returns qualifications expiring within warningDays from now.
+	ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*Qualification, error)
 }
 
 // TxOps defines all write operations available within a database transaction.
