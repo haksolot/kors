@@ -18,7 +18,7 @@ func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTr
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
@@ -27,7 +27,7 @@ func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trac
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
@@ -36,7 +36,7 @@ func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, qual
 	reg := prometheus.NewRegistry()
 	tools := &mockToolRepo{}
 	tools.On("ListToolsByOperation", mock.Anything, mock.Anything).Return([]*domain.Tool{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -272,6 +272,22 @@ func (m *mockTxOps) LinkToolToOperation(ctx context.Context, operationID, toolID
 	return m.Called(ctx, operationID, toolID).Error(0)
 }
 
+func (m *mockTxOps) SaveConsumptionRecord(ctx context.Context, r *domain.ConsumptionRecord) error {
+	return m.Called(ctx, r).Error(0)
+}
+
+func (m *mockTxOps) SaveTOEExposureLog(ctx context.Context, l *domain.TOEExposureLog) error {
+	return m.Called(ctx, l).Error(0)
+}
+
+func (m *mockTxOps) UpdateTOEExposureLog(ctx context.Context, l *domain.TOEExposureLog) error {
+	return m.Called(ctx, l).Error(0)
+}
+
+func (m *mockTxOps) SaveLocationTransfer(ctx context.Context, t *domain.LocationTransfer) error {
+	return m.Called(ctx, t).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
@@ -402,4 +418,32 @@ func (m *mockToolRepo) ListToolsByOperation(ctx context.Context, operationID str
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Tool), args.Error(1)
+}
+
+// ── Material repo mock ────────────────────────────────────────────────────────
+
+type mockMaterialRepo struct{ mock.Mock }
+
+func (m *mockMaterialRepo) FindOngoingTOEExposure(ctx context.Context, lotID string) (*domain.TOEExposureLog, error) {
+	args := m.Called(ctx, lotID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.TOEExposureLog), args.Error(1)
+}
+
+func (m *mockMaterialRepo) ListConsumptionsByOperation(ctx context.Context, operationID string) ([]*domain.ConsumptionRecord, error) {
+	args := m.Called(ctx, operationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ConsumptionRecord), args.Error(1)
+}
+
+func (m *mockMaterialRepo) ListTransfersByEntity(ctx context.Context, entityID string) ([]*domain.LocationTransfer, error) {
+	args := m.Called(ctx, entityID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.LocationTransfer), args.Error(1)
 }

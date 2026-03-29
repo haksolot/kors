@@ -146,6 +146,14 @@ func (h *Handler) Routes() http.Handler {
 		r.Post("/operations/{op_id}/tools", h.assignToolToOperation)
 		r.Get("/operations/{op_id}/tools", h.listOperationTools)
 
+		// Materials & WIP (BLOC 9)
+		r.Route("/materials", func(r chi.Router) {
+			r.Post("/consume", h.consumeMaterial)
+			r.Post("/toe/start", h.startTOEExposure)
+			r.Post("/toe/stop", h.stopTOEExposure)
+		})
+		r.Post("/transfers", h.transferEntity)
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

@@ -8,6 +8,13 @@ option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
 
 // ── Lot ───────────────────────────────────────────────────────────────────────
 
+enum LotStatus {
+  LOT_STATUS_UNSPECIFIED = 0;
+  LOT_STATUS_VALID       = 1;
+  LOT_STATUS_BLOCKED     = 2;
+  LOT_STATUS_EXPIRED     = 3;
+}
+
 message Lot {
   string id                = 1;
   string reference         = 2;
@@ -15,6 +22,10 @@ message Lot {
   int32  quantity          = 4;
   string material_cert_url = 5;
   google.protobuf.Timestamp received_at = 6;
+  LotStatus status         = 7;
+  google.protobuf.Timestamp expiry_at   = 8;
+  int32  toe_threshold_minutes          = 9;
+  int32  toe_exposure_minutes           = 10;
 }
 
 message CreateLotRequest {

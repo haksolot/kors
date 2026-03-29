@@ -9,15 +9,28 @@ import (
 
 // ── Lot ───────────────────────────────────────────────────────────────────────
 
+type LotStatus string
+
+const (
+	LotStatusValid   LotStatus = "VALID"
+	LotStatusBlocked LotStatus = "BLOCKED"
+	LotStatusExpired LotStatus = "EXPIRED"
+)
+
 // Lot represents a batch of raw material or components received from a supplier.
 // Material certificates (AS9100D §8.5.3) are stored in MinIO; only the URL is held here.
 type Lot struct {
-	ID              string
-	Reference       string // unique human-readable lot number (e.g. "LOT-2026-001")
-	ProductID       string // UUID of the product this lot is for
-	Quantity        int
-	MaterialCertURL string // MinIO object URL, empty until certificate is attached
-	ReceivedAt      time.Time
+	ID                   string
+	Reference            string // unique human-readable lot number (e.g. "LOT-2026-001")
+	ProductID            string // UUID of the product this lot is for
+	Quantity             int
+	MaterialCertURL      string // MinIO object URL, empty until certificate is attached
+	ReceivedAt           time.Time
+	Status               LotStatus
+	ExpiryAt             *time.Time
+	TOEThresholdMinutes  int
+	TOEExposureMinutes   int
+	CurrentWorkstationID *string
 }
 
 // NewLot creates a Lot with the given reference, product, and quantity.
@@ -36,8 +49,39 @@ func NewLot(reference, productID string, quantity int) (*Lot, error) {
 		Reference:  reference,
 		ProductID:  productID,
 		Quantity:   quantity,
+		Status:     LotStatusValid,
 		ReceivedAt: time.Now().UTC(),
 	}, nil
+}
+
+func (l *Lot) IsExpired(now time.Time) bool {
+	if l.ExpiryAt == nil {
+		return false
+	}
+	return l.ExpiryAt.Before(now)
+}
+
+func (l *Lot) IsBlocked() bool {
+	return l.Status == LotStatusBlocked
+}
+
+func (l *Lot) TOERemainingMinutes() int {
+	if l.TOEThresholdMinutes <= 0 {
+		return 999999
+	}
+	remaining := l.TOEThresholdMinutes - l.TOEExposureMinutes
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+func (l *Lot) Block() {
+	l.Status = LotStatusBlocked
+}
+
+func (l *Lot) MarkExpired() {
+	l.Status = LotStatusExpired
 }
 
 // AttachCertificate records the MinIO URL of the material certificate.

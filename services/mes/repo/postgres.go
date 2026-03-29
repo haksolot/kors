@@ -368,10 +368,11 @@ func (t *txOps) UpdateOperation(ctx context.Context, op *domain.Operation) error
 
 func (t *txOps) SaveLot(ctx context.Context, l *domain.Lot) error {
 	_, err := t.tx.Exec(ctx,
-		`INSERT INTO lots (id, reference, product_id, quantity, material_cert_url, received_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO lots (id, reference, product_id, quantity, material_cert_url, received_at, status, expiry_at, toe_threshold_minutes, toe_exposure_minutes, current_workstation_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		l.ID, l.Reference, l.ProductID, l.Quantity,
 		nullableString(l.MaterialCertURL), l.ReceivedAt,
+		string(l.Status), l.ExpiryAt, l.TOEThresholdMinutes, l.TOEExposureMinutes, l.CurrentWorkstationID,
 	)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -384,8 +385,9 @@ func (t *txOps) SaveLot(ctx context.Context, l *domain.Lot) error {
 
 func (t *txOps) UpdateLot(ctx context.Context, l *domain.Lot) error {
 	_, err := t.tx.Exec(ctx,
-		`UPDATE lots SET material_cert_url=$1 WHERE id=$2`,
-		nullableString(l.MaterialCertURL), l.ID,
+		`UPDATE lots SET material_cert_url=$1, status=$2, expiry_at=$3, toe_threshold_minutes=$4, toe_exposure_minutes=$5, current_workstation_id=$6
+		 WHERE id=$7`,
+		nullableString(l.MaterialCertURL), string(l.Status), l.ExpiryAt, l.TOEThresholdMinutes, l.TOEExposureMinutes, l.CurrentWorkstationID, l.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("UpdateLot %s: %w", l.ID, err)
@@ -482,7 +484,8 @@ func (t *txOps) InsertOutbox(ctx context.Context, entry domain.OutboxEntry) erro
 // FindLotByID retrieves a Lot by UUID.
 func (r *PostgresRepo) FindLotByID(ctx context.Context, id string) (*domain.Lot, error) {
 	row := r.db.QueryRow(ctx,
-		`SELECT id, reference, product_id, quantity, material_cert_url, received_at
+		`SELECT id, reference, product_id, quantity, material_cert_url, received_at,
+		        status, expiry_at, toe_threshold_minutes, toe_exposure_minutes, current_workstation_id
 		 FROM lots WHERE id = $1`, id,
 	)
 	lot, err := scanLot(row)
@@ -796,13 +799,19 @@ func nullableString(s string) *string {
 
 func scanLot(s scanner) (*domain.Lot, error) {
 	var l domain.Lot
-	var certURL *string
-	if err := s.Scan(&l.ID, &l.Reference, &l.ProductID, &l.Quantity, &certURL, &l.ReceivedAt); err != nil {
+	var certURL, currentWS *string
+	var status string
+	if err := s.Scan(
+		&l.ID, &l.Reference, &l.ProductID, &l.Quantity, &certURL, &l.ReceivedAt,
+		&status, &l.ExpiryAt, &l.TOEThresholdMinutes, &l.TOEExposureMinutes, &currentWS,
+	); err != nil {
 		return nil, err
 	}
 	if certURL != nil {
 		l.MaterialCertURL = *certURL
 	}
+	l.Status = domain.LotStatus(status)
+	l.CurrentWorkstationID = currentWS
 	return &l, nil
 }
 

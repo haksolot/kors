@@ -22,6 +22,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type LotStatus int32
+
+const (
+	LotStatus_LOT_STATUS_UNSPECIFIED LotStatus = 0
+	LotStatus_LOT_STATUS_VALID       LotStatus = 1
+	LotStatus_LOT_STATUS_BLOCKED     LotStatus = 2
+	LotStatus_LOT_STATUS_EXPIRED     LotStatus = 3
+)
+
+// Enum value maps for LotStatus.
+var (
+	LotStatus_name = map[int32]string{
+		0: "LOT_STATUS_UNSPECIFIED",
+		1: "LOT_STATUS_VALID",
+		2: "LOT_STATUS_BLOCKED",
+		3: "LOT_STATUS_EXPIRED",
+	}
+	LotStatus_value = map[string]int32{
+		"LOT_STATUS_UNSPECIFIED": 0,
+		"LOT_STATUS_VALID":       1,
+		"LOT_STATUS_BLOCKED":     2,
+		"LOT_STATUS_EXPIRED":     3,
+	}
+)
+
+func (x LotStatus) Enum() *LotStatus {
+	p := new(LotStatus)
+	*p = x
+	return p
+}
+
+func (x LotStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (LotStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_mes_traceability_proto_enumTypes[0].Descriptor()
+}
+
+func (LotStatus) Type() protoreflect.EnumType {
+	return &file_mes_traceability_proto_enumTypes[0]
+}
+
+func (x LotStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use LotStatus.Descriptor instead.
+func (LotStatus) EnumDescriptor() ([]byte, []int) {
+	return file_mes_traceability_proto_rawDescGZIP(), []int{0}
+}
+
 type SerialNumberStatus int32
 
 const (
@@ -58,11 +110,11 @@ func (x SerialNumberStatus) String() string {
 }
 
 func (SerialNumberStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_mes_traceability_proto_enumTypes[0].Descriptor()
+	return file_mes_traceability_proto_enumTypes[1].Descriptor()
 }
 
 func (SerialNumberStatus) Type() protoreflect.EnumType {
-	return &file_mes_traceability_proto_enumTypes[0]
+	return &file_mes_traceability_proto_enumTypes[1]
 }
 
 func (x SerialNumberStatus) Number() protoreflect.EnumNumber {
@@ -71,19 +123,23 @@ func (x SerialNumberStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SerialNumberStatus.Descriptor instead.
 func (SerialNumberStatus) EnumDescriptor() ([]byte, []int) {
-	return file_mes_traceability_proto_rawDescGZIP(), []int{0}
+	return file_mes_traceability_proto_rawDescGZIP(), []int{1}
 }
 
 type Lot struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Reference       string                 `protobuf:"bytes,2,opt,name=reference,proto3" json:"reference,omitempty"`
-	ProductId       string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Quantity        int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	MaterialCertUrl string                 `protobuf:"bytes,5,opt,name=material_cert_url,json=materialCertUrl,proto3" json:"material_cert_url,omitempty"`
-	ReceivedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Reference           string                 `protobuf:"bytes,2,opt,name=reference,proto3" json:"reference,omitempty"`
+	ProductId           string                 `protobuf:"bytes,3,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Quantity            int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	MaterialCertUrl     string                 `protobuf:"bytes,5,opt,name=material_cert_url,json=materialCertUrl,proto3" json:"material_cert_url,omitempty"`
+	ReceivedAt          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=received_at,json=receivedAt,proto3" json:"received_at,omitempty"`
+	Status              LotStatus              `protobuf:"varint,7,opt,name=status,proto3,enum=mes.LotStatus" json:"status,omitempty"`
+	ExpiryAt            *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=expiry_at,json=expiryAt,proto3" json:"expiry_at,omitempty"`
+	ToeThresholdMinutes int32                  `protobuf:"varint,9,opt,name=toe_threshold_minutes,json=toeThresholdMinutes,proto3" json:"toe_threshold_minutes,omitempty"`
+	ToeExposureMinutes  int32                  `protobuf:"varint,10,opt,name=toe_exposure_minutes,json=toeExposureMinutes,proto3" json:"toe_exposure_minutes,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Lot) Reset() {
@@ -156,6 +212,34 @@ func (x *Lot) GetReceivedAt() *timestamppb.Timestamp {
 		return x.ReceivedAt
 	}
 	return nil
+}
+
+func (x *Lot) GetStatus() LotStatus {
+	if x != nil {
+		return x.Status
+	}
+	return LotStatus_LOT_STATUS_UNSPECIFIED
+}
+
+func (x *Lot) GetExpiryAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiryAt
+	}
+	return nil
+}
+
+func (x *Lot) GetToeThresholdMinutes() int32 {
+	if x != nil {
+		return x.ToeThresholdMinutes
+	}
+	return 0
+}
+
+func (x *Lot) GetToeExposureMinutes() int32 {
+	if x != nil {
+		return x.ToeExposureMinutes
+	}
+	return 0
 }
 
 type CreateLotRequest struct {
@@ -1106,7 +1190,7 @@ var File_mes_traceability_proto protoreflect.FileDescriptor
 
 const file_mes_traceability_proto_rawDesc = "" +
 	"\n" +
-	"\x16mes/traceability.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd7\x01\n" +
+	"\x16mes/traceability.proto\x12\x03mes\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9e\x03\n" +
 	"\x03Lot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\treference\x18\x02 \x01(\tR\treference\x12\x1d\n" +
@@ -1115,7 +1199,12 @@ const file_mes_traceability_proto_rawDesc = "" +
 	"\bquantity\x18\x04 \x01(\x05R\bquantity\x12*\n" +
 	"\x11material_cert_url\x18\x05 \x01(\tR\x0fmaterialCertUrl\x12;\n" +
 	"\vreceived_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"receivedAt\"k\n" +
+	"receivedAt\x12&\n" +
+	"\x06status\x18\a \x01(\x0e2\x0e.mes.LotStatusR\x06status\x127\n" +
+	"\texpiry_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\bexpiryAt\x122\n" +
+	"\x15toe_threshold_minutes\x18\t \x01(\x05R\x13toeThresholdMinutes\x120\n" +
+	"\x14toe_exposure_minutes\x18\n" +
+	" \x01(\x05R\x12toeExposureMinutes\"k\n" +
 	"\x10CreateLotRequest\x12\x1c\n" +
 	"\treference\x18\x01 \x01(\tR\treference\x12\x1d\n" +
 	"\n" +
@@ -1177,7 +1266,12 @@ const file_mes_traceability_proto_rawDesc = "" +
 	"\x13GetGenealogyRequest\x12\x13\n" +
 	"\x05sn_id\x18\x01 \x01(\tR\x04snId\"E\n" +
 	"\x14GetGenealogyResponse\x12-\n" +
-	"\aentries\x18\x01 \x03(\v2\x13.mes.GenealogyEntryR\aentries*\xa3\x01\n" +
+	"\aentries\x18\x01 \x03(\v2\x13.mes.GenealogyEntryR\aentries*m\n" +
+	"\tLotStatus\x12\x1a\n" +
+	"\x16LOT_STATUS_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10LOT_STATUS_VALID\x10\x01\x12\x16\n" +
+	"\x12LOT_STATUS_BLOCKED\x10\x02\x12\x16\n" +
+	"\x12LOT_STATUS_EXPIRED\x10\x03*\xa3\x01\n" +
 	"\x12SerialNumberStatus\x12$\n" +
 	" SERIAL_NUMBER_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dSERIAL_NUMBER_STATUS_PRODUCED\x10\x01\x12!\n" +
@@ -1196,49 +1290,52 @@ func file_mes_traceability_proto_rawDescGZIP() []byte {
 	return file_mes_traceability_proto_rawDescData
 }
 
-var file_mes_traceability_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_mes_traceability_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_mes_traceability_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_mes_traceability_proto_goTypes = []any{
-	(SerialNumberStatus)(0),           // 0: mes.SerialNumberStatus
-	(*Lot)(nil),                       // 1: mes.Lot
-	(*CreateLotRequest)(nil),          // 2: mes.CreateLotRequest
-	(*CreateLotResponse)(nil),         // 3: mes.CreateLotResponse
-	(*GetLotRequest)(nil),             // 4: mes.GetLotRequest
-	(*GetLotResponse)(nil),            // 5: mes.GetLotResponse
-	(*SerialNumber)(nil),              // 6: mes.SerialNumber
-	(*RegisterSNRequest)(nil),         // 7: mes.RegisterSNRequest
-	(*RegisterSNResponse)(nil),        // 8: mes.RegisterSNResponse
-	(*ReleaseSNRequest)(nil),          // 9: mes.ReleaseSNRequest
-	(*ReleaseSNResponse)(nil),         // 10: mes.ReleaseSNResponse
-	(*ScrapSNRequest)(nil),            // 11: mes.ScrapSNRequest
-	(*ScrapSNResponse)(nil),           // 12: mes.ScrapSNResponse
-	(*GetSNRequest)(nil),              // 13: mes.GetSNRequest
-	(*GetSNResponse)(nil),             // 14: mes.GetSNResponse
-	(*GenealogyEntry)(nil),            // 15: mes.GenealogyEntry
-	(*AddGenealogyEntryRequest)(nil),  // 16: mes.AddGenealogyEntryRequest
-	(*AddGenealogyEntryResponse)(nil), // 17: mes.AddGenealogyEntryResponse
-	(*GetGenealogyRequest)(nil),       // 18: mes.GetGenealogyRequest
-	(*GetGenealogyResponse)(nil),      // 19: mes.GetGenealogyResponse
-	(*timestamppb.Timestamp)(nil),     // 20: google.protobuf.Timestamp
+	(LotStatus)(0),                    // 0: mes.LotStatus
+	(SerialNumberStatus)(0),           // 1: mes.SerialNumberStatus
+	(*Lot)(nil),                       // 2: mes.Lot
+	(*CreateLotRequest)(nil),          // 3: mes.CreateLotRequest
+	(*CreateLotResponse)(nil),         // 4: mes.CreateLotResponse
+	(*GetLotRequest)(nil),             // 5: mes.GetLotRequest
+	(*GetLotResponse)(nil),            // 6: mes.GetLotResponse
+	(*SerialNumber)(nil),              // 7: mes.SerialNumber
+	(*RegisterSNRequest)(nil),         // 8: mes.RegisterSNRequest
+	(*RegisterSNResponse)(nil),        // 9: mes.RegisterSNResponse
+	(*ReleaseSNRequest)(nil),          // 10: mes.ReleaseSNRequest
+	(*ReleaseSNResponse)(nil),         // 11: mes.ReleaseSNResponse
+	(*ScrapSNRequest)(nil),            // 12: mes.ScrapSNRequest
+	(*ScrapSNResponse)(nil),           // 13: mes.ScrapSNResponse
+	(*GetSNRequest)(nil),              // 14: mes.GetSNRequest
+	(*GetSNResponse)(nil),             // 15: mes.GetSNResponse
+	(*GenealogyEntry)(nil),            // 16: mes.GenealogyEntry
+	(*AddGenealogyEntryRequest)(nil),  // 17: mes.AddGenealogyEntryRequest
+	(*AddGenealogyEntryResponse)(nil), // 18: mes.AddGenealogyEntryResponse
+	(*GetGenealogyRequest)(nil),       // 19: mes.GetGenealogyRequest
+	(*GetGenealogyResponse)(nil),      // 20: mes.GetGenealogyResponse
+	(*timestamppb.Timestamp)(nil),     // 21: google.protobuf.Timestamp
 }
 var file_mes_traceability_proto_depIdxs = []int32{
-	20, // 0: mes.Lot.received_at:type_name -> google.protobuf.Timestamp
-	1,  // 1: mes.CreateLotResponse.lot:type_name -> mes.Lot
-	1,  // 2: mes.GetLotResponse.lot:type_name -> mes.Lot
-	0,  // 3: mes.SerialNumber.status:type_name -> mes.SerialNumberStatus
-	20, // 4: mes.SerialNumber.created_at:type_name -> google.protobuf.Timestamp
-	6,  // 5: mes.RegisterSNResponse.serial_number:type_name -> mes.SerialNumber
-	6,  // 6: mes.ReleaseSNResponse.serial_number:type_name -> mes.SerialNumber
-	6,  // 7: mes.ScrapSNResponse.serial_number:type_name -> mes.SerialNumber
-	6,  // 8: mes.GetSNResponse.serial_number:type_name -> mes.SerialNumber
-	20, // 9: mes.GenealogyEntry.recorded_at:type_name -> google.protobuf.Timestamp
-	15, // 10: mes.AddGenealogyEntryResponse.entry:type_name -> mes.GenealogyEntry
-	15, // 11: mes.GetGenealogyResponse.entries:type_name -> mes.GenealogyEntry
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	21, // 0: mes.Lot.received_at:type_name -> google.protobuf.Timestamp
+	0,  // 1: mes.Lot.status:type_name -> mes.LotStatus
+	21, // 2: mes.Lot.expiry_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: mes.CreateLotResponse.lot:type_name -> mes.Lot
+	2,  // 4: mes.GetLotResponse.lot:type_name -> mes.Lot
+	1,  // 5: mes.SerialNumber.status:type_name -> mes.SerialNumberStatus
+	21, // 6: mes.SerialNumber.created_at:type_name -> google.protobuf.Timestamp
+	7,  // 7: mes.RegisterSNResponse.serial_number:type_name -> mes.SerialNumber
+	7,  // 8: mes.ReleaseSNResponse.serial_number:type_name -> mes.SerialNumber
+	7,  // 9: mes.ScrapSNResponse.serial_number:type_name -> mes.SerialNumber
+	7,  // 10: mes.GetSNResponse.serial_number:type_name -> mes.SerialNumber
+	21, // 11: mes.GenealogyEntry.recorded_at:type_name -> google.protobuf.Timestamp
+	16, // 12: mes.AddGenealogyEntryResponse.entry:type_name -> mes.GenealogyEntry
+	16, // 13: mes.GetGenealogyResponse.entries:type_name -> mes.GenealogyEntry
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_mes_traceability_proto_init() }
@@ -1251,7 +1348,7 @@ func file_mes_traceability_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_traceability_proto_rawDesc), len(file_mes_traceability_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,

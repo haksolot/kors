@@ -2118,6 +2118,144 @@ func (x *ToolUsageRecordedEvent) GetTotalCycles() int32 {
 	return 0
 }
 
+// MaterialConsumedEvent is published on kors.mes.material.consumed
+type MaterialConsumedEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	LotId         string                 `protobuf:"bytes,2,opt,name=lot_id,json=lotId,proto3" json:"lot_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MaterialConsumedEvent) Reset() {
+	*x = MaterialConsumedEvent{}
+	mi := &file_mes_events_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MaterialConsumedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MaterialConsumedEvent) ProtoMessage() {}
+
+func (x *MaterialConsumedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MaterialConsumedEvent.ProtoReflect.Descriptor instead.
+func (*MaterialConsumedEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *MaterialConsumedEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *MaterialConsumedEvent) GetLotId() string {
+	if x != nil {
+		return x.LotId
+	}
+	return ""
+}
+
+func (x *MaterialConsumedEvent) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *MaterialConsumedEvent) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
+// LocationTransferredEvent is published on kors.mes.location.transferred
+type LocationTransferredEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EventId         string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	EntityId        string                 `protobuf:"bytes,2,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
+	EntityType      string                 `protobuf:"bytes,3,opt,name=entity_type,json=entityType,proto3" json:"entity_type,omitempty"`
+	ToWorkstationId string                 `protobuf:"bytes,4,opt,name=to_workstation_id,json=toWorkstationId,proto3" json:"to_workstation_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *LocationTransferredEvent) Reset() {
+	*x = LocationTransferredEvent{}
+	mi := &file_mes_events_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LocationTransferredEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LocationTransferredEvent) ProtoMessage() {}
+
+func (x *LocationTransferredEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_mes_events_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LocationTransferredEvent.ProtoReflect.Descriptor instead.
+func (*LocationTransferredEvent) Descriptor() ([]byte, []int) {
+	return file_mes_events_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *LocationTransferredEvent) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *LocationTransferredEvent) GetEntityId() string {
+	if x != nil {
+		return x.EntityId
+	}
+	return ""
+}
+
+func (x *LocationTransferredEvent) GetEntityType() string {
+	if x != nil {
+		return x.EntityType
+	}
+	return ""
+}
+
+func (x *LocationTransferredEvent) GetToWorkstationId() string {
+	if x != nil {
+		return x.ToWorkstationId
+	}
+	return ""
+}
+
 var File_mes_events_proto protoreflect.FileDescriptor
 
 const file_mes_events_proto_rawDesc = "" +
@@ -2330,7 +2468,18 @@ const file_mes_events_proto_rawDesc = "" +
 	"\atool_id\x18\x02 \x01(\tR\x06toolId\x12!\n" +
 	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12!\n" +
 	"\fcycles_added\x18\x04 \x01(\x05R\vcyclesAdded\x12!\n" +
-	"\ftotal_cycles\x18\x05 \x01(\x05R\vtotalCyclesB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
+	"\ftotal_cycles\x18\x05 \x01(\x05R\vtotalCycles\"\x88\x01\n" +
+	"\x15MaterialConsumedEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x15\n" +
+	"\x06lot_id\x18\x02 \x01(\tR\x05lotId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12\x1a\n" +
+	"\bquantity\x18\x04 \x01(\x05R\bquantity\"\x9f\x01\n" +
+	"\x18LocationTransferredEvent\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1b\n" +
+	"\tentity_id\x18\x02 \x01(\tR\bentityId\x12\x1f\n" +
+	"\ventity_type\x18\x03 \x01(\tR\n" +
+	"entityType\x12*\n" +
+	"\x11to_workstation_id\x18\x04 \x01(\tR\x0ftoWorkstationIdB,Z*github.com/haksolot/kors/proto/gen/mes;mesb\x06proto3"
 
 var (
 	file_mes_events_proto_rawDescOnce sync.Once
@@ -2344,7 +2493,7 @@ func file_mes_events_proto_rawDescGZIP() []byte {
 	return file_mes_events_proto_rawDescData
 }
 
-var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_mes_events_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_mes_events_proto_goTypes = []any{
 	(*OFCreatedEvent)(nil),                  // 0: mes.OFCreatedEvent
 	(*OFStartedEvent)(nil),                  // 1: mes.OFStartedEvent
@@ -2372,34 +2521,36 @@ var file_mes_events_proto_goTypes = []any{
 	(*ToolCreatedEvent)(nil),                // 23: mes.ToolCreatedEvent
 	(*ToolCalibrationUpdatedEvent)(nil),     // 24: mes.ToolCalibrationUpdatedEvent
 	(*ToolUsageRecordedEvent)(nil),          // 25: mes.ToolUsageRecordedEvent
-	(*timestamppb.Timestamp)(nil),           // 26: google.protobuf.Timestamp
+	(*MaterialConsumedEvent)(nil),           // 26: mes.MaterialConsumedEvent
+	(*LocationTransferredEvent)(nil),        // 27: mes.LocationTransferredEvent
+	(*timestamppb.Timestamp)(nil),           // 28: google.protobuf.Timestamp
 }
 var file_mes_events_proto_depIdxs = []int32{
-	26, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	26, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	26, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	26, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
-	26, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
-	26, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
-	26, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
-	26, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
-	26, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
-	26, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
-	26, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
-	26, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
-	26, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	26, // 13: mes.QualificationCreatedEvent.expires_at:type_name -> google.protobuf.Timestamp
-	26, // 14: mes.QualificationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	26, // 15: mes.QualificationRenewedEvent.new_expires_at:type_name -> google.protobuf.Timestamp
-	26, // 16: mes.QualificationRenewedEvent.renewed_at:type_name -> google.protobuf.Timestamp
-	26, // 17: mes.QualificationRevokedEvent.revoked_at:type_name -> google.protobuf.Timestamp
-	26, // 18: mes.QualificationExpiredEvent.expired_at:type_name -> google.protobuf.Timestamp
-	26, // 19: mes.QualificationExpiringAlertEvent.expires_at:type_name -> google.protobuf.Timestamp
-	26, // 20: mes.WorkstationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
-	26, // 21: mes.WorkstationStatusChangedEvent.changed_at:type_name -> google.protobuf.Timestamp
-	26, // 22: mes.DowntimeStartedEvent.start_time:type_name -> google.protobuf.Timestamp
-	26, // 23: mes.DowntimeEndedEvent.end_time:type_name -> google.protobuf.Timestamp
-	26, // 24: mes.ToolCalibrationUpdatedEvent.next_calibration_at:type_name -> google.protobuf.Timestamp
+	28, // 0: mes.OFCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	28, // 1: mes.OFStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	28, // 2: mes.OFCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	28, // 3: mes.OFSuspendedEvent.suspended_at:type_name -> google.protobuf.Timestamp
+	28, // 4: mes.OFCancelledEvent.cancelled_at:type_name -> google.protobuf.Timestamp
+	28, // 5: mes.OperationStartedEvent.started_at:type_name -> google.protobuf.Timestamp
+	28, // 6: mes.OperationCompletedEvent.completed_at:type_name -> google.protobuf.Timestamp
+	28, // 7: mes.OFResumedEvent.resumed_at:type_name -> google.protobuf.Timestamp
+	28, // 8: mes.OperationSkippedEvent.skipped_at:type_name -> google.protobuf.Timestamp
+	28, // 9: mes.OperationSignedOffEvent.signed_off_at:type_name -> google.protobuf.Timestamp
+	28, // 10: mes.NCDeclaredEvent.declared_at:type_name -> google.protobuf.Timestamp
+	28, // 11: mes.OFFAIApprovedEvent.approved_at:type_name -> google.protobuf.Timestamp
+	28, // 12: mes.RoutingCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	28, // 13: mes.QualificationCreatedEvent.expires_at:type_name -> google.protobuf.Timestamp
+	28, // 14: mes.QualificationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	28, // 15: mes.QualificationRenewedEvent.new_expires_at:type_name -> google.protobuf.Timestamp
+	28, // 16: mes.QualificationRenewedEvent.renewed_at:type_name -> google.protobuf.Timestamp
+	28, // 17: mes.QualificationRevokedEvent.revoked_at:type_name -> google.protobuf.Timestamp
+	28, // 18: mes.QualificationExpiredEvent.expired_at:type_name -> google.protobuf.Timestamp
+	28, // 19: mes.QualificationExpiringAlertEvent.expires_at:type_name -> google.protobuf.Timestamp
+	28, // 20: mes.WorkstationCreatedEvent.created_at:type_name -> google.protobuf.Timestamp
+	28, // 21: mes.WorkstationStatusChangedEvent.changed_at:type_name -> google.protobuf.Timestamp
+	28, // 22: mes.DowntimeStartedEvent.start_time:type_name -> google.protobuf.Timestamp
+	28, // 23: mes.DowntimeEndedEvent.end_time:type_name -> google.protobuf.Timestamp
+	28, // 24: mes.ToolCalibrationUpdatedEvent.next_calibration_at:type_name -> google.protobuf.Timestamp
 	25, // [25:25] is the sub-list for method output_type
 	25, // [25:25] is the sub-list for method input_type
 	25, // [25:25] is the sub-list for extension type_name
@@ -2418,7 +2569,7 @@ func file_mes_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mes_events_proto_rawDesc), len(file_mes_events_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
