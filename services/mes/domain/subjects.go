@@ -108,6 +108,19 @@ const (
 	SubjectDowntimeStarted    = "kors.mes.downtime.started"
 	SubjectDowntimeEnded      = "kors.mes.downtime.ended"
 
+	// Synchronous request-reply subjects — tools & gauges (BLOC 8)
+	SubjectToolCreate            = "kors.mes.tool.create"
+	SubjectToolGet               = "kors.mes.tool.get"
+	SubjectToolList              = "kors.mes.tool.list"
+	SubjectToolCalibrate         = "kors.mes.tool.calibrate"
+	SubjectToolAssignToOperation = "kors.mes.tool.assign_to_operation"
+	SubjectOperationToolsList    = "kors.mes.operation.tools.list"
+
+	// Async events — tools & gauges (BLOC 8)
+	SubjectToolCreated           = "kors.mes.tool.created"
+	SubjectToolCalibrationUpdated = "kors.mes.tool.calibration_updated"
+	SubjectToolUsageRecorded     = "kors.mes.tool.usage_recorded"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

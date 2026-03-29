@@ -67,6 +67,14 @@ type TimeTrackingRepository interface {
 	ListDowntimesByWorkstation(ctx context.Context, workstationID string, from, to time.Time) ([]*DowntimeEvent, error)
 }
 
+// ToolRepository defines read-only persistence for tools and gauges (BLOC 8).
+type ToolRepository interface {
+	FindToolByID(ctx context.Context, id string) (*Tool, error)
+	FindToolBySerialNumber(ctx context.Context, sn string) (*Tool, error)
+	ListTools(ctx context.Context, limit, offset int) ([]*Tool, error)
+	ListToolsByOperation(ctx context.Context, operationID string) ([]*Tool, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -95,6 +103,10 @@ type TxOps interface {
 	SaveTimeLog(ctx context.Context, l *TimeLog) error
 	SaveDowntimeEvent(ctx context.Context, d *DowntimeEvent) error
 	UpdateDowntimeEvent(ctx context.Context, d *DowntimeEvent) error
+	// Tool writes (BLOC 8)
+	SaveTool(ctx context.Context, t *Tool) error
+	UpdateTool(ctx context.Context, t *Tool) error
+	LinkToolToOperation(ctx context.Context, operationID, toolID string) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.
