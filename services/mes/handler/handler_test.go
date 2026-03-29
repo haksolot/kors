@@ -3,6 +3,7 @@ package handler_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pbmes "github.com/haksolot/kors/proto/gen/mes"
 	"github.com/haksolot/kors/services/mes/domain"
@@ -815,7 +817,7 @@ func TestHandler_GetRouting(t *testing.T) {
 
 		log := zerolog.Nop()
 		reg := prometheus.NewRegistry()
-		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, newMockTransactor(), reg, &log)
+		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, &mockQualificationRepo{}, newMockTransactor(), reg, &log)
 
 		payload, _ := proto.Marshal(&pbmes.GetRoutingRequest{Id: rt.ID})
 		resp, err := h.GetRouting(context.Background(), payload)
@@ -873,4 +875,156 @@ func TestHandler_SetPlanning(t *testing.T) {
 		store.AssertExpectations(t)
 		store.Ops.AssertExpectations(t)
 	})
+}
+
+// ── Qualification handler tests ───────────────────────────────────────────────
+
+func TestHandler_CreateQualification(t *testing.T) {
+	tests := []struct {
+		name      string
+		req       *pbmes.CreateQualificationRequest
+		setupMock func(*mockTransactor)
+		wantErr   bool
+	}{
+		{
+			name: "valid request creates qualification and writes outbox",
+			req: &pbmes.CreateQualificationRequest{
+				OperatorId: "op-1",
+				Skill:      "soudure_tig",
+				Label:      "Soudure TIG",
+				IssuedAt:   timestamppb.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+				ExpiresAt:  timestamppb.New(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+				GrantedBy:  "mgr-1",
+			},
+			setupMock: func(st *mockTransactor) {
+				st.On("WithTx", mock.Anything).Return(nil)
+				st.Ops.On("SaveQualification", mock.Anything, mock.AnythingOfType("*domain.Qualification")).Return(nil)
+				st.Ops.On("InsertOutbox", mock.Anything, "QualificationCreated").Return(nil)
+			},
+		},
+		{
+			name: "empty skill returns error",
+			req: &pbmes.CreateQualificationRequest{
+				OperatorId: "op-1",
+				Skill:      "",
+				Label:      "Label",
+				IssuedAt:   timestamppb.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+				ExpiresAt:  timestamppb.New(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+				GrantedBy:  "mgr-1",
+			},
+			setupMock: func(_ *mockTransactor) {},
+			wantErr:   true,
+		},
+		{
+			name: "db error is propagated",
+			req: &pbmes.CreateQualificationRequest{
+				OperatorId: "op-1",
+				Skill:      "soudure_tig",
+				Label:      "TIG",
+				IssuedAt:   timestamppb.New(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)),
+				ExpiresAt:  timestamppb.New(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+				GrantedBy:  "mgr-1",
+			},
+			setupMock: func(st *mockTransactor) {
+				st.On("WithTx", mock.Anything).Return(errDB)
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newMockTransactor()
+			tc.setupMock(store)
+			h := newTestHandler(&mockOrderRepo{}, &mockOperationRepo{}, store)
+
+			payload, err := proto.Marshal(tc.req)
+			require.NoError(t, err)
+
+			resp, err := h.CreateQualification(context.Background(), payload)
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Nil(t, resp)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+
+			var response pbmes.CreateQualificationResponse
+			require.NoError(t, proto.Unmarshal(resp, &response))
+			assert.Equal(t, tc.req.Skill, response.Qualification.Skill)
+			store.AssertExpectations(t)
+			store.Ops.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandler_StartOperation_InterlocksOnExpiredQualification(t *testing.T) {
+	// The interlock check: if an operator has no active DB qualification for the
+	// required skill, StartOperation must reject the request.
+	op, _ := domain.NewOperation("of-1", 1, "Soudure")
+	op.RequiredSkill = "soudure_tig"
+
+	o, _ := domain.NewOrder("OF-001", "prod-1", 10)
+
+	opsRepo := &mockOperationRepo{}
+	opsRepo.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+	ordersRepo := &mockOrderRepo{}
+	ordersRepo.On("FindByID", mock.Anything, op.OFID).Return(o, nil)
+
+	qualsRepo := &mockQualificationRepo{}
+	// No active skills returned — simulates expired or missing qualification.
+	qualsRepo.On("ListActiveSkills", mock.Anything, "operator-1", mock.AnythingOfType("time.Time")).
+		Return([]string{}, nil)
+
+	store := newMockTransactor()
+	h := newTestHandlerWithQuals(ordersRepo, opsRepo, qualsRepo, store)
+
+	payload, _ := proto.Marshal(&pbmes.StartOperationRequest{
+		OperationId:   op.ID,
+		OperatorId:    "operator-1",
+		OperatorRoles: []string{"kors-operateur"}, // does not include "soudure_tig"
+	})
+	_, err := h.StartOperation(context.Background(), payload)
+	require.Error(t, err)
+	require.ErrorIs(t, err, domain.ErrOperatorNotQualified)
+	qualsRepo.AssertExpectations(t)
+}
+
+func TestHandler_StartOperation_PassesWithActiveQualification(t *testing.T) {
+	// If ListActiveSkills returns the required skill, StartOperation must succeed.
+	op, _ := domain.NewOperation("of-2", 1, "Soudure")
+	op.RequiredSkill = "soudure_tig"
+
+	o, _ := domain.NewOrder("OF-002", "prod-1", 10)
+
+	opsRepo := &mockOperationRepo{}
+	opsRepo.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
+
+	ordersRepo := &mockOrderRepo{}
+	ordersRepo.On("FindByID", mock.Anything, op.OFID).Return(o, nil)
+
+	qualsRepo := &mockQualificationRepo{}
+	// Active qualification for the required skill.
+	qualsRepo.On("ListActiveSkills", mock.Anything, "operator-1", mock.AnythingOfType("time.Time")).
+		Return([]string{"soudure_tig"}, nil)
+
+	store := newMockTransactor()
+	store.On("WithTx", mock.Anything).Return(nil)
+	store.Ops.On("UpdateOperation", mock.Anything, mock.AnythingOfType("*domain.Operation")).Return(nil)
+	store.Ops.On("UpdateOrder", mock.Anything, mock.AnythingOfType("*domain.Order")).Return(nil)
+	store.Ops.On("InsertOutbox", mock.Anything, mock.Anything).Return(nil)
+
+	h := newTestHandlerWithQuals(ordersRepo, opsRepo, qualsRepo, store)
+
+	payload, _ := proto.Marshal(&pbmes.StartOperationRequest{
+		OperationId:   op.ID,
+		OperatorId:    "operator-1",
+		OperatorRoles: []string{"kors-operateur"},
+	})
+	resp, err := h.StartOperation(context.Background(), payload)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	qualsRepo.AssertExpectations(t)
 }

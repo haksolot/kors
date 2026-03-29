@@ -51,6 +51,14 @@ type DispatchRepository interface {
 	DispatchList(ctx context.Context, limit int) ([]*domain.Order, error)
 }
 
+// QualificationRepository is the read-only interface for operator qualifications (AS9100D §7.2).
+type QualificationRepository interface {
+	FindQualificationByID(ctx context.Context, id string) (*domain.Qualification, error)
+	ListQualificationsByOperator(ctx context.Context, operatorID string) ([]*domain.Qualification, error)
+	ListActiveSkills(ctx context.Context, operatorID string, now time.Time) ([]string, error)
+	ListExpiringQualifications(ctx context.Context, warningDays int, now time.Time) ([]*domain.Qualification, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -59,6 +67,7 @@ type Handler struct {
 	ops      OperationRepository
 	trace    TraceabilityRepository
 	routings RoutingRepository
+	quals    QualificationRepository
 	store    domain.Transactor
 	log      *zerolog.Logger
 	reqTotal    *prometheus.CounterVec
@@ -72,6 +81,7 @@ func New(
 	ops OperationRepository,
 	trace TraceabilityRepository,
 	routings RoutingRepository,
+	quals QualificationRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -81,6 +91,7 @@ func New(
 		ops:         ops,
 		trace:       trace,
 		routings:    routings,
+		quals:       quals,
 		store:       store,
 		log:         log,
 		reqTotal:    core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -441,7 +452,18 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find order: %w", err))
 	}
 
-	if err := op.Start(req.OperatorId, req.OperatorRoles); err != nil {
+	// Interlock (AS9100D §7.2): if the operation requires a skill, resolve the operator's
+	// currently valid DB qualifications and merge them with the JWT roles for the check.
+	// This ensures time-based expiry is enforced — not just static role membership.
+	mergedRoles := req.OperatorRoles
+	if op.RequiredSkill != "" {
+		activeSkills, err := h.quals.ListActiveSkills(ctx, req.OperatorId, time.Now().UTC())
+		if err != nil {
+			return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: list active skills: %w", err))
+		}
+		mergedRoles = append(mergedRoles, activeSkills...)
+	}
+	if err := op.Start(req.OperatorId, mergedRoles); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: %w", err))
 	}
 
@@ -1586,11 +1608,297 @@ func routingStepToProto(step *domain.RoutingStep) *pbmes.RoutingStep {
 	}
 }
 
+// ── Qualifications (AS9100D §7.2) ────────────────────────────────────────────
+
+// CreateQualification handles kors.mes.qualification.create.
+// granted_by must be set by the BFF from the validated JWT claims — never from the client body.
+func (h *Handler) CreateQualification(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.CreateQualification")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.CreateQualificationRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationCreate, start, fmt.Errorf("CreateQualification: unmarshal: %w", err))
+	}
+
+	var issuedAt, expiresAt time.Time
+	if req.IssuedAt != nil {
+		issuedAt = req.IssuedAt.AsTime()
+	}
+	if req.ExpiresAt != nil {
+		expiresAt = req.ExpiresAt.AsTime()
+	}
+
+	q, err := domain.NewQualification(req.OperatorId, req.Skill, req.Label, issuedAt, expiresAt, req.GrantedBy)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationCreate, start, fmt.Errorf("CreateQualification: %w", err))
+	}
+	if req.CertificateUrl != "" {
+		q.AttachCertificate(req.CertificateUrl)
+	}
+
+	evt, err := proto.Marshal(&pbmes.QualificationCreatedEvent{
+		EventId:         uuid.NewString(),
+		QualificationId: q.ID,
+		OperatorId:      q.OperatorID,
+		Skill:           q.Skill,
+		GrantedBy:       q.GrantedBy,
+		ExpiresAt:       timestamppb.New(q.ExpiresAt),
+		CreatedAt:       timestamppb.New(q.CreatedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectQualificationCreate, start, fmt.Errorf("CreateQualification: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveQualification(ctx, q); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "QualificationCreated",
+			Subject:   domain.SubjectQualificationCreated,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectQualificationCreate, start, fmt.Errorf("CreateQualification: tx: %w", err))
+	}
+
+	h.log.Info().Str("qualification_id", q.ID).Str("operator_id", q.OperatorID).Str("skill", q.Skill).Msg("qualification created")
+	h.succeed(domain.SubjectQualificationCreate, start)
+	return proto.Marshal(&pbmes.CreateQualificationResponse{Qualification: qualificationToProto(q, time.Now().UTC())})
+}
+
+// GetQualification handles kors.mes.qualification.get.
+func (h *Handler) GetQualification(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.GetQualification")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.GetQualificationRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationGet, start, fmt.Errorf("GetQualification: unmarshal: %w", err))
+	}
+
+	q, err := h.quals.FindQualificationByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationGet, start, fmt.Errorf("GetQualification: %w", err))
+	}
+
+	h.succeed(domain.SubjectQualificationGet, start)
+	return proto.Marshal(&pbmes.GetQualificationResponse{Qualification: qualificationToProto(q, time.Now().UTC())})
+}
+
+// ListQualifications handles kors.mes.qualification.list.
+// Returns all qualifications (all statuses) for the operator — used for audit history.
+func (h *Handler) ListQualifications(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ListQualifications")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ListQualificationsRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationList, start, fmt.Errorf("ListQualifications: unmarshal: %w", err))
+	}
+
+	quals, err := h.quals.ListQualificationsByOperator(ctx, req.OperatorId)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationList, start, fmt.Errorf("ListQualifications: %w", err))
+	}
+
+	now := time.Now().UTC()
+	pbQuals := make([]*pbmes.Qualification, 0, len(quals))
+	for _, q := range quals {
+		pbQuals = append(pbQuals, qualificationToProto(q, now))
+	}
+	h.succeed(domain.SubjectQualificationList, start)
+	return proto.Marshal(&pbmes.ListQualificationsResponse{Qualifications: pbQuals})
+}
+
+// RenewQualification handles kors.mes.qualification.renew.
+// renewed_by must be set by the BFF from the validated JWT claims.
+func (h *Handler) RenewQualification(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.RenewQualification")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.RenewQualificationRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationRenew, start, fmt.Errorf("RenewQualification: unmarshal: %w", err))
+	}
+
+	q, err := h.quals.FindQualificationByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationRenew, start, fmt.Errorf("RenewQualification: find: %w", err))
+	}
+
+	var newExpires time.Time
+	if req.NewExpiresAt != nil {
+		newExpires = req.NewExpiresAt.AsTime()
+	}
+	if err := q.Renew(newExpires, req.RenewedBy); err != nil {
+		return h.fail(domain.SubjectQualificationRenew, start, fmt.Errorf("RenewQualification: %w", err))
+	}
+
+	evt, err := proto.Marshal(&pbmes.QualificationRenewedEvent{
+		EventId:         uuid.NewString(),
+		QualificationId: q.ID,
+		OperatorId:      q.OperatorID,
+		Skill:           q.Skill,
+		RenewedBy:       req.RenewedBy,
+		NewExpiresAt:    timestamppb.New(q.ExpiresAt),
+		RenewedAt:       timestamppb.New(q.UpdatedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectQualificationRenew, start, fmt.Errorf("RenewQualification: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateQualification(ctx, q); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "QualificationRenewed",
+			Subject:   domain.SubjectQualificationRenewed,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectQualificationRenew, start, fmt.Errorf("RenewQualification: tx: %w", err))
+	}
+
+	h.log.Info().Str("qualification_id", q.ID).Str("operator_id", q.OperatorID).Msg("qualification renewed")
+	h.succeed(domain.SubjectQualificationRenew, start)
+	return proto.Marshal(&pbmes.RenewQualificationResponse{Qualification: qualificationToProto(q, time.Now().UTC())})
+}
+
+// RevokeQualification handles kors.mes.qualification.revoke.
+// revoked_by must be set by the BFF from the validated JWT claims.
+func (h *Handler) RevokeQualification(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.RevokeQualification")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.RevokeQualificationRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationRevoke, start, fmt.Errorf("RevokeQualification: unmarshal: %w", err))
+	}
+
+	q, err := h.quals.FindQualificationByID(ctx, req.Id)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationRevoke, start, fmt.Errorf("RevokeQualification: find: %w", err))
+	}
+
+	if err := q.Revoke(req.RevokedBy, req.Reason); err != nil {
+		return h.fail(domain.SubjectQualificationRevoke, start, fmt.Errorf("RevokeQualification: %w", err))
+	}
+
+	evt, err := proto.Marshal(&pbmes.QualificationRevokedEvent{
+		EventId:         uuid.NewString(),
+		QualificationId: q.ID,
+		OperatorId:      q.OperatorID,
+		Skill:           q.Skill,
+		RevokedBy:       q.RevokedBy,
+		Reason:          q.RevokeReason,
+		RevokedAt:       timestamppb.New(*q.RevokedAt),
+	})
+	if err != nil {
+		return h.fail(domain.SubjectQualificationRevoke, start, fmt.Errorf("RevokeQualification: marshal event: %w", err))
+	}
+
+	if err := h.store.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.UpdateQualification(ctx, q); err != nil {
+			return err
+		}
+		return tx.InsertOutbox(ctx, domain.OutboxEntry{
+			EventType: "QualificationRevoked",
+			Subject:   domain.SubjectQualificationRevoked,
+			Payload:   evt,
+		})
+	}); err != nil {
+		return h.fail(domain.SubjectQualificationRevoke, start, fmt.Errorf("RevokeQualification: tx: %w", err))
+	}
+
+	h.log.Info().Str("qualification_id", q.ID).Str("operator_id", q.OperatorID).Msg("qualification revoked")
+	h.succeed(domain.SubjectQualificationRevoke, start)
+	return proto.Marshal(&pbmes.RevokeQualificationResponse{Qualification: qualificationToProto(q, time.Now().UTC())})
+}
+
+// ListExpiringQualifications handles kors.mes.qualification.list_expiring.
+func (h *Handler) ListExpiringQualifications(ctx context.Context, payload []byte) ([]byte, error) {
+	ctx, span := core.StartSpan(ctx, "handler.ListExpiringQualifications")
+	defer span.End()
+	start := time.Now()
+
+	var req pbmes.ListExpiringQualificationsRequest
+	if err := proto.Unmarshal(payload, &req); err != nil {
+		return h.fail(domain.SubjectQualificationListExpiring, start, fmt.Errorf("ListExpiringQualifications: unmarshal: %w", err))
+	}
+
+	warningDays := int(req.WarningDays)
+	if warningDays <= 0 {
+		warningDays = domain.DefaultExpiryWarningDays
+	}
+
+	now := time.Now().UTC()
+	quals, err := h.quals.ListExpiringQualifications(ctx, warningDays, now)
+	if err != nil {
+		return h.fail(domain.SubjectQualificationListExpiring, start, fmt.Errorf("ListExpiringQualifications: %w", err))
+	}
+
+	pbQuals := make([]*pbmes.Qualification, 0, len(quals))
+	for _, q := range quals {
+		pbQuals = append(pbQuals, qualificationToProto(q, now))
+	}
+	h.succeed(domain.SubjectQualificationListExpiring, start)
+	return proto.Marshal(&pbmes.ListExpiringQualificationsResponse{Qualifications: pbQuals})
+}
+
+// qualificationToProto converts a domain Qualification to its Protobuf representation.
+// now is passed in to compute the status without mutating the domain struct.
+func qualificationToProto(q *domain.Qualification, now time.Time) *pbmes.Qualification {
+	pb := &pbmes.Qualification{
+		Id:             q.ID,
+		OperatorId:     q.OperatorID,
+		Skill:          q.Skill,
+		Label:          q.Label,
+		Status:         domainQualStatusToProto(q.Status(now)),
+		GrantedBy:      q.GrantedBy,
+		CertificateUrl: q.CertificateURL,
+		IsRevoked:      q.IsRevoked,
+		RevokedBy:      q.RevokedBy,
+		RevokeReason:   q.RevokeReason,
+		IssuedAt:       timestamppb.New(q.IssuedAt),
+		ExpiresAt:      timestamppb.New(q.ExpiresAt),
+		CreatedAt:      timestamppb.New(q.CreatedAt),
+		UpdatedAt:      timestamppb.New(q.UpdatedAt),
+	}
+	if q.RevokedAt != nil {
+		pb.RevokedAt = timestamppb.New(*q.RevokedAt)
+	}
+	return pb
+}
+
+func domainQualStatusToProto(s domain.QualificationStatus) pbmes.QualificationStatus {
+	switch s {
+	case domain.QualificationStatusActive:
+		return pbmes.QualificationStatus_QUALIFICATION_STATUS_ACTIVE
+	case domain.QualificationStatusExpiring:
+		return pbmes.QualificationStatus_QUALIFICATION_STATUS_EXPIRING
+	case domain.QualificationStatusExpired:
+		return pbmes.QualificationStatus_QUALIFICATION_STATUS_EXPIRED
+	case domain.QualificationStatusRevoked:
+		return pbmes.QualificationStatus_QUALIFICATION_STATUS_REVOKED
+	default:
+		return pbmes.QualificationStatus_QUALIFICATION_STATUS_UNSPECIFIED
+	}
+}
+
 // IsNotFound returns true if the error wraps a domain "not found" sentinel.
 func IsNotFound(err error) bool {
 	return errors.Is(err, domain.ErrOrderNotFound) ||
 		errors.Is(err, domain.ErrOperationNotFound) ||
 		errors.Is(err, domain.ErrLotNotFound) ||
 		errors.Is(err, domain.ErrSerialNumberNotFound) ||
-		errors.Is(err, domain.ErrRoutingNotFound)
+		errors.Is(err, domain.ErrRoutingNotFound) ||
+		errors.Is(err, domain.ErrQualificationNotFound)
 }
