@@ -570,13 +570,170 @@ func TestPostgresRepo_DispatchList(t *testing.T) {
 	assert.Equal(t, 90, list[0].Priority)
 }
 
+// ── Qualification tests ───────────────────────────────────────────────────────
+
+func TestPostgresRepo_SaveAndFindQualification(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	issued := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	expires := issued.AddDate(1, 0, 0)
+
+	q, err := domain.NewQualification("00000000-0000-0000-0000-000000000001", "soudure_tig", "Soudure TIG", issued, expires, "00000000-0000-0000-0000-000000000099")
+	require.NoError(t, err)
+
+	err = r.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.SaveQualification(ctx, q)
+	})
+	require.NoError(t, err)
+
+	got, err := r.FindQualificationByID(ctx, q.ID)
+	require.NoError(t, err)
+	assert.Equal(t, q.ID, got.ID)
+	assert.Equal(t, q.OperatorID, got.OperatorID)
+	assert.Equal(t, q.Skill, got.Skill)
+	assert.Equal(t, q.Label, got.Label)
+	assert.False(t, got.IsRevoked)
+	assert.Empty(t, got.RevokedBy)
+	assert.Nil(t, got.RevokedAt)
+}
+
+func TestPostgresRepo_FindQualificationByID_NotFound(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+
+	_, err := r.FindQualificationByID(context.Background(), "00000000-0000-0000-0000-000000000000")
+	require.ErrorIs(t, err, domain.ErrQualificationNotFound)
+}
+
+func TestPostgresRepo_ListActiveSkills(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	operatorID := "00000000-0000-0000-0000-000000000002"
+	grantedBy := "00000000-0000-0000-0000-000000000099"
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	// Active qualification
+	qActive, _ := domain.NewQualification(operatorID, "soudure_tig", "TIG", now.AddDate(-1, 0, 0), now.AddDate(1, 0, 0), grantedBy)
+	// Expired qualification
+	qExpired, _ := domain.NewQualification(operatorID, "cnd_ressuage", "CND", now.AddDate(-2, 0, 0), now.AddDate(-1, 0, 0), grantedBy)
+	// Revoked qualification
+	qRevoked, _ := domain.NewQualification(operatorID, "soudure_mag", "MAG", now.AddDate(-1, 0, 0), now.AddDate(1, 0, 0), grantedBy)
+	require.NoError(t, qRevoked.Revoke(grantedBy, "reason"))
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveQualification(ctx, qActive); err != nil {
+			return err
+		}
+		if err := tx.SaveQualification(ctx, qExpired); err != nil {
+			return err
+		}
+		return tx.SaveQualification(ctx, qRevoked)
+	})
+	require.NoError(t, err)
+
+	skills, err := r.ListActiveSkills(ctx, operatorID, now)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"soudure_tig"}, skills, "only the active, non-expired, non-revoked skill should be returned")
+}
+
+func TestPostgresRepo_ListExpiringQualifications(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	operatorID := "00000000-0000-0000-0000-000000000003"
+	grantedBy := "00000000-0000-0000-0000-000000000099"
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	// Expiring in 15 days — should appear
+	qExpiring, _ := domain.NewQualification(operatorID, "soudure_tig", "TIG", now.AddDate(-1, 0, 0), now.AddDate(0, 0, 15), grantedBy)
+	// Not expiring (far future) — should not appear
+	qFuture, _ := domain.NewQualification(operatorID, "cnd_ressuage", "CND", now.AddDate(-1, 0, 0), now.AddDate(1, 0, 0), grantedBy)
+	// Already expired — should not appear
+	qExpired, _ := domain.NewQualification(operatorID, "soudure_mag", "MAG", now.AddDate(-2, 0, 0), now.AddDate(-1, 0, 0), grantedBy)
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveQualification(ctx, qExpiring); err != nil {
+			return err
+		}
+		if err := tx.SaveQualification(ctx, qFuture); err != nil {
+			return err
+		}
+		return tx.SaveQualification(ctx, qExpired)
+	})
+	require.NoError(t, err)
+
+	results, err := r.ListExpiringQualifications(ctx, 30, now)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.Equal(t, qExpiring.ID, results[0].ID)
+}
+
+func TestPostgresRepo_RevokeQualification(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	q, _ := domain.NewQualification("00000000-0000-0000-0000-000000000004", "soudure_tig", "TIG", now.AddDate(-1, 0, 0), now.AddDate(1, 0, 0), "00000000-0000-0000-0000-000000000099")
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.SaveQualification(ctx, q)
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, q.Revoke("00000000-0000-0000-0000-000000000099", "non-conformity"))
+
+	err = r.WithTx(ctx, func(tx domain.TxOps) error {
+		return tx.UpdateQualification(ctx, q)
+	})
+	require.NoError(t, err)
+
+	got, err := r.FindQualificationByID(ctx, q.ID)
+	require.NoError(t, err)
+	assert.True(t, got.IsRevoked)
+	assert.Equal(t, "00000000-0000-0000-0000-000000000099", got.RevokedBy)
+	assert.NotNil(t, got.RevokedAt)
+	assert.Equal(t, "non-conformity", got.RevokeReason)
+}
+
+func TestPostgresRepo_ListQualificationsByOperator(t *testing.T) {
+	pool := setupDB(t)
+	r := repo.New(pool)
+	ctx := context.Background()
+
+	operatorID := "00000000-0000-0000-0000-000000000005"
+	grantedBy := "00000000-0000-0000-0000-000000000099"
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	q1, _ := domain.NewQualification(operatorID, "soudure_tig", "TIG", now.AddDate(-1, 0, 0), now.AddDate(1, 0, 0), grantedBy)
+	q2, _ := domain.NewQualification(operatorID, "cnd_ressuage", "CND", now.AddDate(-1, 0, 0), now.AddDate(0, 0, 10), grantedBy)
+
+	err := r.WithTx(ctx, func(tx domain.TxOps) error {
+		if err := tx.SaveQualification(ctx, q1); err != nil {
+			return err
+		}
+		return tx.SaveQualification(ctx, q2)
+	})
+	require.NoError(t, err)
+
+	results, err := r.ListQualificationsByOperator(ctx, operatorID)
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+}
+
 // compile-time checks: PostgresRepo satisfies the required domain interfaces.
 var (
-	_ domain.OrderRepository        = (*repo.PostgresRepo)(nil)
-	_ domain.OperationRepository    = (*repo.PostgresRepo)(nil)
-	_ domain.LotRepository          = (*repo.PostgresRepo)(nil)
-	_ domain.TraceabilityRepository = (*repo.PostgresRepo)(nil)
-	_ domain.RoutingRepository      = (*repo.PostgresRepo)(nil)
-	_ domain.Transactor             = (*repo.PostgresRepo)(nil)
-	_ = errors.New                  // keep import
+	_ domain.OrderRepository          = (*repo.PostgresRepo)(nil)
+	_ domain.OperationRepository      = (*repo.PostgresRepo)(nil)
+	_ domain.LotRepository            = (*repo.PostgresRepo)(nil)
+	_ domain.TraceabilityRepository   = (*repo.PostgresRepo)(nil)
+	_ domain.RoutingRepository        = (*repo.PostgresRepo)(nil)
+	_ domain.QualificationRepository  = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor               = (*repo.PostgresRepo)(nil)
+	_ = errors.New                    // keep import
 )
