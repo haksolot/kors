@@ -88,6 +88,15 @@ type MaterialRepository interface {
 	ListTransfersByEntity(ctx context.Context, entityID string) ([]*domain.LocationTransfer, error)
 }
 
+// QualityRepository is the read-only interface for inline quality.
+type QualityRepository interface {
+	FindCharacteristicByID(ctx context.Context, id string) (*domain.ControlCharacteristic, error)
+	ListCharacteristicsByStep(ctx context.Context, stepID string) ([]*domain.ControlCharacteristic, error)
+	ListCharacteristicsByOperation(ctx context.Context, operationID string) ([]*domain.ControlCharacteristic, error)
+	ListMeasurementsByOperation(ctx context.Context, operationID string) ([]*domain.Measurement, error)
+	ListMeasurementsByCharacteristic(ctx context.Context, characteristicID string, limit int) ([]*domain.Measurement, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -101,6 +110,7 @@ type Handler struct {
 	time         TimeTrackingRepository
 	tools        ToolRepository
 	materials    MaterialRepository
+	quality      QualityRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -119,6 +129,7 @@ func New(
 	timeRepo TimeTrackingRepository,
 	toolRepo ToolRepository,
 	materialRepo MaterialRepository,
+	qualityRepo QualityRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -133,6 +144,7 @@ func New(
 		time:         timeRepo,
 		tools:        toolRepo,
 		materials:    materialRepo,
+		quality:      qualityRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -518,6 +530,34 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 			}
 			if !t.HasRemainingLife() {
 				return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("tool %s (%s) has reached max cycles: %w", t.Name, t.SerialNumber, domain.ErrToolMaxCyclesReached))
+			}
+		}
+	}
+
+	// Quality Interlock (BLOC 10): verify previous mandatory characteristics are PASS.
+	allOps, err := h.ops.FindOperationsByOFID(ctx, op.OFID)
+	if err == nil {
+		for _, prevOp := range allOps {
+			if prevOp.StepNumber < op.StepNumber {
+				chars, _ := h.quality.ListCharacteristicsByOperation(ctx, prevOp.ID)
+				meas, _ := h.quality.ListMeasurementsByOperation(ctx, prevOp.ID)
+				
+				measMap := make(map[string]*domain.Measurement)
+				for _, m := range meas {
+					measMap[m.CharacteristicID] = m
+				}
+
+				for _, c := range chars {
+					if c.IsMandatory {
+						m, exists := measMap[c.ID]
+						if !exists {
+							return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("mandatory quality check '%s' missing in previous step %d", c.Name, prevOp.StepNumber))
+						}
+						if m.Status != domain.MeasurementStatusPass {
+							return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("mandatory quality check '%s' failed in previous step %d", c.Name, prevOp.StepNumber))
+						}
+					}
+				}
 			}
 		}
 	}

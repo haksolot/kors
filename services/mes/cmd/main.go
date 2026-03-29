@@ -105,7 +105,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Qualification expiry scanner ──────────────────────────────────────────
@@ -196,6 +196,9 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectMaterialTOEStart, h.StartTOEExposure},
 		{domain.SubjectMaterialTOEStop, h.EndTOEExposure},
 		{domain.SubjectEntityTransfer, h.TransferEntity},
+		// Quality Inline (BLOC 10)
+		{domain.SubjectMeasurementRecord, h.RecordMeasurement},
+		{domain.SubjectOperationCharacteristicsList, h.ListOperationCharacteristics},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -239,6 +242,7 @@ var (
 	_ handler.TimeTrackingRepository  = (*repo.PostgresRepo)(nil)
 	_ handler.ToolRepository          = (*repo.PostgresRepo)(nil)
 	_ handler.MaterialRepository      = (*repo.PostgresRepo)(nil)
+	_ handler.QualityRepository       = (*repo.PostgresRepo)(nil)
 	_ domain.Transactor               = (*repo.PostgresRepo)(nil)
 	_ outbox.Repository               = (*repo.PostgresRepo)(nil)
 	_ qualification.Repository        = (*repo.PostgresRepo)(nil)

@@ -131,6 +131,15 @@ const (
 	SubjectMaterialConsumed    = "kors.mes.material.consumed"
 	SubjectLocationTransferred = "kors.mes.location.transferred"
 
+	// Synchronous request-reply subjects — inline quality (BLOC 10)
+	SubjectMeasurementRecord          = "kors.mes.measurement.record"
+	SubjectOperationCharacteristicsList = "kors.mes.operation.characteristics.list"
+	SubjectMeasurementHistoryList     = "kors.mes.measurement.history.list"
+
+	// Async events — inline quality (BLOC 10)
+	SubjectMeasurementRecorded = "kors.mes.measurement.recorded"
+	SubjectQualityAlertRaised  = "kors.mes.quality.alert"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

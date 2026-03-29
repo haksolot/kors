@@ -154,6 +154,12 @@ func (h *Handler) Routes() http.Handler {
 		})
 		r.Post("/transfers", h.transferEntity)
 
+		// Quality Inline (BLOC 10)
+		r.Route("/quality", func(r chi.Router) {
+			r.Post("/measurements", h.recordMeasurement)
+			r.Get("/operations/{id}/characteristics", h.getOperationCharacteristics)
+		})
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)

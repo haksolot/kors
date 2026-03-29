@@ -276,3 +276,22 @@ message LocationTransferredEvent {
   string entity_type = 3;
   string to_workstation_id = 4;
 }
+
+// MeasurementRecordedEvent is published on kors.mes.measurement.recorded
+message MeasurementRecordedEvent {
+  string event_id = 1;
+  string measurement_id = 2;
+  string operation_id = 3;
+  string characteristic_id = 4;
+  string value = 5;
+  string status = 6;
+}
+
+// QualityAlertRaisedEvent is published on kors.mes.quality.alert
+message QualityAlertRaisedEvent {
+  string event_id = 1;
+  string type = 2; // e.g. "OOT", "SPC_DRIFT"
+  string operation_id = 3;
+  string characteristic_id = 4;
+  string message = 5;
+}
