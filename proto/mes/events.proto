@@ -260,3 +260,19 @@ message ToolUsageRecordedEvent {
   int32 cycles_added = 4;
   int32 total_cycles = 5;
 }
+
+// MaterialConsumedEvent is published on kors.mes.material.consumed
+message MaterialConsumedEvent {
+  string event_id = 1;
+  string lot_id = 2;
+  string operation_id = 3;
+  int32 quantity = 4;
+}
+
+// LocationTransferredEvent is published on kors.mes.location.transferred
+message LocationTransferredEvent {
+  string event_id = 1;
+  string entity_id = 2;
+  string entity_type = 3;
+  string to_workstation_id = 4;
+}

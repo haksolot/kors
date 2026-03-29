@@ -81,6 +81,13 @@ type ToolRepository interface {
 	ListToolsByOperation(ctx context.Context, operationID string) ([]*domain.Tool, error)
 }
 
+// MaterialRepository is the read-only interface for material tracking.
+type MaterialRepository interface {
+	FindOngoingTOEExposure(ctx context.Context, lotID string) (*domain.TOEExposureLog, error)
+	ListConsumptionsByOperation(ctx context.Context, operationID string) ([]*domain.ConsumptionRecord, error)
+	ListTransfersByEntity(ctx context.Context, entityID string) ([]*domain.LocationTransfer, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -93,6 +100,7 @@ type Handler struct {
 	workstations WorkstationRepository
 	time         TimeTrackingRepository
 	tools        ToolRepository
+	materials    MaterialRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -110,6 +118,7 @@ func New(
 	workstations WorkstationRepository,
 	timeRepo TimeTrackingRepository,
 	toolRepo ToolRepository,
+	materialRepo MaterialRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -123,6 +132,7 @@ func New(
 		workstations: workstations,
 		time:         timeRepo,
 		tools:        toolRepo,
+		materials:    materialRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),

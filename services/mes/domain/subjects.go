@@ -121,6 +121,16 @@ const (
 	SubjectToolCalibrationUpdated = "kors.mes.tool.calibration_updated"
 	SubjectToolUsageRecorded     = "kors.mes.tool.usage_recorded"
 
+	// Synchronous request-reply subjects — materials & WIP (BLOC 9)
+	SubjectMaterialConsume    = "kors.mes.material.consume"
+	SubjectMaterialTOEStart   = "kors.mes.material.toe.start"
+	SubjectMaterialTOEStop    = "kors.mes.material.toe.stop"
+	SubjectEntityTransfer     = "kors.mes.entity.transfer"
+
+	// Async events — materials & WIP (BLOC 9)
+	SubjectMaterialConsumed    = "kors.mes.material.consumed"
+	SubjectLocationTransferred = "kors.mes.location.transferred"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

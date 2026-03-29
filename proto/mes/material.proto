@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ENTITY_TYPE_LOT         = 1;
+  ENTITY_TYPE_SERIAL      = 2;
+}
+
+message ConsumptionRecord {
+  string id           = 1;
+  string lot_id       = 2;
+  string operation_id = 3;
+  int32  quantity     = 4;
+  string operator_id  = 5;
+  google.protobuf.Timestamp consumed_at = 6;
+}
+
+message TOEExposureLog {
+  string id          = 1;
+  string lot_id      = 2;
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time   = 4; // null if ongoing
+  string operator_id = 5;
+}
+
+message LocationTransfer {
+  string id                  = 1;
+  string entity_id           = 2;
+  EntityType entity_type     = 3;
+  string from_workstation_id = 4;
+  string to_workstation_id   = 5;
+  string transferred_by      = 6;
+  google.protobuf.Timestamp transferred_at = 7;
+}
+
+message ConsumeMaterialRequest {
+  string lot_id       = 1;
+  string operation_id = 2;
+  int32  quantity     = 3;
+  string operator_id  = 4;
+}
+
+message ConsumeMaterialResponse {
+  ConsumptionRecord record = 1;
+}
+
+message StartTOEExposureRequest {
+  string lot_id      = 1;
+  string operator_id = 2;
+}
+
+message StartTOEExposureResponse {
+  TOEExposureLog log = 1;
+}
+
+message EndTOEExposureRequest {
+  string lot_id      = 1;
+  string operator_id = 2;
+}
+
+message EndTOEExposureResponse {
+  TOEExposureLog log = 1;
+}
+
+message TransferEntityRequest {
+  string entity_id           = 1;
+  EntityType entity_type     = 2;
+  string to_workstation_id   = 3;
+  string transferred_by      = 4;
+}
+
+message TransferEntityResponse {
+  LocationTransfer transfer = 1;
+}

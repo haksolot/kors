@@ -75,6 +75,13 @@ type ToolRepository interface {
 	ListToolsByOperation(ctx context.Context, operationID string) ([]*Tool, error)
 }
 
+// MaterialRepository defines read-only persistence for material tracking (BLOC 9).
+type MaterialRepository interface {
+	FindOngoingTOEExposure(ctx context.Context, lotID string) (*TOEExposureLog, error)
+	ListConsumptionsByOperation(ctx context.Context, operationID string) ([]*ConsumptionRecord, error)
+	ListTransfersByEntity(ctx context.Context, entityID string) ([]*LocationTransfer, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -107,6 +114,11 @@ type TxOps interface {
 	SaveTool(ctx context.Context, t *Tool) error
 	UpdateTool(ctx context.Context, t *Tool) error
 	LinkToolToOperation(ctx context.Context, operationID, toolID string) error
+	// Material writes (BLOC 9)
+	SaveConsumptionRecord(ctx context.Context, r *ConsumptionRecord) error
+	SaveTOEExposureLog(ctx context.Context, l *TOEExposureLog) error
+	UpdateTOEExposureLog(ctx context.Context, l *TOEExposureLog) error
+	SaveLocationTransfer(ctx context.Context, t *LocationTransfer) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.
