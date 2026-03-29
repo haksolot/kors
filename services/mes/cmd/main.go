@@ -101,7 +101,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Subscriptions ─────────────────────────────────────────────────────────
@@ -195,10 +195,11 @@ func drainAll(subs []*nats.Subscription) {
 
 // compile-time interface compliance checks.
 var (
-	_ handler.DispatchRepository     = (*repo.PostgresRepo)(nil)
-	_ handler.OperationRepository    = (*repo.PostgresRepo)(nil)
-	_ handler.TraceabilityRepository = (*repo.PostgresRepo)(nil)
-	_ handler.RoutingRepository      = (*repo.PostgresRepo)(nil)
-	_ domain.Transactor              = (*repo.PostgresRepo)(nil)
-	_ outbox.Repository              = (*repo.PostgresRepo)(nil)
+	_ handler.DispatchRepository      = (*repo.PostgresRepo)(nil)
+	_ handler.OperationRepository     = (*repo.PostgresRepo)(nil)
+	_ handler.TraceabilityRepository  = (*repo.PostgresRepo)(nil)
+	_ handler.RoutingRepository       = (*repo.PostgresRepo)(nil)
+	_ handler.QualificationRepository = (*repo.PostgresRepo)(nil)
+	_ domain.Transactor               = (*repo.PostgresRepo)(nil)
+	_ outbox.Repository               = (*repo.PostgresRepo)(nil)
 )
