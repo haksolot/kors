@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// QualificationStatus represents the computed validity state of an operator qualification.
+// Status is derived from expires_at and is_revoked — never stored directly in the database.
+enum QualificationStatus {
+  QUALIFICATION_STATUS_UNSPECIFIED = 0;
+  QUALIFICATION_STATUS_ACTIVE      = 1; // valid, not near expiry
+  QUALIFICATION_STATUS_EXPIRING    = 2; // valid but expiring within the alert window
+  QUALIFICATION_STATUS_EXPIRED     = 3; // past expires_at
+  QUALIFICATION_STATUS_REVOKED     = 4; // manually revoked before expiry
+}
+
+// Qualification represents a single habilitation held by an operator (AS9100D §7.2).
+// One qualification covers one skill for one operator.
+message Qualification {
+  string id              = 1;  // UUID
+  string operator_id     = 2;  // UUID — extracted from JWT by the BFF, never from request body
+  string skill           = 3;  // must match Operation.required_skill, e.g. "soudure_tig"
+  string label           = 4;  // human-readable label, e.g. "Soudure TIG niveau 2"
+  google.protobuf.Timestamp issued_at    = 5;
+  google.protobuf.Timestamp expires_at   = 6;
+  QualificationStatus status             = 7; // computed, not stored in DB
+  string granted_by      = 8;  // UUID of manager/quality user who granted it (from JWT)
+  string certificate_url = 9;  // MinIO URL, optional
+  bool   is_revoked      = 10;
+  string revoked_by      = 11; // UUID of manager who revoked it (from JWT)
+  google.protobuf.Timestamp revoked_at  = 12;
+  string revoke_reason   = 13;
+  google.protobuf.Timestamp created_at  = 14;
+  google.protobuf.Timestamp updated_at  = 15;
+}
+
+// --- Request / Reply messages (NATS Request-Reply) ---
+
+// CreateQualificationRequest is sent on kors.mes.qualification.create.
+// granted_by must be populated by the BFF from the validated JWT claims (never from client body).
+message CreateQualificationRequest {
+  string operator_id     = 1;
+  string skill           = 2;
+  string label           = 3;
+  google.protobuf.Timestamp issued_at  = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  string granted_by      = 6;  // populated by BFF from JWT claims.Subject
+  string certificate_url = 7;  // optional MinIO URL
+}
+
+// CreateQualificationResponse contains the created qualification.
+message CreateQualificationResponse {
+  Qualification qualification = 1;
+}
+
+// GetQualificationRequest is sent on kors.mes.qualification.get.
+message GetQualificationRequest {
+  string id = 1;
+}
+
+// GetQualificationResponse contains the requested qualification.
+message GetQualificationResponse {
+  Qualification qualification = 1;
+}
+
+// ListQualificationsRequest is sent on kors.mes.qualification.list.
+// Returns all qualifications for an operator (all statuses, for audit history).
+message ListQualificationsRequest {
+  string operator_id = 1; // required — list qualifications for this operator
+}
+
+// ListQualificationsResponse contains all qualifications for the requested operator.
+message ListQualificationsResponse {
+  repeated Qualification qualifications = 1;
+}
+
+// RenewQualificationRequest is sent on kors.mes.qualification.renew.
+// renewed_by must be populated by the BFF from the validated JWT claims.
+message RenewQualificationRequest {
+  string id                             = 1;
+  google.protobuf.Timestamp new_expires_at = 2;
+  string renewed_by                     = 3; // populated by BFF from JWT claims.Subject
+}
+
+// RenewQualificationResponse contains the updated qualification.
+message RenewQualificationResponse {
+  Qualification qualification = 1;
+}
+
+// RevokeQualificationRequest is sent on kors.mes.qualification.revoke.
+// revoked_by must be populated by the BFF from the validated JWT claims.
+message RevokeQualificationRequest {
+  string id         = 1;
+  string revoked_by = 2; // populated by BFF from JWT claims.Subject
+  string reason     = 3;
+}
+
+// RevokeQualificationResponse contains the updated qualification.
+message RevokeQualificationResponse {
+  Qualification qualification = 1;
+}
+
+// ListActiveSkillsRequest is sent on kors.mes.qualification.list_active_skills.
+// Returns only the skill strings for currently valid (non-revoked, non-expired) qualifications.
+// Used by the StartOperation handler to perform the interlock check (AS9100D §7.2).
+message ListActiveSkillsRequest {
+  string operator_id = 1;
+}
+
+// ListActiveSkillsResponse contains skill strings for the operator's active qualifications.
+message ListActiveSkillsResponse {
+  repeated string skills = 1;
+}
+
+// ListExpiringQualificationsRequest is sent on kors.mes.qualification.list_expiring.
+message ListExpiringQualificationsRequest {
+  int32 warning_days = 1; // look-ahead window in days; 0 defaults to 30
+}
+
+// ListExpiringQualificationsResponse contains qualifications expiring within the window.
+message ListExpiringQualificationsResponse {
+  repeated Qualification qualifications = 1;
+}
