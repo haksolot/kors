@@ -1,0 +1,36 @@
+# Default values for kors.
+# This is a YAML-formatted file.
+
+global:
+  domain: kors.local
+
+bff:
+  replicaCount: 2
+  image:
+    repository: kors-bff
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+
+mes:
+  replicaCount: 2
+  image:
+    repository: kors-mes
+    tag: latest
+  env:
+    DATABASE_URL: "postgres://mes:mes@postgres:5432/mes?sslmode=disable"
+
+qms:
+  replicaCount: 1
+  image:
+    repository: kors-qms
+    tag: latest
+
+nats:
+  url: "nats://nats:4222"
+
+postgres:
+  host: "postgres"
+  port: 5432

@@ -105,7 +105,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Qualification expiry scanner ──────────────────────────────────────────
@@ -208,6 +208,11 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		// Compliance & Audit Trail (§13 — EN9100)
 		{domain.SubjectAuditQuery, h.QueryAuditTrail},
 		{domain.SubjectAsBuiltGet, h.GetAsBuilt},
+		// Supervision & Dashboards (§16)
+		{domain.SubjectDashboardSupervisorGet, h.GetSupervisorDashboard},
+		{domain.SubjectMetricsTRSByPeriod, h.GetTRSByPeriod},
+		{domain.SubjectMetricsDowntimeCauses, h.GetDowntimeCauses},
+		{domain.SubjectMetricsProductionProgress, h.GetProductionProgress},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))
@@ -253,6 +258,7 @@ var (
 	_ handler.MaterialRepository      = (*repo.PostgresRepo)(nil)
 	_ handler.QualityRepository       = (*repo.PostgresRepo)(nil)
 	_ handler.AlertRepository         = (*repo.PostgresRepo)(nil)
+	_ handler.DashboardRepository     = (*repo.PostgresRepo)(nil)
 	_ domain.Transactor               = (*repo.PostgresRepo)(nil)
 	_ outbox.Repository               = (*repo.PostgresRepo)(nil)
 	_ qualification.Repository        = (*repo.PostgresRepo)(nil)

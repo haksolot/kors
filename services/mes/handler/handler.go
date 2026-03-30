@@ -113,6 +113,14 @@ type ComplianceRepository interface {
 	GetAsBuiltByOFID(ctx context.Context, ofID string) (*domain.AsBuiltReport, error)
 }
 
+// DashboardRepository provides aggregated metrics and shop floor visibility (§16).
+type DashboardRepository interface {
+	GetSupervisorSnapshot(ctx context.Context) (*domain.SupervisorSnapshot, error)
+	GetTRSByPeriod(ctx context.Context, filter domain.TRSFilter) ([]*domain.TRSDataPoint, error)
+	GetDowntimeCauses(ctx context.Context, from, to time.Time) ([]*domain.DowntimeCause, error)
+	GetProductionProgress(ctx context.Context, from, to time.Time) ([]*domain.ProgressLine, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -130,6 +138,7 @@ type Handler struct {
 	alerts       AlertRepository
 	audit        AuditRepository
 	compliance   ComplianceRepository
+	dashboards   DashboardRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -152,6 +161,7 @@ func New(
 	alertRepo AlertRepository,
 	auditRepo AuditRepository,
 	complianceRepo ComplianceRepository,
+	dashboardRepo DashboardRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -170,6 +180,7 @@ func New(
 		alerts:       alertRepo,
 		audit:        auditRepo,
 		compliance:   complianceRepo,
+		dashboards:   dashboardRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),

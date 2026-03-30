@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kors
+description: A Helm chart for KORS MES/QMS
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

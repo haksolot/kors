@@ -156,6 +156,12 @@ const (
 	SubjectAuditQuery  = "kors.mes.audit.query"
 	SubjectAsBuiltGet  = "kors.mes.compliance.as_built.get"
 
+	// Synchronous request-reply subjects — supervision & dashboards (§16)
+	SubjectDashboardSupervisorGet = "kors.mes.dashboard.supervisor.get"
+	SubjectMetricsTRSByPeriod     = "kors.mes.metrics.trs.by_period"
+	SubjectMetricsDowntimeCauses  = "kors.mes.metrics.downtime_causes"
+	SubjectMetricsProductionProgress = "kors.mes.metrics.production_progress"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )
