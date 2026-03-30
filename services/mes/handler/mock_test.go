@@ -22,7 +22,7 @@ func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTr
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
@@ -35,7 +35,7 @@ func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trac
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
@@ -48,7 +48,7 @@ func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, qual
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────
@@ -542,4 +542,28 @@ func (m *mockAlertRepo) ListActiveAlerts(ctx context.Context) ([]*domain.Alert, 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Alert), args.Error(1)
+}
+
+// ── Audit repo mock (§13) ─────────────────────────────────────────────────────
+
+type mockAuditRepo struct{ mock.Mock }
+
+func (m *mockAuditRepo) QueryAuditTrail(ctx context.Context, f domain.AuditFilter) ([]*domain.AuditEntry, error) {
+	args := m.Called(ctx, f)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.AuditEntry), args.Error(1)
+}
+
+// ── Compliance repo mock (§13) ────────────────────────────────────────────────
+
+type mockComplianceRepo struct{ mock.Mock }
+
+func (m *mockComplianceRepo) GetAsBuiltByOFID(ctx context.Context, ofID string) (*domain.AsBuiltReport, error) {
+	args := m.Called(ctx, ofID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.AsBuiltReport), args.Error(1)
 }

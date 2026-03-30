@@ -152,6 +152,10 @@ const (
 	SubjectAlertResolved    = "kors.mes.alert.resolved"
 	SubjectAlertEscalationRequested = "kors.mes.alert.escalation_requested"
 
+	// Synchronous request-reply subjects — compliance & audit trail (§13)
+	SubjectAuditQuery  = "kors.mes.audit.query"
+	SubjectAsBuiltGet  = "kors.mes.compliance.as_built.get"
+
 	// Queue group name — all MES instances subscribe with this group for load balancing
 	QueueGroupMES = "mes"
 )

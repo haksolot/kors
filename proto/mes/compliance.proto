@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// ── Audit Trail ───────────────────────────────────────────────────────────────
+
+// AuditEntry is one immutable record in the audit trail (§13 — EN9100).
+message AuditEntry {
+  string id              = 1;
+  string actor_id        = 2;
+  string actor_role      = 3;
+  string action          = 4;
+  string entity_type     = 5;
+  string entity_id       = 6;
+  string workstation_id  = 7;
+  string notes           = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+// QueryAuditTrailRequest filters the audit trail.
+// All fields are optional; omitting a field means "no filter on this dimension".
+message QueryAuditTrailRequest {
+  string actor_id    = 1;
+  string entity_type = 2;
+  string entity_id   = 3;
+  string action      = 4;
+  google.protobuf.Timestamp from = 5;
+  google.protobuf.Timestamp to   = 6;
+  int32  page_size   = 7; // 0 defaults to 50, max 200
+}
+
+message QueryAuditTrailResponse {
+  repeated AuditEntry entries = 1;
+}
+
+// ── As-Built Report ───────────────────────────────────────────────────────────
+
+// GetAsBuiltRequest requests the complete dossier for a manufacturing order.
+message GetAsBuiltRequest {
+  string of_id = 1;
+}
+
+// Measurement captured inline during an operation.
+message AsBuiltMeasurement {
+  string characteristic_id = 1;
+  string value             = 2;
+  string status            = 3; // PASS / FAIL / WARNING
+  string operator_id       = 4;
+  google.protobuf.Timestamp recorded_at = 5;
+}
+
+// Material lot consumed during an operation.
+message AsBuiltConsumedLot {
+  string lot_id   = 1;
+  int32  quantity = 2;
+}
+
+// Tool or gauge used during an operation.
+message AsBuiltTool {
+  string tool_id       = 1;
+  string serial_number = 2;
+  string name          = 3;
+  google.protobuf.Timestamp calibration_expiry = 4;
+}
+
+// One operation within the As-Built dossier.
+message AsBuiltOperation {
+  string operation_id             = 1;
+  int32  step_number              = 2;
+  string name                     = 3;
+  string status                   = 4;
+  string operator_id              = 5;
+  string workstation_id           = 6;
+  bool   requires_sign_off        = 7;
+  string signed_off_by            = 8;
+  google.protobuf.Timestamp signed_off_at = 9;
+  bool   is_special_process       = 10;
+  string nadcap_process_code      = 11;
+  int32  planned_duration_seconds = 12;
+  int32  actual_duration_seconds  = 13;
+  google.protobuf.Timestamp started_at   = 14;
+  google.protobuf.Timestamp completed_at = 15;
+  repeated AsBuiltMeasurement measurements  = 16;
+  repeated AsBuiltConsumedLot consumed_lots = 17;
+  repeated AsBuiltTool        tools         = 18;
+}
+
+// Serial number produced by the manufacturing order.
+message AsBuiltSerialNumber {
+  string id         = 1;
+  string sn         = 2;
+  string lot_id     = 3;
+  string product_id = 4;
+  string status     = 5;
+}
+
+// GetAsBuiltResponse is the complete Dossier Industriel Numérique for one OF.
+message GetAsBuiltResponse {
+  google.protobuf.Timestamp generated_at  = 1;
+  string order_id                         = 2;
+  string reference                        = 3;
+  string product_id                       = 4;
+  int32  quantity                         = 5;
+  string status                           = 6;
+  bool   is_fai                           = 7;
+  string fai_approved_by                  = 8;
+  google.protobuf.Timestamp fai_approved_at = 9;
+  google.protobuf.Timestamp started_at      = 10;
+  google.protobuf.Timestamp completed_at    = 11;
+  repeated AsBuiltOperation   operations    = 12;
+  repeated AsBuiltSerialNumber serial_numbers = 13;
+}
