@@ -514,16 +514,19 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find order: %w", err))
 	}
 
-	// Interlock (AS9100D §7.2): if the operation requires a skill, resolve the operator's
-	// currently valid DB qualifications and merge them with the JWT roles for the check.
-	// This ensures time-based expiry is enforced — not just static role membership.
+	// Interlock (AS9100D §7.2 + §13 NADCAP): load the operator's currently valid DB
+	// qualifications when the operation requires a skill or is a special process.
+	// mergedRoles = JWT roles + DB skill codes (for RequiredSkill check).
+	// nadcapSkills = DB skill codes only (for NADCAP process code check — §13).
 	mergedRoles := req.OperatorRoles
-	if op.RequiredSkill != "" {
+	var nadcapSkills []string
+	if op.RequiredSkill != "" || op.IsSpecialProcess {
 		activeSkills, err := h.quals.ListActiveSkills(ctx, req.OperatorId, time.Now().UTC())
 		if err != nil {
 			return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: list active skills: %w", err))
 		}
 		mergedRoles = append(mergedRoles, activeSkills...)
+		nadcapSkills = activeSkills
 	}
 
 	// Tool Interlock (BLOC 8): verify all tools assigned to this operation are valid.
@@ -571,7 +574,7 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		}
 	}
 
-	if err := op.Start(req.OperatorId, mergedRoles); err != nil {
+	if err := op.Start(req.OperatorId, mergedRoles, nadcapSkills); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, err)
 	}
 

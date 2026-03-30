@@ -316,6 +316,10 @@ func (m *mockTxOps) UpdateAlert(ctx context.Context, a *domain.Alert) error {
 	return m.Called(ctx, a).Error(0)
 }
 
+func (m *mockTxOps) AppendAuditEntry(ctx context.Context, e *domain.AuditEntry) error {
+	return m.Called(ctx, e).Error(0)
+}
+
 // ── Qualification repo mock ───────────────────────────────────────────────────
 
 type mockQualificationRepo struct{ mock.Mock }
