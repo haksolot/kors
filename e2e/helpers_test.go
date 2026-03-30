@@ -82,7 +82,7 @@ func startMESService(t *testing.T, ctx context.Context, pool *pgxpool.Pool, nc *
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
 	r := mesrepo.New(pool)
-	h := meshandler.New(r, r, r, r, r, r, reg, &log)
+	h := meshandler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
 	worker := mesoutbox.New(r, nc, log, reg)
 
 	subs := subscribeMES(t, ctx, h, nc)

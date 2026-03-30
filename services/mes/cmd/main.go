@@ -105,7 +105,7 @@ func main() {
 
 	// ── Wiring ────────────────────────────────────────────────────────────────
 	r := repo.New(pool)
-	h := handler.New(r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
+	h := handler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
 	worker := outbox.New(r, nc, log, reg)
 
 	// ── Qualification expiry scanner ──────────────────────────────────────────
@@ -205,6 +205,9 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectAlertResolve, h.ResolveAlert},
 		{domain.SubjectAlertListActive, h.ListActiveAlerts},
 		{domain.SubjectAlertEscalationRequested, h.HandleEscalationRequest},
+		// Compliance & Audit Trail (§13 — EN9100)
+		{domain.SubjectAuditQuery, h.QueryAuditTrail},
+		{domain.SubjectAsBuiltGet, h.GetAsBuilt},
 	}
 
 	subs := make([]*nats.Subscription, 0, len(routes))

@@ -97,6 +97,18 @@ type AlertRepository interface {
 	ListActiveAlerts(ctx context.Context) ([]*Alert, error)
 }
 
+// AuditRepository defines read-only persistence for the immutable audit trail (§13 — EN9100).
+// Writes go exclusively through TxOps.AppendAuditEntry.
+type AuditRepository interface {
+	QueryAuditTrail(ctx context.Context, f AuditFilter) ([]*AuditEntry, error)
+}
+
+// ComplianceRepository assembles the As-Built record (§13 — Dossier Industriel Numérique).
+// Joins multiple tables into a single denormalized view for audit export.
+type ComplianceRepository interface {
+	GetAsBuiltByOFID(ctx context.Context, ofID string) (*AsBuiltReport, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).
@@ -140,6 +152,9 @@ type TxOps interface {
 	// Alert writes (BLOC 11)
 	SaveAlert(ctx context.Context, a *Alert) error
 	UpdateAlert(ctx context.Context, a *Alert) error
+	// Audit trail writes (§13 — EN9100 compliance).
+	// AppendAuditEntry is append-only — never update or delete audit entries.
+	AppendAuditEntry(ctx context.Context, e *AuditEntry) error
 }
 
 // Transactor manages database transactions and exposes TxOps within them.

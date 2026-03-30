@@ -84,7 +84,7 @@ func (v *JWTValidator) ValidateJWT(ctx context.Context, tokenStr string) (*Claim
 		return &Claims{
 			Subject: "00000000-0000-0000-0000-000000000001",
 			Email:   "dev@kors.local",
-			Roles:   []string{"kors-admin", "kors-quality", "kors-operateur"},
+			Roles:   []string{"kors-admin", "kors-quality", "kors-operator"},
 		}, nil
 	}
 	keySet, err := v.cache.Get(ctx, v.jwksURL)

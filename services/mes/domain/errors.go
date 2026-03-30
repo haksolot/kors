@@ -94,4 +94,11 @@ var (
 	ErrToolExpired         = errors.New("tool calibration is expired")
 	ErrToolBlocked         = errors.New("tool is manually blocked")
 	ErrToolMaxCyclesReached = errors.New("tool has reached maximum usage cycles")
+
+	// Compliance / NADCAP errors (§13 — EN9100 / Special Processes)
+	ErrNADCAPQualificationRequired = errors.New("operator does not hold a valid NADCAP qualification for this special process")
+	ErrInvalidAuditActor           = errors.New("audit entry actor ID must not be empty")
+	ErrInvalidAuditAction          = errors.New("audit entry action must not be empty")
+	ErrInvalidAuditEntityType      = errors.New("audit entry entity type must not be empty")
+	ErrAsBuiltNotFound             = errors.New("no as-built record found for the requested entity")
 )

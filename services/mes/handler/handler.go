@@ -103,6 +103,16 @@ type AlertRepository interface {
 	ListActiveAlerts(ctx context.Context) ([]*domain.Alert, error)
 }
 
+// AuditRepository is the read-only interface for the audit trail (§13).
+type AuditRepository interface {
+	QueryAuditTrail(ctx context.Context, f domain.AuditFilter) ([]*domain.AuditEntry, error)
+}
+
+// ComplianceRepository assembles the As-Built report (§13).
+type ComplianceRepository interface {
+	GetAsBuiltByOFID(ctx context.Context, ofID string) (*domain.AsBuiltReport, error)
+}
+
 // Handler processes NATS request-reply messages for the MES service.
 // All state-changing operations use domain.Transactor to guarantee atomicity
 // between business data and the outbox entry (ADR-004).
@@ -118,6 +128,8 @@ type Handler struct {
 	materials    MaterialRepository
 	quality      QualityRepository
 	alerts       AlertRepository
+	audit        AuditRepository
+	compliance   ComplianceRepository
 	store        domain.Transactor
 	log          *zerolog.Logger
 	reqTotal     *prometheus.CounterVec
@@ -138,6 +150,8 @@ func New(
 	materialRepo MaterialRepository,
 	qualityRepo QualityRepository,
 	alertRepo AlertRepository,
+	auditRepo AuditRepository,
+	complianceRepo ComplianceRepository,
 	store domain.Transactor,
 	reg prometheus.Registerer,
 	log *zerolog.Logger,
@@ -154,6 +168,8 @@ func New(
 		materials:    materialRepo,
 		quality:      qualityRepo,
 		alerts:       alertRepo,
+		audit:        auditRepo,
+		compliance:   complianceRepo,
 		store:        store,
 		log:          log,
 		reqTotal:     core.NewCounter(reg, "mes", "handler_requests", "Total NATS handler invocations", []string{"subject", "status"}),
@@ -514,16 +530,19 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: find order: %w", err))
 	}
 
-	// Interlock (AS9100D §7.2): if the operation requires a skill, resolve the operator's
-	// currently valid DB qualifications and merge them with the JWT roles for the check.
-	// This ensures time-based expiry is enforced — not just static role membership.
+	// Interlock (AS9100D §7.2 + §13 NADCAP): load the operator's currently valid DB
+	// qualifications when the operation requires a skill or is a special process.
+	// mergedRoles = JWT roles + DB skill codes (for RequiredSkill check).
+	// nadcapSkills = DB skill codes only (for NADCAP process code check — §13).
 	mergedRoles := req.OperatorRoles
-	if op.RequiredSkill != "" {
+	var nadcapSkills []string
+	if op.RequiredSkill != "" || op.IsSpecialProcess {
 		activeSkills, err := h.quals.ListActiveSkills(ctx, req.OperatorId, time.Now().UTC())
 		if err != nil {
 			return h.fail(domain.SubjectOperationStart, start, fmt.Errorf("StartOperation: list active skills: %w", err))
 		}
 		mergedRoles = append(mergedRoles, activeSkills...)
+		nadcapSkills = activeSkills
 	}
 
 	// Tool Interlock (BLOC 8): verify all tools assigned to this operation are valid.
@@ -571,7 +590,7 @@ func (h *Handler) StartOperation(ctx context.Context, payload []byte) ([]byte, e
 		}
 	}
 
-	if err := op.Start(req.OperatorId, mergedRoles); err != nil {
+	if err := op.Start(req.OperatorId, mergedRoles, nadcapSkills); err != nil {
 		return h.fail(domain.SubjectOperationStart, start, err)
 	}
 

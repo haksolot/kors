@@ -73,9 +73,10 @@ func (t *txOps) UpdateAlert(ctx context.Context, a *domain.Alert) error {
 func scanAlert(row pgx.Row) (*domain.Alert, error) {
 	var a domain.Alert
 	var cat, level, status string
+	var notes *string
 	err := row.Scan(
 		&a.ID, &cat, &level, &status, &a.WorkstationID, &a.OperationID, &a.Message, &a.EscalationCount,
-		&a.AcknowledgedBy, &a.AcknowledgedAt, &a.ResolvedBy, &a.ResolvedAt, &a.ResolutionNotes,
+		&a.AcknowledgedBy, &a.AcknowledgedAt, &a.ResolvedBy, &a.ResolvedAt, &notes,
 		&a.CreatedAt, &a.UpdatedAt,
 	)
 	if err != nil {
@@ -83,6 +84,9 @@ func scanAlert(row pgx.Row) (*domain.Alert, error) {
 			return nil, fmt.Errorf("alert not found")
 		}
 		return nil, err
+	}
+	if notes != nil {
+		a.ResolutionNotes = *notes
 	}
 	a.Category = domain.AlertCategory(cat)
 	a.Level = domain.AlertLevel(level)

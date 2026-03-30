@@ -352,7 +352,7 @@ func TestHandler_CompleteOperation(t *testing.T) {
 	t.Run("in-progress operation can be completed and order status updated", func(t *testing.T) {
 		ops := &mockOperationRepo{}
 		op, _ := domain.NewOperation("of-1", 1, "Découpe")
-		_ = op.Start("op-1", nil)
+		_ = op.Start("op-1", nil, nil)
 		ops.On("FindOperationByID", mock.Anything, op.ID).Return(op, nil)
 		// Mock FindOperationsByOFID returning only this operation (so allDone is true)
 		ops.On("FindOperationsByOFID", mock.Anything, "of-1").Return([]*domain.Operation{op}, nil)
@@ -817,7 +817,7 @@ func TestHandler_GetRouting(t *testing.T) {
 
 		log := zerolog.Nop()
 		reg := prometheus.NewRegistry()
-		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, &mockToolRepo{}, &mockMaterialRepo{}, &mockQualityRepo{}, &mockAlertRepo{}, newMockTransactor(), reg, &log)
+		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, &mockToolRepo{}, &mockMaterialRepo{}, &mockQualityRepo{}, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, newMockTransactor(), reg, &log)
 
 		payload, _ := proto.Marshal(&pbmes.GetRoutingRequest{Id: rt.ID})
 		resp, err := h.GetRouting(context.Background(), payload)

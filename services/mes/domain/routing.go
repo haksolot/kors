@@ -31,6 +31,12 @@ type RoutingStep struct {
 	RequiredSkill          string // JWT role required by the operator (AS9100D §7.2)
 	InstructionsURL        string // MinIO reference, optional
 	RequiresSignOff        bool   // If true, the instantiated operation will require sign-off
+	// Special Process fields (§13 — EN9100 / NADCAP compliance).
+	// IsSpecialProcess flags this step as subject to NADCAP qualification.
+	// NADCAPProcessCode is the specific process code (e.g. "NADCAP-WELD", "NADCAP-NDT").
+	// The operator must hold a non-expired Qualification with SkillCode == NADCAPProcessCode.
+	IsSpecialProcess  bool
+	NADCAPProcessCode string
 }
 
 // NewRouting creates a new Routing template in inactive state.
@@ -115,6 +121,8 @@ func (r *Routing) InstantiateOperations(ofID string) ([]*Operation, error) {
 			PlannedDurationSeconds: step.PlannedDurationSeconds,
 			InstructionsURL:        step.InstructionsURL,
 			RequiresSignOff:        step.RequiresSignOff,
+			IsSpecialProcess:       step.IsSpecialProcess,
+			NADCAPProcessCode:      step.NADCAPProcessCode,
 			CreatedAt:              now,
 		}
 		ops = append(ops, op)

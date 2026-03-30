@@ -46,9 +46,15 @@ type Operation struct {
 	// RequiredSkill is the JWT role the operator must hold to start this operation (AS9100D §7.2).
 	// Empty string means no skill check.
 	RequiredSkill string
-	CreatedAt     time.Time
-	StartedAt     *time.Time
-	CompletedAt   *time.Time
+	// Special Process fields (§13 — EN9100 / NADCAP compliance).
+	// IsSpecialProcess flags this operation as a NADCAP-qualified process.
+	// NADCAPProcessCode must match a valid Qualification.SkillCode held by the operator.
+	// The caller passes nadcapSkills (active qualification codes) to Start() for the interlock.
+	IsSpecialProcess  bool
+	NADCAPProcessCode string
+	CreatedAt         time.Time
+	StartedAt         *time.Time
+	CompletedAt       *time.Time
 }
 
 // NewOperation creates a new Operation in Pending status.
@@ -76,7 +82,9 @@ func NewOperation(ofID string, stepNumber int, name string) (*Operation, error) 
 // Start transitions the operation from Pending to InProgress.
 // operatorID must be the Subject from a validated JWT — never from the request body.
 // operatorRoles is the list of JWT roles for the operator; used to check RequiredSkill (AS9100D §7.2).
-func (op *Operation) Start(operatorID string, operatorRoles []string) error {
+// nadcapSkills is the list of active NADCAP qualification codes held by the operator (§13);
+// pass nil or empty if the caller has not loaded qualifications.
+func (op *Operation) Start(operatorID string, operatorRoles []string, nadcapSkills []string) error {
 	if operatorID == "" {
 		return ErrInvalidProductID // operatorID is a required field
 	}
@@ -96,6 +104,14 @@ func (op *Operation) Start(operatorID string, operatorRoles []string) error {
 	// must hold that role in their JWT claims.
 	if op.RequiredSkill != "" && !containsRole(operatorRoles, op.RequiredSkill) {
 		return fmt.Errorf("Start: operator lacks required skill %q: %w", op.RequiredSkill, ErrOperatorNotQualified)
+	}
+
+	// NADCAP special process interlock (§13 — EN9100 / Special Processes).
+	// If the operation is flagged as a special process, the operator must hold a valid,
+	// non-expired NADCAP qualification whose SkillCode matches NADCAPProcessCode.
+	// The handler is responsible for loading active NADCAP qualifications before calling Start.
+	if op.IsSpecialProcess && !containsRole(nadcapSkills, op.NADCAPProcessCode) {
+		return fmt.Errorf("Start: operator lacks NADCAP qualification %q: %w", op.NADCAPProcessCode, ErrNADCAPQualificationRequired)
 	}
 
 	now := time.Now().UTC()

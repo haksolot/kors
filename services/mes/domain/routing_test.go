@@ -114,7 +114,7 @@ func TestOperation_Start_WithRequiredSkill_Passes(t *testing.T) {
 	require.NoError(t, err)
 	op.RequiredSkill = "welder_certified"
 
-	err = op.Start("00000000-0000-0000-0000-000000000010", []string{"assembler", "welder_certified"})
+	err = op.Start("00000000-0000-0000-0000-000000000010", []string{"assembler", "welder_certified"}, nil)
 	require.NoError(t, err)
 }
 
@@ -123,7 +123,7 @@ func TestOperation_Start_WithRequiredSkill_Missing_Error(t *testing.T) {
 	require.NoError(t, err)
 	op.RequiredSkill = "welder_certified"
 
-	err = op.Start("00000000-0000-0000-0000-000000000010", []string{"assembler"})
+	err = op.Start("00000000-0000-0000-0000-000000000010", []string{"assembler"}, nil)
 	assert.ErrorIs(t, err, domain.ErrOperatorNotQualified)
 }
 
@@ -132,7 +132,7 @@ func TestOperation_Start_NoRequiredSkill_Passes(t *testing.T) {
 	require.NoError(t, err)
 	// no RequiredSkill set
 
-	err = op.Start("00000000-0000-0000-0000-000000000010", nil)
+	err = op.Start("00000000-0000-0000-0000-000000000010", nil, nil)
 	require.NoError(t, err)
 }
 
@@ -142,7 +142,7 @@ func TestOperation_Complete_ComputesActualDuration(t *testing.T) {
 	op, err := domain.NewOperation("00000000-0000-0000-0000-000000000001", 1, "Deburr")
 	require.NoError(t, err)
 	op.PlannedDurationSeconds = 60
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil, nil))
 
 	require.NoError(t, op.Complete("00000000-0000-0000-0000-000000000010"))
 	assert.GreaterOrEqual(t, op.ActualDurationSeconds, 0)
