@@ -167,6 +167,18 @@ func (h *Handler) Routes() http.Handler {
 			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/{id}/resolve", h.resolveAlert)
 		})
 
+		// Compliance & Audit Trail (§13 — EN9100)
+		r.Route("/compliance", func(r chi.Router) {
+			// As-Built dossier: GET /compliance/orders/{id}/as-built
+			// Accessible to quality managers, production managers, and admins.
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleProductionManager, core.RoleAdmin)).
+				Get("/orders/{id}/as-built", h.getAsBuilt)
+			// Audit trail query: GET /compliance/audit?actor_id=&entity_id=&entity_type=&action=&from=&to=
+			// Restricted to admins and quality managers (contains PII — operator IDs).
+			r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin)).
+				Get("/audit", h.queryAuditTrail)
+		})
+
 		// QMS
 		r.Route("/qms", func(r chi.Router) {
 			r.Get("/nc", h.listNCs)
