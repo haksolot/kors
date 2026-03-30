@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kors.fullname" . }}-mes
+  labels:
+    app: mes
+spec:
+  replicas: {{ .Values.mes.replicaCount }}
+  selector:
+    matchLabels:
+      app: mes
+  template:
+    metadata:
+      labels:
+        app: mes
+    spec:
+      containers:
+        - name: mes
+          image: "{{ .Values.mes.image.repository }}:{{ .Values.mes.image.tag }}"
+          env:
+            - name: DATABASE_URL
+              value: {{ .Values.mes.env.DATABASE_URL }}
+            - name: NATS_URL
+              value: {{ .Values.nats.url }}
+            - name: SERVICE_NAME
+              value: "kors-mes"
+          healthCheck:
+            httpGet:
+              path: /metrics
+              port: 9090

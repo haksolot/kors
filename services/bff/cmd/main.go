@@ -73,15 +73,22 @@ func main() {
 		validator = core.NewNoopJWTValidator()
 	}
 
-	// ── Handler + WebSocket hub ────────────────────────────────────────────────
+	// ── Handler + WebSocket hub + Webhooks ────────────────────────────────────
 	h := handler.New(ctx, nc, validator, reg, log)
 
 	evtSubs, err := h.Hub().SubscribeEvents(nc)
 	if err != nil {
 		log.Fatal().Err(err).Msg("subscribe WebSocket event subjects")
 	}
+	whSubs, err := h.SubscribeWebhooks(nc)
+	if err != nil {
+		log.Fatal().Err(err).Msg("subscribe webhook event subjects")
+	}
 	defer func() {
 		for _, s := range evtSubs {
+			_ = s.Drain()
+		}
+		for _, s := range whSubs {
 			_ = s.Drain()
 		}
 	}()

@@ -22,7 +22,7 @@ func newTestHandler(orders *mockOrderRepo, ops *mockOperationRepo, store *mockTr
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, &mockDashboardRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithTrace is like newTestHandler but with an explicit trace repo mock.
@@ -35,7 +35,7 @@ func newTestHandlerWithTrace(orders *mockOrderRepo, ops *mockOperationRepo, trac
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
+	return handler.New(orders, ops, trace, &mockRoutingRepo{}, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, &mockDashboardRepo{}, store, reg, &log)
 }
 
 // newTestHandlerWithQuals is like newTestHandler but with an explicit qualification repo mock.
@@ -48,7 +48,43 @@ func newTestHandlerWithQuals(orders *mockOrderRepo, ops *mockOperationRepo, qual
 	quality.On("ListCharacteristicsByOperation", mock.Anything, mock.Anything).Return([]*domain.ControlCharacteristic{}, nil).Maybe()
 	quality.On("ListMeasurementsByOperation", mock.Anything, mock.Anything).Return([]*domain.Measurement{}, nil).Maybe()
 	ops.On("FindOperationsByOFID", mock.Anything, mock.Anything).Return([]*domain.Operation{}, nil).Maybe()
-	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, store, reg, &log)
+	return handler.New(orders, ops, &mockTraceabilityRepo{}, &mockRoutingRepo{}, quals, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, tools, &mockMaterialRepo{}, quality, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, &mockDashboardRepo{}, store, reg, &log)
+}
+
+// ── Dashboard repo mock (§16) ────────────────────────────────────────────────
+
+type mockDashboardRepo struct{ mock.Mock }
+
+func (m *mockDashboardRepo) GetSupervisorSnapshot(ctx context.Context) (*domain.SupervisorSnapshot, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SupervisorSnapshot), args.Error(1)
+}
+
+func (m *mockDashboardRepo) GetTRSByPeriod(ctx context.Context, filter domain.TRSFilter) ([]*domain.TRSDataPoint, error) {
+	args := m.Called(ctx, filter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.TRSDataPoint), args.Error(1)
+}
+
+func (m *mockDashboardRepo) GetDowntimeCauses(ctx context.Context, from, to time.Time) ([]*domain.DowntimeCause, error) {
+	args := m.Called(ctx, from, to)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.DowntimeCause), args.Error(1)
+}
+
+func (m *mockDashboardRepo) GetProductionProgress(ctx context.Context, from, to time.Time) ([]*domain.ProgressLine, error) {
+	args := m.Called(ctx, from, to)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ProgressLine), args.Error(1)
 }
 
 // ── Order repo mock ───────────────────────────────────────────────────────────

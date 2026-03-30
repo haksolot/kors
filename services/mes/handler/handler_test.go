@@ -817,7 +817,7 @@ func TestHandler_GetRouting(t *testing.T) {
 
 		log := zerolog.Nop()
 		reg := prometheus.NewRegistry()
-		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, &mockToolRepo{}, &mockMaterialRepo{}, &mockQualityRepo{}, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, newMockTransactor(), reg, &log)
+		h := handler.New(&mockOrderRepo{}, &mockOperationRepo{}, &mockTraceabilityRepo{}, routingRepo, &mockQualificationRepo{}, &mockWorkstationRepo{}, &mockTimeTrackingRepo{}, &mockToolRepo{}, &mockMaterialRepo{}, &mockQualityRepo{}, &mockAlertRepo{}, &mockAuditRepo{}, &mockComplianceRepo{}, &mockDashboardRepo{}, newMockTransactor(), reg, &log)
 
 		payload, _ := proto.Marshal(&pbmes.GetRoutingRequest{Id: rt.ID})
 		resp, err := h.GetRouting(context.Background(), payload)

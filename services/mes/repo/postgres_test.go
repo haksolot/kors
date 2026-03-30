@@ -181,7 +181,7 @@ func TestPostgresRepo_UpdateOperation(t *testing.T) {
 	op, _ := domain.NewOperation(order.ID, 1, "Soudure")
 	require.NoError(t, r.SaveOperation(ctx, op))
 
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", []string{}, []string{}))
 	require.NoError(t, r.UpdateOperation(ctx, op))
 
 	got, err := r.FindOperationByID(ctx, op.ID)
@@ -316,7 +316,7 @@ func TestPostgresRepo_WithTx_UpdateOperationAndOutbox(t *testing.T) {
 	require.NoError(t, r.SaveOperation(ctx, op))
 
 	// Start the operation inside a transaction.
-	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", nil))
+	require.NoError(t, op.Start("00000000-0000-0000-0000-000000000010", []string{}, []string{}))
 	err := r.WithTx(ctx, func(tx domain.TxOps) error {
 		if err := tx.UpdateOperation(ctx, op); err != nil {
 			return err

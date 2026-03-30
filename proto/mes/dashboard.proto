@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package mes;
+
+import "google/protobuf/timestamp.proto";
+import "mes/manufacturing_order.proto";
+import "mes/workstation.proto";
+import "mes/alert.proto";
+
+option go_package = "github.com/haksolot/kors/proto/gen/mes;mes";
+
+// --- Supervisor Dashboard ---
+
+message WorkstationSnapshot {
+  string workstation_id = 1;
+  string workstation_name = 2;
+  WorkstationStatus status = 3;
+  string current_of_id = 4;
+  string current_of_reference = 5;
+  double trs = 6; // last 8h snapshot
+  double availability = 7;
+  double performance = 8;
+  double quality = 9;
+}
+
+message GetSupervisorDashboardRequest {}
+
+message GetSupervisorDashboardResponse {
+  repeated ManufacturingOrder active_orders = 1;
+  repeated WorkstationSnapshot workstations = 2;
+  repeated Alert active_alerts = 3;
+}
+
+// --- TRS Metrics ---
+
+enum TRSPeriodGranularity {
+  TRS_GRANULARITY_UNSPECIFIED = 0;
+  TRS_GRANULARITY_DAY         = 1;
+  TRS_GRANULARITY_WEEK        = 2;
+  TRS_GRANULARITY_MONTH       = 3;
+}
+
+message TRSDataPoint {
+  string period = 1; // ISO8601 string (e.g. "2026-03-30")
+  double trs = 2;
+  double availability = 3;
+  double performance = 4;
+  double quality = 5;
+}
+
+message GetTRSByPeriodRequest {
+  string workstation_id = 1; // Optional; empty means global MES TRS
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  TRSPeriodGranularity granularity = 4;
+}
+
+message GetTRSByPeriodResponse {
+  repeated TRSDataPoint points = 1;
+}
+
+// --- Downtime Causes ---
+
+message DowntimeCause {
+  string reason = 1;
+  double total_duration_seconds = 2;
+  int32 occurrence_count = 3;
+}
+
+message GetDowntimeCausesRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message GetDowntimeCausesResponse {
+  repeated DowntimeCause causes = 1;
+}
+
+// --- Production Progress ---
+
+message ProductionProgressLine {
+  string of_id = 1;
+  string of_reference = 2;
+  string product_id = 3;
+  int32 planned_quantity = 4;
+  int32 good_quantity = 5;
+  int32 scrap_quantity = 6;
+  double completion_percentage = 7;
+}
+
+message GetProductionProgressRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message GetProductionProgressResponse {
+  repeated ProductionProgressLine lines = 1;
+}

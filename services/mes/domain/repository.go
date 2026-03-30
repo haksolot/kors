@@ -109,6 +109,14 @@ type ComplianceRepository interface {
 	GetAsBuiltByOFID(ctx context.Context, ofID string) (*AsBuiltReport, error)
 }
 
+// DashboardRepository provides aggregated metrics and shop floor visibility (§16).
+type DashboardRepository interface {
+	GetSupervisorSnapshot(ctx context.Context) (*SupervisorSnapshot, error)
+	GetTRSByPeriod(ctx context.Context, filter TRSFilter) ([]*TRSDataPoint, error)
+	GetDowntimeCauses(ctx context.Context, from, to time.Time) ([]*DowntimeCause, error)
+	GetProductionProgress(ctx context.Context, from, to time.Time) ([]*ProgressLine, error)
+}
+
 // TxOps defines all write operations available within a database transaction.
 // Every mutation that triggers a domain event must use TxOps so the outbox entry
 // is written in the same transaction as the business data (ADR-004).

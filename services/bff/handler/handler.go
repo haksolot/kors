@@ -23,6 +23,7 @@ type Handler struct {
 	nc        *nats.Conn
 	validator *core.JWTValidator
 	hub       *Hub
+	webhooks  *WebhookRegistry
 	log       zerolog.Logger
 	reg       prometheus.Registerer
 }
@@ -42,6 +43,7 @@ func New(
 		nc:        nc,
 		validator: validator,
 		hub:       hub,
+		webhooks:  &WebhookRegistry{webhooks: make(map[string]*Webhook)},
 		log:       log,
 		reg:       reg,
 	}
@@ -195,6 +197,32 @@ func (h *Handler) Routes() http.Handler {
 				r.Get("/", h.getCAPA)
 				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin, core.RoleSupervisor)).Post("/start", h.startCAPA)
 				r.With(RequireAnyRole(core.RoleQualityManager, core.RoleAdmin, core.RoleSupervisor)).Post("/complete", h.completeCAPA)
+			})
+		})
+
+		// Dashboards & Supervision (§16)
+		r.Route("/dashboard", func(r chi.Router) {
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleProductionManager, core.RoleAdmin)).
+				Get("/supervisor", h.getSupervisorDashboard)
+			r.With(RequireAnyRole(core.RoleProductionManager, core.RoleQualityManager, core.RoleAdmin)).
+				Get("/trs", h.getTRSByPeriod)
+			r.With(RequireAnyRole(core.RoleProductionManager, core.RoleQualityManager, core.RoleAdmin)).
+				Get("/downtime-causes", h.getDowntimeCauses)
+			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleProductionManager, core.RoleAdmin)).
+				Get("/production-progress", h.getProductionProgress)
+		})
+
+		// Integration & Data Opening (§14)
+		r.Route("/integration", func(r chi.Router) {
+			r.With(RequireRole(core.RoleAdmin)).Route("/csv", func(r chi.Router) {
+				r.Get("/workstations", h.exportWorkstationsCSV)
+				r.Post("/workstations", h.importWorkstationsCSV)
+				r.Get("/tools", h.exportToolsCSV)
+			})
+
+			r.With(RequireRole(core.RoleAdmin)).Route("/webhooks", func(r chi.Router) {
+				r.Get("/", h.listWebhooks)
+				r.Post("/", h.createWebhook)
 			})
 		})
 	})

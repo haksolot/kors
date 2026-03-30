@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: KORS MES/QMS API
+  description: Backend For Frontend (BFF) API for the KORS Manufacturing Execution System.
+  version: 1.0.0
+servers:
+  - url: http://kors.local/api/v1
+    description: Local development
+paths:
+  /orders:
+    get:
+      summary: List manufacturing orders
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create manufacturing order
+      responses:
+        '201':
+          description: Created
+  /dispatch:
+    get:
+      summary: Get dispatch list (high priority orders)
+      responses:
+        '200':
+          description: OK
+  /dashboard/supervisor:
+    get:
+      summary: Get real-time shop floor snapshot
+      responses:
+        '200':
+          description: OK
+  /dashboard/trs:
+    get:
+      summary: Get TRS metrics by period
+      parameters:
+        - name: workstation_id
+          in: query
+          schema:
+            type: string
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH]
+      responses:
+        '200':
+          description: OK
+  /integration/csv/workstations:
+    get:
+      summary: Export workstations as CSV
+      responses:
+        '200':
+          description: CSV file
+    post:
+      summary: Import workstations from CSV
+      responses:
+        '200':
+          description: OK
+  /integration/webhooks:
+    get:
+      summary: List registered webhooks
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Register a new webhook
+      responses:
+        '201':
+          description: Created
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
