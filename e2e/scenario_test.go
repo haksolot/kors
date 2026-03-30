@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pbmes "github.com/haksolot/kors/proto/gen/mes"
 	pbqms "github.com/haksolot/kors/proto/gen/qms"
@@ -354,5 +355,44 @@ func TestE2EScenario(t *testing.T) {
 
 		t.Log("✓ MES outbox drained")
 		t.Log("✓ QMS outbox drained")
+	})
+
+	// ── Phase 8 — Dashboards & Workstations (§16) ─────────────────────────────
+	t.Run("Phase_8_Dashboards_Workstations", func(t *testing.T) {
+		t.Log("creating workstation...")
+		var createWSResp pbmes.CreateWorkstationResponse
+		natsReq(t, nc, mesdomain.SubjectWorkstationCreate, &pbmes.CreateWorkstationRequest{
+			Name:        "CNC-01",
+			Description: "Milling machine",
+			Capacity:    1,
+			NominalRate: 60, // 60 units/hour
+		}, &createWSResp)
+		wsID := createWSResp.Workstation.Id
+		assert.NotEmpty(t, wsID)
+
+		t.Log("verifying supervisor dashboard snapshot...")
+		var dashResp pbmes.GetSupervisorDashboardResponse
+		natsReq(t, nc, mesdomain.SubjectDashboardSupervisorGet, &pbmes.GetSupervisorDashboardRequest{}, &dashResp)
+		
+		// Workstation should appear in dashboard
+		found := false
+		for _, ws := range dashResp.Workstations {
+			if ws.WorkstationId == wsID {
+				found = true
+				assert.Equal(t, "CNC-01", ws.WorkstationName)
+				break
+			}
+		}
+		assert.True(t, found, "new workstation not found in dashboard")
+
+		t.Log("verifying TRS metrics retrieval...")
+		var trsResp pbmes.GetTRSByPeriodResponse
+		natsReq(t, nc, mesdomain.SubjectMetricsTRSByPeriod, &pbmes.GetTRSByPeriodRequest{
+			Granularity: pbmes.TRSPeriodGranularity_TRS_GRANULARITY_DAY,
+			From:        timestamppb.New(time.Now().Add(-24 * time.Hour)),
+			To:          timestamppb.New(time.Now()),
+		}, &trsResp)
+		// Even if empty, the request should succeed
+		assert.NotNil(t, trsResp.Points)
 	})
 }

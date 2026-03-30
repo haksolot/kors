@@ -82,7 +82,7 @@ func startMESService(t *testing.T, ctx context.Context, pool *pgxpool.Pool, nc *
 	log := zerolog.Nop()
 	reg := prometheus.NewRegistry()
 	r := mesrepo.New(pool)
-	h := meshandler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
+	h := meshandler.New(r, r, r, r, r, r, r, r, r, r, r, r, r, r, r, reg, &log)
 	worker := mesoutbox.New(r, nc, log, reg)
 
 	subs := subscribeMES(t, ctx, h, nc)
@@ -159,6 +159,21 @@ func subscribeMES(t *testing.T, ctx context.Context, h *meshandler.Handler, nc *
 		{mesdomain.SubjectOFCreateFromRouting, h.CreateFromRouting},
 		{mesdomain.SubjectOFDispatchList, h.GetDispatchList},
 		{mesdomain.SubjectOFSetPlanning, h.SetPlanning},
+		// Workstations
+		{mesdomain.SubjectWorkstationCreate, h.CreateWorkstation},
+		{mesdomain.SubjectWorkstationGet, h.GetWorkstation},
+		{mesdomain.SubjectWorkstationList, h.ListWorkstations},
+		{mesdomain.SubjectWorkstationUpdateStatus, h.UpdateWorkstationStatus},
+		// Alerts
+		{mesdomain.SubjectAlertRaise, h.RaiseAlert},
+		{mesdomain.SubjectAlertAcknowledge, h.AcknowledgeAlert},
+		{mesdomain.SubjectAlertResolve, h.ResolveAlert},
+		{mesdomain.SubjectAlertListActive, h.ListActiveAlerts},
+		// Dashboards
+		{mesdomain.SubjectDashboardSupervisorGet, h.GetSupervisorDashboard},
+		{mesdomain.SubjectMetricsTRSByPeriod, h.GetTRSByPeriod},
+		{mesdomain.SubjectMetricsDowntimeCauses, h.GetDowntimeCauses},
+		{mesdomain.SubjectMetricsProductionProgress, h.GetProductionProgress},
 	}
 
 	var subs []*nats.Subscription
