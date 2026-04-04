@@ -10,6 +10,20 @@ import (
 
 // ── Alerts ───────────────────────────────────────────────────────────────────
 
+func (h *Handler) raiseAlert(w http.ResponseWriter, r *http.Request) {
+	var req pbmes.RaiseAlertRequest
+	if err := unmarshalBody(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var resp pbmes.RaiseAlertResponse
+	if err := h.natsReq(r.Context(), mesdomain.SubjectAlertRaise, &req, &resp); err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, &resp)
+}
+
 func (h *Handler) listActiveAlerts(w http.ResponseWriter, r *http.Request) {
 	var resp pbmes.ListActiveAlertsResponse
 	if err := h.natsReq(r.Context(), mesdomain.SubjectAlertListActive, &pbmes.ListActiveAlertsRequest{}, &resp); err != nil {

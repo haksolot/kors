@@ -165,6 +165,7 @@ func (h *Handler) Routes() http.Handler {
 		// Alerts (BLOC 11)
 		r.Route("/alerts", func(r chi.Router) {
 			r.Get("/active", h.listActiveAlerts)
+			r.With(RequireAnyRole(core.RoleOperator, core.RoleSupervisor, core.RoleAdmin)).Post("/", h.raiseAlert)
 			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/{id}/acknowledge", h.acknowledgeAlert)
 			r.With(RequireAnyRole(core.RoleSupervisor, core.RoleAdmin)).Post("/{id}/resolve", h.resolveAlert)
 		})
