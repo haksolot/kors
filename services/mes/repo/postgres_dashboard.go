@@ -47,7 +47,8 @@ func (r *PostgresRepo) GetSupervisorSnapshot(ctx context.Context) (*domain.Super
 		err := r.db.QueryRow(ctx,
 			`SELECT mo.id, mo.reference
 			 FROM time_logs tl
-			 JOIN manufacturing_orders mo ON tl.of_id = mo.id
+			 JOIN operations op ON tl.operation_id = op.id
+			 JOIN manufacturing_orders mo ON op.of_id = mo.id
 			 WHERE tl.workstation_id = $1
 			 ORDER BY tl.end_time DESC
 			 LIMIT 1`, ws.ID,
@@ -250,10 +251,11 @@ func (r *PostgresRepo) GetDowntimeCauses(ctx context.Context, from, to time.Time
 func (r *PostgresRepo) GetProductionProgress(ctx context.Context, from, to time.Time) ([]*domain.ProgressLine, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT mo.id, mo.reference, mo.product_id, mo.quantity,
-		        COALESCE(SUM(tl.good_quantity), 0) as good,
-		        COALESCE(SUM(tl.scrap_quantity), 0) as scrap
+		        COALESCE(SUM(tl.good_qty), 0) as good,
+		        COALESCE(SUM(tl.scrap_qty), 0) as scrap
 		 FROM manufacturing_orders mo
-		 LEFT JOIN time_logs tl ON mo.id = tl.of_id
+		 LEFT JOIN operations op ON op.of_id = mo.id
+		 LEFT JOIN time_logs tl ON tl.operation_id = op.id
 		 WHERE mo.created_at >= $1 AND mo.created_at <= $2
 		 GROUP BY mo.id
 		 ORDER BY mo.created_at DESC`,

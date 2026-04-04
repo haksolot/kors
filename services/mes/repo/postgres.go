@@ -584,12 +584,20 @@ func (r *PostgresRepo) FindRoutingByID(ctx context.Context, id string) (*domain.
 	return routing, nil
 }
 
-// FindRoutingsByProductID retrieves all routings for a product (without steps).
+// FindRoutingsByProductID retrieves routings for a product (without steps).
+// If productID is empty, all routings are returned.
 func (r *PostgresRepo) FindRoutingsByProductID(ctx context.Context, productID string) ([]*domain.Routing, error) {
-	rows, err := r.db.Query(ctx,
-		`SELECT id, product_id, version, name, is_active, created_at
-		 FROM routings WHERE product_id = $1 ORDER BY version DESC`, productID,
-	)
+	var query string
+	var args []any
+	if productID == "" {
+		query = `SELECT id, product_id, version, name, is_active, created_at
+		         FROM routings ORDER BY name, version DESC`
+	} else {
+		query = `SELECT id, product_id, version, name, is_active, created_at
+		         FROM routings WHERE product_id = $1 ORDER BY version DESC`
+		args = []any{productID}
+	}
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("FindRoutingsByProductID %s: %w", productID, err)
 	}
