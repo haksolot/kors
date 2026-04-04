@@ -174,6 +174,13 @@ func subscribeAll(ctx context.Context, h *handler.Handler, nc *nats.Conn, log ze
 		{domain.SubjectOFCreateFromRouting, h.CreateFromRouting},
 		{domain.SubjectOFDispatchList, h.GetDispatchList},
 		{domain.SubjectOFSetPlanning, h.SetPlanning},
+		// Qualifications & habilitations (AS9100D §7.2)
+		{domain.SubjectQualificationCreate, h.CreateQualification},
+		{domain.SubjectQualificationGet, h.GetQualification},
+		{domain.SubjectQualificationList, h.ListQualifications},
+		{domain.SubjectQualificationRenew, h.RenewQualification},
+		{domain.SubjectQualificationRevoke, h.RevokeQualification},
+		{domain.SubjectQualificationListExpiring, h.ListExpiringQualifications},
 		// Workstations (BLOC 6)
 		{domain.SubjectWorkstationCreate, h.CreateWorkstation},
 		{domain.SubjectWorkstationGet, h.GetWorkstation},
